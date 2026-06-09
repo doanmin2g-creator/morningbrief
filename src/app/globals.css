@@ -149,6 +149,8 @@ body {
     z-index: 5;
     border-top-left-radius: var(--radius-sm);
     border-bottom-left-radius: var(--radius-sm);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .ticker-scroll {
