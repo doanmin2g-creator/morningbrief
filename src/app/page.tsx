@@ -704,13 +704,13 @@ export default function Home() {
             >
               <span>{isPlaying ? "■ Dừng nghe | Stop" : "🎧 Nghe Podcast | Listen"}</span>
             </button>
-            <div className="avatar" onClick={fetchStocks} title="Tải lại dữ liệu | Refresh data">🎀</div>
+            <div className="avatar" onClick={fetchStocks} title="LÀM MỚI | REFRESH">🎀</div>
           </div>
         </div>
 
         {/* Animated Market Ticker Banner */}
         <div className="ticker-wrap">
-          <div className="ticker-label">📊 Thị trường VN | VN Market</div>
+          <div className="ticker-label">📊 THỊ TRƯỜNG | VN MARKET</div>
           <div className={`ticker-scroll ${loadingStocks ? "loading" : ""}`}>
             {loadingStocks ? (
               <div className="ticker-item-placeholder">Đang tải dữ liệu thị trường | Loading market data...</div>
@@ -736,25 +736,25 @@ export default function Home() {
           {/* Left Column: Lead Stories (News Feed) */}
           <section className={`news-section ${activeMobileTab === "home" ? "" : "hidden-mobile"}`}>
             <div className="column-header">
-              <h2>🌸 Tin nổi bật & Phân tích | Lead Stories & Opinion</h2>
+              <h2>🌸 TIÊU ĐIỂM | HIGHLIGHTS</h2>
               <div className="tabs">
                 <button
                   className={`tab ${activeTab === "general" ? "active" : ""}`}
                   onClick={() => setActiveTab("general")}
                 >
-                  Tiêu điểm | Spotlight
+                  TIÊU ĐIỂM | FOCUS
                 </button>
                 <button
                   className={`tab ${activeTab === "business" ? "active" : ""}`}
                   onClick={() => setActiveTab("business")}
                 >
-                  Kinh doanh | Business
+                  KINH DOANH | BIZ
                 </button>
                 <button
                   className={`tab ${activeTab === "tech" ? "active" : ""}`}
                   onClick={() => setActiveTab("tech")}
                 >
-                  Số hóa | Tech
+                  SỐ HÓA | TECH
                 </button>
               </div>
             </div>
@@ -815,8 +815,8 @@ export default function Home() {
             {/* Spotify-style Podcast Player */}
             <div className={`widget-panel podcast-player-card ${activeMobileTab === "podcast" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 style={{ margin: 0, fontSize: "1.05rem" }}>
-                  <span style={{ marginRight: "6px" }}>🎧</span>Bản tin âm thanh | Audio Briefing
+                <h3 style={{ margin: 0, fontSize: "0.85rem", letterSpacing: "1.5px" }}>
+                  <span style={{ marginRight: "6px" }}>🎧</span>BẢN TIN | AUDIO
                 </h3>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   {loadingPodcast && <span className="podcast-live-dot"></span>}
@@ -911,8 +911,8 @@ export default function Home() {
             {/* Dynamic AI Analysis Panel (VN Broad Market Perspective) */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`} style={{ borderLeft: "4px solid var(--accent-red)", background: "rgba(0,0,0,0.01)" }}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3 style={{ textTransform: "uppercase", fontSize: "0.78rem", letterSpacing: "0.8px", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
-                  ✨ Báo cáo nhanh | Quick Briefing
+                <h3 style={{ textTransform: "uppercase", fontSize: "0.78rem", letterSpacing: "1.5px", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
+                  ✨ TÓM TẮT | BRIEF
                 </h3>
               </div>
               <p style={{ lineHeight: "1.5", fontSize: "0.85rem", fontStyle: "italic", fontFamily: "var(--font-serif)", color: "var(--text-secondary)", margin: 0 }}>
@@ -923,7 +923,7 @@ export default function Home() {
             {/* Market Trend Chart Panel */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>📈 Xu hướng Chỉ số | Index Trends</h3>
+                <h3>📈 XU HƯỚNG | TRENDS</h3>
               </div>
               
               <div className="chart-widget-panel">
@@ -1212,7 +1212,7 @@ export default function Home() {
             {/* Market Indexes Panel */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
-                <h3>💸 Chỉ số Thị trường | Market Indexes</h3>
+                <h3>💸 CHỈ SỐ | INDEX</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {loadingStocks ? (
@@ -1243,7 +1243,7 @@ export default function Home() {
             {/* Broker Stance Panel: Stated bullish/bearish/neutral from securities firms */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
-                <h3>🔮 Đồng thuận Định chế | Institutional Consensus</h3>
+                <h3>🔮 ĐỒNG THUẬN | SENTIMENT</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {brokerOutlooks.map((broker, idx) => (
@@ -1268,7 +1268,7 @@ export default function Home() {
             {/* Watchlist Panel */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
-                <h3>⭐ Danh mục Theo dõi | My Watchlist</h3>
+                <h3>⭐ DANH MỤC | WATCHLIST</h3>
               </div>
               <div className="crypto-list" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {watchlist.length === 0 ? (
@@ -1308,7 +1308,7 @@ export default function Home() {
             {/* Top VN Stocks List (Điểm nhấn Thị trường) */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingBottom: "0.75rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.05rem" }}>📊 Điểm nhấn Thị trường | Market Highlights</h3>
+                <h3 style={{ margin: 0, fontSize: "0.85rem", letterSpacing: "1.5px" }}>📊 ĐIỂM NHẤN | MARKET</h3>
                 
                 {/* Sub-tabs for Market Highlights */}
                 <div className="tabs" style={{ padding: "2px", borderRadius: "20px" }}>
@@ -1317,21 +1317,21 @@ export default function Home() {
                     onClick={() => setStockFilterTab("all")}
                     style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
                   >
-                    Tất cả | All
+                    ALL
                   </button>
                   <button
                     className={`tab ${stockFilterTab === "gainers" ? "active" : ""}`}
                     onClick={() => setStockFilterTab("gainers")}
                     style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
                   >
-                    Tăng mạnh | Gainers
+                    UP
                   </button>
                   <button
                     className={`tab ${stockFilterTab === "losers" ? "active" : ""}`}
                     onClick={() => setStockFilterTab("losers")}
                     style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
                   >
-                    Giảm mạnh | Losers
+                    DOWN
                   </button>
                 </div>
               </div>
@@ -1368,7 +1368,7 @@ export default function Home() {
                     <div className="leaderboard-column">
                       <div className="leaderboard-column-header gainer" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                         <span className="leaderboard-icon">🌱</span>
-                        <span>Top 5 Tăng | Top Gainers</span>
+                        <span>TĂNG | GAINERS</span>
                       </div>
                       {top5Gainers.length > 0 ? (
                         top5Gainers.map((item, i) => renderLeaderItem(item, i + 1, "gainer"))
@@ -1379,7 +1379,7 @@ export default function Home() {
                     <div className="leaderboard-column">
                       <div className="leaderboard-column-header loser" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                         <span className="leaderboard-icon">🍂</span>
-                        <span>Top 5 Giảm | Top Losers</span>
+                        <span>GIẢM | LOSERS</span>
                       </div>
                       {top5Losers.length > 0 ? (
                         top5Losers.map((item, i) => renderLeaderItem(item, i + 1, "loser"))
@@ -1554,7 +1554,7 @@ export default function Home() {
             {/* Macro Economics Panel */}
             <div className={`widget-panel ${activeMobileTab === "calendar" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>💰 Vàng & Tỷ giá | Gold & Forex</h3>
+                <h3>💰 TỶ GIÁ | FOREX</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
                 {loadingMacro ? (
@@ -1607,7 +1607,7 @@ export default function Home() {
             {/* Economic Calendar Panel (Interactive click-to-read) */}
             <div className={`widget-panel ${activeMobileTab === "calendar" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>🍓 Lịch sự kiện | Economic Calendar</h3>
+                <h3>🍓 SỰ KIỆN | CALENDAR</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
                 {calendarEvents.map((item, idx) => (
@@ -1693,28 +1693,28 @@ export default function Home() {
           onClick={() => setActiveMobileTab("home")}
         >
           <span className="mobile-tab-icon">🌸</span>
-          <span>Tin Tức | News</span>
+          <span>TIN TỨC | NEWS</span>
         </button>
         <button 
           className={`mobile-tab-item ${activeMobileTab === "markets" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("markets")}
         >
           <span className="mobile-tab-icon">📊</span>
-          <span>Thị Trường | Markets</span>
+          <span>THỊ TRƯỜNG | MARKET</span>
         </button>
         <button 
           className={`mobile-tab-item ${activeMobileTab === "calendar" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("calendar")}
         >
           <span className="mobile-tab-icon">🍓</span>
-          <span>Sự Kiện | Calendar</span>
+          <span>SỰ KIỆN | CALENDAR</span>
         </button>
         <button 
           className={`mobile-tab-item ${activeMobileTab === "podcast" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("podcast")}
         >
           <span className="mobile-tab-icon">🎧</span>
-          <span>Podcast | Audio</span>
+          <span>AUDIO</span>
         </button>
       </nav>
     </div>

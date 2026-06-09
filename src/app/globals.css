@@ -230,7 +230,7 @@ body {
 
 .broadsheet-grid {
     display: grid;
-    grid-template-columns: 1.85fr 1fr;
+    grid-template-columns: 1.85fr minmax(0, 1fr);
     gap: 2.5rem;
 }
 
@@ -251,10 +251,11 @@ body {
 
 .column-header h2 {
     font-family: var(--font-sans);
-    font-size: 1.35rem;
-    font-weight: 900;
+    font-size: 1.1rem;
+    font-weight: 800;
     color: var(--text-primary);
-    letter-spacing: -0.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
 }
 
 /* Segmented Control Tabs (Pill controls) */
@@ -403,10 +404,11 @@ body {
 
 .widget-header h3 {
     font-family: var(--font-sans);
-    font-size: 1rem;
+    font-size: 0.82rem;
     font-weight: 800;
     color: var(--text-primary);
-    letter-spacing: -0.2px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
 }
 
 /* --- BOTTOM TAB BAR FOR MOBILE (iOS STYLE) --- */
@@ -687,7 +689,9 @@ body {
     display: flex;
     align-items: center;
     gap: 14px;
+    height: 64px; /* CRITICAL FIX: Locks cover section height */
     min-width: 0; /* CRITICAL FIX: Allows flex layout to shrink and truncate text */
+    overflow: hidden;
 }
 
 .podcast-cover-wrap {
@@ -759,6 +763,11 @@ body {
     font-size: 0.78rem;
     color: var(--text-muted);
     font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    display: block;
 }
 
 .podcast-track-desc {
@@ -783,7 +792,9 @@ body {
     font-size: 0.68rem;
     color: var(--text-muted);
     font-weight: 800;
-    width: 32px;
+    width: 36px;
+    flex-shrink: 0;
+    text-align: center;
 }
 
 .podcast-timeline-slider {
