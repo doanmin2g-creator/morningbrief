@@ -7,7 +7,7 @@ const CACHE_TTL_MS = 30 * 1000; // Cache for 30 seconds
 
 // Major Vietnamese tickers
 const TICKERS = [
-  { symbol: "^VNINDEX.VN", displayName: "VN-Index", sector: "Index" },
+  { symbol: "^VNINDEX.VN", displayName: "VN-Index", sector: "Chỉ số" },
   { symbol: "VCB.VN", displayName: "VCB (Vietcombank)", sector: "Ngân hàng" },
   { symbol: "BID.VN", displayName: "BID (BIDV)", sector: "Ngân hàng" },
   { symbol: "CTG.VN", displayName: "CTG (VietinBank)", sector: "Ngân hàng" },
@@ -81,7 +81,7 @@ async function fetchEntradeIndex(symbol: string, displayName: string) {
         price: priceStr,
         change: changeStr,
         isPositive,
-        sector: "Index"
+        sector: "Chỉ số"
       };
     }
   } catch (error) {

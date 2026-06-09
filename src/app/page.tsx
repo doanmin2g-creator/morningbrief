@@ -72,10 +72,10 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState("");
   const [visibleNewsCount, setVisibleNewsCount] = useState(8);
 
-  // Format Date in traditional FT format
+  // Format Date in traditional FT format (Vietnamese Locale)
   useEffect(() => {
     const options: Intl.DateTimeFormatOptions = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
-    setDateText(new Date().toLocaleDateString("en-US", options));
+    setDateText(new Date().toLocaleDateString("vi-VN", options));
   }, []);
 
   // Fetch Vietnamese Stocks (22 items)
@@ -180,16 +180,16 @@ export default function Home() {
     const declining = equities.length - advancing;
     const greenRatio = equities.length > 0 ? (advancing / equities.length) * 100 : 50;
 
-    let sentiment = "GIẰNG CO (NEUTRAL)";
+    let sentiment = "GIẰNG CO (TRUNG LẬP)";
     let sentimentClass = "neutral-stance";
     if (greenRatio >= 60) {
-      sentiment = `TÍCH CỰC (BULLISH) — ${advancing}/${equities.length} mã tăng điểm`;
+      sentiment = `TÍCH CỰC (TĂNG) — ${advancing}/${equities.length} mã tăng điểm`;
       sentimentClass = "positive-stance";
     } else if (greenRatio <= 40) {
-      sentiment = `THẬN TRỌNG (BEARISH) — ${declining}/${equities.length} mã giảm điểm`;
+      sentiment = `THẬN TRỌNG (GIẢM) — ${declining}/${equities.length} mã giảm điểm`;
       sentimentClass = "negative-stance";
     } else {
-      sentiment = `GIẰNG CO (NEUTRAL) — ${advancing} mã tăng / ${declining} mã giảm`;
+      sentiment = `GIẰNG CO (TRUNG LẬP) — ${advancing} mã tăng / ${declining} mã giảm`;
     }
 
     // 2. Extract top keyword themes from news titles/descriptions
@@ -253,21 +253,21 @@ export default function Home() {
       {/* Floating Header/Masthead */}
       <header className="masthead">
         <div className="masthead-top">
-          <div className="date-badge">{dateText || "Loading date..."}</div>
+          <div className="date-badge">{dateText || "Đang tải ngày..."}</div>
           <div className="logo">
             <h1>THE MORNING BRIEF</h1>
           </div>
           <div className="user-profile">
-            <div className="avatar" onClick={fetchStocks} title="Refresh Stock Data">↻</div>
+            <div className="avatar" onClick={fetchStocks} title="Tải lại dữ liệu">↻</div>
           </div>
         </div>
 
         {/* Animated Market Ticker Banner */}
         <div className="ticker-wrap">
-          <div className="ticker-label">VN MARKETS</div>
+          <div className="ticker-label">THỊ TRƯỜNG VN</div>
           <div className={`ticker-scroll ${loadingStocks ? "loading" : ""}`}>
             {loadingStocks ? (
-              <div className="ticker-item-placeholder">Loading live markets...</div>
+              <div className="ticker-item-placeholder">Đang tải dữ liệu thị trường...</div>
             ) : (
               duplicatedTickers.map((item, idx) => (
                 <div key={idx} className="ticker-card">
@@ -290,13 +290,13 @@ export default function Home() {
           {/* Left Column: Lead Stories (News Feed) */}
           <section className="news-section">
             <div className="column-header">
-              <h2>Top Stories & Analysis</h2>
+              <h2>Tin nổi bật & Phân tích</h2>
               <div className="tabs">
                 <button
                   className={`tab ${activeTab === "general" ? "active" : ""}`}
                   onClick={() => setActiveTab("general")}
                 >
-                  Featured
+                  Tiêu điểm
                 </button>
                 <button
                   className={`tab ${activeTab === "business" ? "active" : ""}`}
@@ -356,13 +356,13 @@ export default function Home() {
             <div className="widget-panel" style={{ borderLeft: "4px solid var(--accent-red)", background: "var(--bg-paper-darker)" }}>
               <div className="widget-header" style={{ marginBottom: "0.75rem" }}>
                 <h3 style={{ textTransform: "uppercase", fontSize: "0.9rem", letterSpacing: "1px", color: "var(--accent-red)", fontFamily: "var(--font-sans)" }}>
-                  Morning Market Summary
+                  Báo cáo Thị trường Buổi sáng
                 </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.9rem" }}>
                 <div>
                   <strong style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                    VN-30 Market Breadth:
+                    Độ rộng thị trường VN-30:
                   </strong>
                   <div style={{ display: "flex", gap: "10px", marginTop: "4px", fontSize: "0.85rem", fontWeight: "700" }}>
                     <span className="ticker-change positive" style={{ padding: "2px 8px", borderRadius: "4px" }}>
@@ -378,7 +378,7 @@ export default function Home() {
                 </div>
                 <div>
                   <strong style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                    Primary Daily Theme:
+                    Chủ đề chính trong ngày:
                   </strong>
                   <span style={{ fontFamily: "var(--font-serif)", fontSize: "1.05rem", fontWeight: "700", display: "block", marginTop: "2px" }}>
                     {analysis.theme}
@@ -387,7 +387,7 @@ export default function Home() {
                 <hr style={{ border: "none", borderTop: "1px dashed var(--border-classic)", margin: "4px 0" }} />
                 <div>
                   <strong style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", marginBottom: "4px" }}>
-                    Executive Briefing:
+                    Báo cáo nhanh:
                   </strong>
                   <p style={{ lineHeight: "1.5", fontSize: "0.88rem", fontStyle: "italic", fontFamily: "var(--font-serif)", color: "var(--text-secondary)" }}>
                     "{analysis.summary}"
@@ -399,7 +399,7 @@ export default function Home() {
             {/* Market Indexes Panel */}
             <div className="widget-panel">
               <div className="widget-header">
-                <h3>Market Indexes</h3>
+                <h3>Chỉ số Thị trường</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {loadingStocks ? (
@@ -409,11 +409,11 @@ export default function Home() {
                     <div className="skeleton-item" style={{ height: "40px" }}></div>
                   </>
                 ) : (
-                  tickerList.filter(item => item.sector === "Index").map((item, idx) => (
-                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "10px", borderBottom: idx < tickerList.filter(i => i.sector === "Index").length - 1 ? "1px dashed var(--border-classic)" : "none" }}>
+                  tickerList.filter(item => item.sector === "Chỉ số").map((item, idx) => (
+                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "10px", borderBottom: idx < tickerList.filter(i => i.sector === "Chỉ số").length - 1 ? "1px dashed var(--border-classic)" : "none" }}>
                       <div className="crypto-info">
                         <h4 style={{ fontSize: "0.88rem", fontWeight: "600" }}>{item.symbol}</h4>
-                        <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: "500" }}>{item.ticker.startsWith("^") ? "Yahoo Finance" : "Entrade API"}</p>
+                        <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: "500" }}>{item.ticker.startsWith("^") ? "Dữ liệu Yahoo Finance" : "Dữ liệu Entrade API"}</p>
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <h4 style={{ fontSize: "0.88rem", fontWeight: "700" }}>{item.price}</h4>
@@ -430,7 +430,7 @@ export default function Home() {
             {/* Broker Stance Panel: Stated bullish/bearish/neutral from securities firms */}
             <div className="widget-panel">
               <div className="widget-header">
-                <h3>Institutional Market Consensus</h3>
+                <h3>Đồng thuận Thị trường Định chế</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {brokerOutlooks.map((broker, idx) => (
@@ -438,7 +438,7 @@ export default function Home() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <strong style={{ fontSize: "0.88rem", color: "var(--text-primary)" }}>{broker.name}</strong>
                       <span className={`ticker-change ${broker.class}`} style={{ fontSize: "0.72rem", padding: "1px 6px", borderRadius: "4px", fontWeight: "700" }}>
-                        {broker.stance}
+                        {broker.stance === "BULLISH" ? "TÍCH CỰC" : broker.stance === "BEARISH" ? "THẬN TRỌNG" : "TRUNG LẬP"}
                       </span>
                     </div>
                     <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "600" }}>
@@ -455,7 +455,7 @@ export default function Home() {
             {/* Top VN Stocks List */}
             <div className="widget-panel">
               <div className="widget-header">
-                <h3>VN-30 Highlights</h3>
+                <h3>Điểm nhấn VN-30</h3>
               </div>
               <div className="crypto-list" style={{ maxHeight: "350px", overflowY: "auto", paddingRight: "4px" }}>
                 {loadingStocks ? (
@@ -464,7 +464,7 @@ export default function Home() {
                     <div className="skeleton-item"></div>
                   </>
                 ) : (
-                  tickerList.filter(item => item.sector !== "Index").map((item, idx) => (
+                  tickerList.filter(item => item.sector !== "Chỉ số").map((item, idx) => (
                     <div key={idx} className="crypto-item">
                       <div className="crypto-info">
                         <h4>{item.symbol.split(" ")[0]}</h4>
@@ -489,7 +489,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="ft-footer">
-        <p>© 2026 THE MORNING BRIEF. Styled in FT-Modern Paper aesthetic.</p>
+        <p>© 2026 THE MORNING BRIEF. Thiết kế theo phong cách báo giấy hiện đại của FT.</p>
       </footer>
     </div>
   );
