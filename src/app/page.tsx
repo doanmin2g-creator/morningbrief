@@ -473,7 +473,7 @@ export default function Home() {
                   const paddingTop = 12;
                   const paddingBottom = 18;
                   const paddingLeft = 12;
-                  const paddingRight = 12;
+                  const paddingRight = 68; // Leave space on the right for price labels
 
                   const points = history.map((val, idx) => {
                     const x = paddingLeft + (idx / (history.length - 1)) * (width - paddingLeft - paddingRight);
@@ -611,12 +611,15 @@ export default function Home() {
                           <line x1={0} y1={height - paddingBottom} x2={width} y2={height - paddingBottom} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.5" />
                           <line x1={0} y1={(paddingTop + height - paddingBottom) / 2} x2={width} y2={(paddingTop + height - paddingBottom) / 2} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.4" />
 
-                          {/* Min/Max Text Labels */}
-                          <text x={width - 2} y={paddingTop + 10} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
-                            Cao: {max.toLocaleString("en-US", { maximumFractionDigits: 1 })}
+                          {/* Price Axis Text Labels (placed on the right margin axis) */}
+                          <text x={width - 2} y={paddingTop + 3} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
+                            {max.toLocaleString("en-US", { maximumFractionDigits: 1 })}
                           </text>
-                          <text x={width - 2} y={height - paddingBottom - 4} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
-                            Thấp: {min.toLocaleString("en-US", { maximumFractionDigits: 1 })}
+                          <text x={width - 2} y={(paddingTop + height - paddingBottom) / 2 + 3} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
+                            {((max + min) / 2).toLocaleString("en-US", { maximumFractionDigits: 1 })}
+                          </text>
+                          <text x={width - 2} y={height - paddingBottom + 3} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
+                            {min.toLocaleString("en-US", { maximumFractionDigits: 1 })}
                           </text>
 
                           {/* Date Range Labels at bottom */}
