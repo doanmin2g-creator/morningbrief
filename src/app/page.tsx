@@ -90,6 +90,7 @@ export default function Home() {
   const [visibleNewsCount, setVisibleNewsCount] = useState(8);
   const [selectedChartIndex, setSelectedChartIndex] = useState("VN-Index");
   const [hoveredPoint, setHoveredPoint] = useState<{ value: number; index: number; x: number; y: number } | null>(null);
+  const [isChartTransitioning, setIsChartTransitioning] = useState(false);
 
   // Format Date in traditional FT format (Vietnamese Locale)
   useEffect(() => {
@@ -428,8 +429,10 @@ export default function Home() {
                       key={name}
                       className={`chart-tab-btn ${selectedChartIndex === name ? "active" : ""}`}
                       onClick={() => {
+                        setIsChartTransitioning(true);
                         setSelectedChartIndex(name);
                         setHoveredPoint(null);
+                        setTimeout(() => setIsChartTransitioning(false), 200);
                       }}
                     >
                       {name}
@@ -467,10 +470,10 @@ export default function Home() {
                   
                   const width = 320;
                   const height = 130;
-                  const paddingTop = 15;
-                  const paddingBottom = 20;
-                  const paddingLeft = 10;
-                  const paddingRight = 10;
+                  const paddingTop = 12;
+                  const paddingBottom = 18;
+                  const paddingLeft = 12;
+                  const paddingRight = 12;
 
                   const points = history.map((val, idx) => {
                     const x = paddingLeft + (idx / (history.length - 1)) * (width - paddingLeft - paddingRight);
@@ -478,8 +481,24 @@ export default function Home() {
                     return { x, y, val, idx };
                   });
 
-                  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-                  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} L ${points[0].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} Z`;
+                  // Cubic Bezier curve generator for smooth drawing
+                  const getBezierPath = (pts: typeof points) => {
+                    if (pts.length === 0) return "";
+                    let path = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+                    for (let i = 0; i < pts.length - 1; i++) {
+                      const p0 = pts[i];
+                      const p1 = pts[i + 1];
+                      const cp1x = p0.x + (p1.x - p0.x) / 3;
+                      const cp1y = p0.y;
+                      const cp2x = p0.x + 2 * (p1.x - p0.x) / 3;
+                      const cp2y = p1.y;
+                      path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+                    }
+                    return path;
+                  };
+
+                  const smoothLinePath = getBezierPath(points);
+                  const smoothAreaPath = `${smoothLinePath} L ${points[points.length - 1].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} L ${points[0].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} Z`;
 
                   const dates = getTradingDays(history.length);
                   
@@ -488,8 +507,42 @@ export default function Home() {
                   const displayDate = hoveredPoint ? `Phiên ${dates[hoveredPoint.index]}` : `Giá hiện tại`;
                   const changeColorClass = isPositive ? "positive" : "negative";
 
+                  // Extra Stats for premium feel and functionality
+                  const firstPrice = history[0];
+                  const lastPrice = history[history.length - 1];
+                  const netDiff = lastPrice - firstPrice;
+                  const netPct = (netDiff / firstPrice) * 100;
+                  const trendSign = netPct >= 0 ? "+" : "";
+                  const trendColorClass = netPct >= 0 ? "positive" : "negative";
+                  const rangeValue = max - min;
+
+                  // Handle mouse movement for smooth continuous snapping
+                  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+                    const svg = e.currentTarget;
+                    const rect = svg.getBoundingClientRect();
+                    const localX = ((e.clientX - rect.left) / rect.width) * width;
+                    
+                    let closestPt = points[0];
+                    let minDist = Math.abs(points[0].x - localX);
+                    
+                    for (let i = 1; i < points.length; i++) {
+                      const dist = Math.abs(points[i].x - localX);
+                      if (dist < minDist) {
+                        minDist = dist;
+                        closestPt = points[i];
+                      }
+                    }
+                    
+                    setHoveredPoint({
+                      value: closestPt.val,
+                      index: closestPt.idx,
+                      x: closestPt.x,
+                      y: closestPt.y
+                    });
+                  };
+
                   return (
-                    <>
+                    <div style={{ opacity: isChartTransitioning ? 0.4 : 1, transition: "opacity 0.20s ease-in-out" }}>
                       <div className="chart-info-header">
                         <div className="chart-info-left">
                           <h4 style={{ fontFamily: "var(--font-sans)", fontSize: "0.95rem", fontWeight: "700" }}>
@@ -511,11 +564,44 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="chart-svg-container" style={{ padding: "12px 6px 4px 6px" }}>
-                        <svg viewBox={`0 0 ${width} ${height}`} className="chart-svg" style={{ display: "block", width: "100%", height: "100%" }}>
+                      <div className="chart-svg-container" style={{ padding: "10px 4px 4px 4px" }}>
+                        <svg
+                          viewBox={`0 0 ${width} ${height}`}
+                          className="chart-svg"
+                          style={{ display: "block", width: "100%", height: "100%" }}
+                          onMouseMove={handleMouseMove}
+                          onMouseLeave={() => setHoveredPoint(null)}
+                          onTouchMove={(e) => {
+                            if (e.touches && e.touches[0]) {
+                              const touch = e.touches[0];
+                              const svg = e.currentTarget;
+                              const rect = svg.getBoundingClientRect();
+                              const localX = ((touch.clientX - rect.left) / rect.width) * width;
+                              
+                              let closestPt = points[0];
+                              let minDist = Math.abs(points[0].x - localX);
+                              
+                              for (let i = 1; i < points.length; i++) {
+                                const dist = Math.abs(points[i].x - localX);
+                                if (dist < minDist) {
+                                  minDist = dist;
+                                  closestPt = points[i];
+                                }
+                              }
+                              
+                              setHoveredPoint({
+                                value: closestPt.val,
+                                index: closestPt.idx,
+                                x: closestPt.x,
+                                y: closestPt.y
+                              });
+                            }
+                          }}
+                          onTouchEnd={() => setHoveredPoint(null)}
+                        >
                           <defs>
                             <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={lineColor} stopOpacity="0.18" />
+                              <stop offset="0%" stopColor={lineColor} stopOpacity="0.16" />
                               <stop offset="100%" stopColor={lineColor} stopOpacity="0.0" />
                             </linearGradient>
                           </defs>
@@ -523,6 +609,7 @@ export default function Home() {
                           {/* Grid Lines */}
                           <line x1={0} y1={paddingTop} x2={width} y2={paddingTop} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.5" />
                           <line x1={0} y1={height - paddingBottom} x2={width} y2={height - paddingBottom} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.5" />
+                          <line x1={0} y1={(paddingTop + height - paddingBottom) / 2} x2={width} y2={(paddingTop + height - paddingBottom) / 2} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.4" />
 
                           {/* Min/Max Text Labels */}
                           <text x={width - 2} y={paddingTop - 4} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
@@ -541,10 +628,10 @@ export default function Home() {
                           </text>
 
                           {/* Area Shading */}
-                          <path d={areaPath} fill={`url(#${areaGradientId})`} />
+                          <path d={smoothAreaPath} fill={`url(#${areaGradientId})`} style={{ transition: "d 0.3s ease" }} />
 
                           {/* Line Stroke */}
-                          <path d={linePath} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d={smoothLinePath} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "d 0.3s ease" }} />
 
                           {/* Hover Guide & Active Marker */}
                           {hoveredPoint && (
@@ -565,31 +652,35 @@ export default function Home() {
                                 fill={lineColor}
                                 stroke="var(--bg-card)"
                                 strokeWidth="2.5"
+                                style={{ transition: "cx 0.1s ease, cy 0.1s ease" }}
                               />
                             </>
                           )}
-
-                          {/* Hover Hit Slices */}
-                          {points.map((pt, idx) => {
-                            const sliceWidth = (width - paddingLeft - paddingRight) / (points.length - 1);
-                            const hitX = pt.x - sliceWidth / 2;
-                            return (
-                              <rect
-                                key={idx}
-                                x={hitX}
-                                y={0}
-                                width={sliceWidth}
-                                height={height - paddingBottom}
-                                fill="transparent"
-                                style={{ cursor: "pointer" }}
-                                onMouseEnter={() => setHoveredPoint({ value: pt.val, index: pt.idx, x: pt.x, y: pt.y })}
-                                onMouseLeave={() => setHoveredPoint(null)}
-                              />
-                            );
-                          })}
                         </svg>
                       </div>
-                    </>
+
+                      {/* Premium Stats Grid */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 1fr", gap: "8px", marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed var(--border-classic)", fontSize: "0.78rem" }}>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.68rem", textTransform: "uppercase", fontWeight: "600", letterSpacing: "0.3px" }}>Xu hướng 10N</span>
+                          <span className={`ticker-change ${trendColorClass}`} style={{ background: "transparent", padding: 0, fontWeight: "700", fontSize: "0.85rem", marginTop: "2px" }}>
+                            {trendSign}{netPct.toFixed(2)}%
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border-classic)", paddingLeft: "8px" }}>
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.68rem", textTransform: "uppercase", fontWeight: "600", letterSpacing: "0.3px" }}>Đỉnh - Đáy (10N)</span>
+                          <span style={{ fontWeight: "700", color: "var(--text-primary)", fontSize: "0.85rem", marginTop: "2px" }}>
+                            {max.toFixed(0)} - {min.toFixed(0)}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border-classic)", paddingLeft: "8px" }}>
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.68rem", textTransform: "uppercase", fontWeight: "600", letterSpacing: "0.3px" }}>Biến động 10N</span>
+                          <span style={{ fontWeight: "700", color: "var(--text-secondary)", fontSize: "0.85rem", marginTop: "2px" }}>
+                            {rangeValue.toFixed(1)} điểm
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   );
                 })()}
               </div>
