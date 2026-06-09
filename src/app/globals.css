@@ -1412,3 +1412,213 @@ body {
     }
 }
 
+/* --- STOCK SEARCH BOX --- */
+.stock-search-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stock-search-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-classic);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    transition: var(--transition-smooth);
+}
+
+.stock-search-input-wrap:focus-within {
+    border-color: var(--accent-red);
+    box-shadow: 0 0 0 3px rgba(155, 35, 55, 0.08);
+}
+
+.stock-search-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.stock-search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.stock-search-input::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 0.8rem;
+}
+
+.stock-search-clear {
+    background: var(--bg-paper-darker);
+    border: none;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-quick);
+    flex-shrink: 0;
+}
+
+.stock-search-clear:hover {
+    background: var(--accent-red);
+    color: white;
+}
+
+.stock-search-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    padding: 4px 0;
+}
+
+/* Search Results */
+.stock-search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.stock-search-result-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-classic);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    transition: var(--transition-quick);
+}
+
+.stock-search-result-card:hover {
+    border-color: var(--accent-red);
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-1px);
+}
+
+.stock-search-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.stock-search-symbol {
+    font-family: var(--font-sans);
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+}
+
+.stock-search-exchange {
+    font-family: var(--font-sans);
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--accent-blue);
+    background: rgba(42, 93, 124, 0.08);
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.stock-search-result-name {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.stock-search-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-classic);
+}
+
+.stock-search-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stock-detail-label {
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.stock-detail-value {
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Empty state hint */
+.stock-search-hint {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.stock-search-hint p {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.stock-search-hint-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+
+.stock-search-hint-tag {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent-red);
+    background: rgba(155, 35, 55, 0.06);
+    border: 1px solid rgba(155, 35, 55, 0.15);
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition-quick);
+}
+
+.stock-search-hint-tag:hover {
+    background: var(--accent-red);
+    color: white;
+    border-color: var(--accent-red);
+    transform: scale(1.05);
+}
+
+@media (max-width: 480px) {
+    .stock-search-details-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+

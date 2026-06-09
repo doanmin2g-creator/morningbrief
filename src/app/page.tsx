@@ -14,6 +14,21 @@ interface TickerItem {
   history?: number[];
 }
 
+interface StockSearchResult {
+  symbol: string;
+  displayName: string;
+  price: string;
+  change: string;
+  isPositive: boolean;
+  sector: string;
+  exchange: string;
+  prevClose: string;
+  dayHigh: string;
+  dayLow: string;
+  volume: string;
+  marketCap: string;
+}
+
 interface NewsItem {
   source: string;
   title: string;
@@ -245,6 +260,13 @@ export default function Home() {
   
   // Stock list highlight filter
   const [stockFilterTab, setStockFilterTab] = useState<"all" | "gainers" | "losers">("all");
+
+  // Stock Search State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<StockSearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -1380,82 +1402,163 @@ export default function Home() {
                 );
               })()}
               
-              {/* Divider between leaderboard and full list */}
-              {!loadingStocks && stockFilterTab === "all" && (
-                <div style={{ borderTop: "1px dashed var(--border-classic)", margin: "12px 0 8px 0" }}>
-                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>Danh sách đầy đủ — Tất cả các sàn</span>
-                </div>
-              )}
+              {/* === STOCK SEARCH BOX === */}
+              <div style={{ borderTop: "1px dashed var(--border-classic)", margin: "12px 0 8px 0", paddingTop: "12px" }}>
+                <div className="stock-search-box">
+                  <div className="stock-search-input-wrap">
+                    <span className="stock-search-icon">🔍</span>
+                    <input
+                      type="text"
+                      className="stock-search-input"
+                      placeholder="Nhập mã CK hoặc tên công ty (VD: VCB, Vinamilk...)"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSearchQuery(val);
+                        setSearchError("");
 
-              <div className="crypto-list" style={{ maxHeight: "350px", overflowY: "auto", paddingRight: "4px" }}>
-                {loadingStocks ? (
-                  <>
-                    <div className="skeleton-item"></div>
-                    <div className="skeleton-item"></div>
-                  </>
-                ) : (
-                  (() => {
-                    const stocksOnly = tickerList.filter(item => item.sector !== "Chỉ số");
-                    const parseChangePercent = (changeStr: string) => {
-                      try {
-                        return parseFloat(changeStr.replace("%", ""));
-                      } catch {
-                        return 0;
-                      }
-                    };
-                    
-                    let filteredStocks = [...stocksOnly];
-                    if (stockFilterTab === "gainers") {
-                      filteredStocks = stocksOnly
-                        .filter(item => parseChangePercent(item.change) > 0)
-                        .sort((a, b) => parseChangePercent(b.change) - parseChangePercent(a.change));
-                    } else if (stockFilterTab === "losers") {
-                      filteredStocks = stocksOnly
-                        .filter(item => parseChangePercent(item.change) < 0)
-                        .sort((a, b) => parseChangePercent(a.change) - parseChangePercent(b.change));
-                    }
-                    
-                    if (filteredStocks.length === 0) {
-                      return (
-                        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "20px" }}>
-                          Không có mã chứng khoán nào thỏa mãn bộ lọc.
-                        </div>
-                      );
-                    }
-                    
-                    return filteredStocks.map((item, idx) => {
-                      const code = item.symbol.split(" ")[0];
-                      const isStarred = watchlist.includes(code);
-                      const exTag = item.exchange ? ` (${item.exchange})` : "";
-                      return (
-                        <div key={idx} className="crypto-item">
-                          <div className="crypto-info">
-                            <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              <span 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleWatchlist(code);
-                                }}
-                                style={{ color: isStarred ? "var(--accent-red)" : "var(--text-muted)", cursor: "pointer", fontSize: "0.95rem", transition: "color 0.2s" }}
-                              >
-                                {isStarred ? "★" : "☆"}
-                              </span>
-                              {code}
-                              <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: "normal" }}>{exTag}</span>
-                            </h4>
-                            <p style={{ fontSize: "0.7rem" }}>{item.sector}</p>
+                        // Debounced search
+                        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                        if (val.trim().length < 1) {
+                          setSearchResults([]);
+                          setSearchLoading(false);
+                          return;
+                        }
+                        setSearchLoading(true);
+                        searchTimerRef.current = setTimeout(async () => {
+                          try {
+                            const res = await fetch(`/api/stock-search?q=${encodeURIComponent(val.trim())}`);
+                            if (res.ok) {
+                              const data = await res.json();
+                              setSearchResults(Array.isArray(data) ? data : []);
+                              if (Array.isArray(data) && data.length === 0) {
+                                setSearchError("Không tìm thấy mã chứng khoán phù hợp.");
+                              }
+                            } else {
+                              setSearchError("Lỗi khi tra cứu.");
+                            }
+                          } catch {
+                            setSearchError("Không thể kết nối máy chủ.");
+                          } finally {
+                            setSearchLoading(false);
+                          }
+                        }, 500);
+                      }}
+                    />
+                    {searchQuery && (
+                      <button
+                        className="stock-search-clear"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSearchResults([]);
+                          setSearchError("");
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search Loading */}
+                  {searchLoading && (
+                    <div className="stock-search-status">
+                      <span className="podcast-live-dot"></span> Đang tra cứu...
+                    </div>
+                  )}
+
+                  {/* Search Error */}
+                  {searchError && !searchLoading && (
+                    <div className="stock-search-status" style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+                      {searchError}
+                    </div>
+                  )}
+
+                  {/* Search Results */}
+                  {!searchLoading && searchResults.length > 0 && (
+                    <div className="stock-search-results">
+                      {searchResults.map((item, idx) => {
+                        const pct = parseFloat(item.change.replace("%", ""));
+                        let colorClass = item.isPositive ? "positive" : "negative";
+                        const ex = item.exchange || "HOSE";
+                        if (ex === "HOSE" && Math.abs(pct) >= 6.85) colorClass = pct > 0 ? "ceiling" : "floor";
+                        else if (ex === "HNX" && Math.abs(pct) >= 9.85) colorClass = pct > 0 ? "ceiling" : "floor";
+                        else if (ex === "UPCoM" && Math.abs(pct) >= 14.85) colorClass = pct > 0 ? "ceiling" : "floor";
+
+                        const isStarred = watchlist.includes(item.symbol);
+
+                        return (
+                          <div key={idx} className="stock-search-result-card">
+                            <div className="stock-search-result-header">
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span
+                                  onClick={() => toggleWatchlist(item.symbol)}
+                                  style={{ color: isStarred ? "var(--accent-red)" : "var(--text-muted)", cursor: "pointer", fontSize: "1rem" }}
+                                >
+                                  {isStarred ? "★" : "☆"}
+                                </span>
+                                <div>
+                                  <span className="stock-search-symbol">{item.symbol}</span>
+                                  <span className="stock-search-exchange">{item.exchange}</span>
+                                </div>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: "1.05rem", fontWeight: "700" }}>{item.price}</div>
+                                <span className={`ticker-change ${colorClass}`} style={{ fontSize: "0.78rem" }}>
+                                  {item.change}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="stock-search-result-name">{item.displayName}</div>
+                            <div className="stock-search-details-grid">
+                              <div className="stock-search-detail">
+                                <span className="stock-detail-label">TC hôm trước</span>
+                                <span className="stock-detail-value">{item.prevClose}</span>
+                              </div>
+                              <div className="stock-search-detail">
+                                <span className="stock-detail-label">Cao nhất</span>
+                                <span className="stock-detail-value">{item.dayHigh}</span>
+                              </div>
+                              <div className="stock-search-detail">
+                                <span className="stock-detail-label">Thấp nhất</span>
+                                <span className="stock-detail-value">{item.dayLow}</span>
+                              </div>
+                              <div className="stock-search-detail">
+                                <span className="stock-detail-label">Khối lượng</span>
+                                <span className="stock-detail-value">{item.volume}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="crypto-price-info">
-                            <h4 style={{ fontSize: "0.88rem" }}>{item.price}</h4>
-                            <span className={`ticker-change ${getStockColorClass(item)}`} style={{ fontSize: "0.78rem" }}>
-                              {item.change}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()
-                )}
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Empty state hint */}
+                  {!searchLoading && searchResults.length === 0 && !searchError && !searchQuery && (
+                    <div className="stock-search-hint">
+                      <p>💡 Tra cứu bất kỳ mã chứng khoán Việt Nam nào</p>
+                      <div className="stock-search-hint-tags">
+                        {["VCB", "FPT", "VNM", "HPG", "MWG", "NVL"].map(tag => (
+                          <button
+                            key={tag}
+                            className="stock-search-hint-tag"
+                            onClick={() => {
+                              setSearchQuery(tag);
+                              setSearchLoading(true);
+                              fetch(`/api/stock-search?q=${tag}`)
+                                .then(r => r.json())
+                                .then(d => { setSearchResults(Array.isArray(d) ? d : []); })
+                                .catch(() => setSearchError("Lỗi kết nối."))
+                                .finally(() => setSearchLoading(false));
+                            }}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
