@@ -1673,6 +1673,121 @@ body {
     .hidden-mobile {
         display: none !important;
     }
+
+    /* ====== MOBILE PODCAST PLAYER FIX — LOCKED DIMENSIONS ====== */
+    .podcast-player-card {
+        padding: 1rem 1rem 0.75rem !important;
+        min-height: unset !important;
+        height: auto !important;
+        max-height: none !important;
+        gap: 0.5rem !important;
+        overflow: hidden !important;
+    }
+
+    .podcast-player-card .widget-header {
+        margin-bottom: 0.25rem !important;
+    }
+    .podcast-player-card .widget-header h3 {
+        font-size: 0.75rem !important;
+    }
+
+    .podcast-player-body {
+        gap: 0.5rem !important;
+        margin-top: 0.25rem !important;
+    }
+
+    .podcast-cover-section {
+        height: 52px !important;
+        gap: 10px !important;
+    }
+
+    .podcast-cover-wrap {
+        width: 52px !important;
+        height: 52px !important;
+    }
+
+    .podcast-cover-center {
+        width: 10px !important;
+        height: 10px !important;
+    }
+
+    .podcast-track-title {
+        font-size: 0.8rem !important;
+    }
+
+    .podcast-track-artist {
+        font-size: 0.7rem !important;
+    }
+
+    .podcast-track-desc {
+        max-height: 40px !important;
+        font-size: 0.72rem !important;
+        line-height: 1.35 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .podcast-timeline-section {
+        gap: 6px !important;
+    }
+
+    .time-label {
+        font-size: 0.62rem !important;
+        width: 32px !important;
+    }
+
+    .podcast-timeline-slider {
+        height: 3px !important;
+    }
+
+    .podcast-timeline-slider::-webkit-slider-thumb {
+        width: 12px !important;
+        height: 12px !important;
+    }
+
+    .podcast-controls-section {
+        gap: 18px !important;
+        padding: 2px 0 !important;
+    }
+
+    .podcast-control-btn {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 1rem !important;
+    }
+
+    .podcast-control-btn.play-btn {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 0.9rem !important;
+    }
+
+    .podcast-playlist-section.open {
+        max-height: 180px !important;
+        margin-top: 8px !important;
+        padding-top: 8px !important;
+    }
+
+    .playlist-drawer-items {
+        max-height: 120px !important;
+    }
+
+    .playlist-item {
+        padding: 5px 8px !important;
+    }
+
+    .playlist-item-title {
+        font-size: 0.75rem !important;
+    }
+
+    .playlist-item-meta {
+        font-size: 0.62rem !important;
+    }
+
+    .podcast-source-tag {
+        font-size: 0.6rem !important;
+        padding: 1px 6px !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1685,8 +1800,57 @@ body {
     .stock-search-details-grid {
         grid-template-columns: 1fr 1fr;
     }
+
+    /* Disable hover float on mobile to prevent layout jitter */
+    .widget-panel:hover {
+        transform: none !important;
+    }
+
+    .podcast-player-card {
+        padding: 0.75rem 0.85rem 0.65rem !important;
+        gap: 0.35rem !important;
+    }
+
+    .podcast-cover-section {
+        height: 44px !important;
+        gap: 8px !important;
+    }
+
+    .podcast-cover-wrap {
+        width: 44px !important;
+        height: 44px !important;
+    }
+
+    .podcast-track-title {
+        font-size: 0.75rem !important;
+    }
+
+    .podcast-track-desc {
+        max-height: 32px !important;
+        font-size: 0.68rem !important;
+    }
+
     .podcast-controls-section {
-        gap: 16px;
+        gap: 14px !important;
+    }
+
+    .podcast-control-btn {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 0.9rem !important;
+    }
+
+    .podcast-control-btn.play-btn {
+        width: 34px !important;
+        height: 34px !important;
+    }
+
+    .podcast-playlist-section.open {
+        max-height: 150px !important;
+    }
+
+    .playlist-drawer-items {
+        max-height: 100px !important;
     }
 }
 
