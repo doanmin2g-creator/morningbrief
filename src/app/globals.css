@@ -143,6 +143,49 @@ body {
     transform: scale(1.1) rotate(90deg);
 }
 
+/* --- APPLE STYLE LANGUAGE SWITCHER SEGMENTED CONTROL --- */
+.lang-switcher {
+    display: flex;
+    background: rgba(134, 121, 110, 0.08);
+    padding: 2px;
+    border-radius: 100px;
+    border: 1px solid var(--border-classic);
+    overflow: hidden;
+    height: 28px;
+    align-items: center;
+    transition: var(--transition-quick);
+}
+
+.lang-btn {
+    background: transparent;
+    border: none;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    padding: 0.2rem 0.65rem;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+}
+
+.lang-btn.active {
+    background: var(--bg-card);
+    color: var(--accent-red);
+    box-shadow: 0 2px 6px rgba(134, 121, 110, 0.15);
+    font-weight: 900;
+}
+
+.lang-btn:hover:not(.active) {
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--text-primary);
+}
+
 /* --- ANIMATED TICKER BANNER --- */
 .ticker-wrap {
     display: flex;
@@ -664,12 +707,15 @@ body {
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-soft);
     padding: 1.5rem;
-    height: 320px; /* CRITICAL FIX: Fixed height prevents right column from stretching! */
+    min-height: 350px;
+    height: auto;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 1rem;
     overflow: hidden;
-    position: relative; /* CRITICAL FIX: Absolute playlist drawer will anchor to this card! */
+    position: relative;
+    transition: min-height 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .podcast-player-card .widget-header {
@@ -774,18 +820,33 @@ body {
     font-size: 0.78rem;
     color: var(--text-secondary);
     line-height: 1.45;
-    height: 42px; /* CRITICAL FIX: Fixed height prevents shifting layout! */
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    max-height: 72px;
+    overflow-y: auto;
     margin-bottom: 0px;
+    padding-right: 4px;
+}
+/* Custom thin scrollbar for track desc */
+.podcast-track-desc::-webkit-scrollbar {
+    width: 4px;
+}
+.podcast-track-desc::-webkit-scrollbar-track {
+    background: transparent;
+}
+.podcast-track-desc::-webkit-scrollbar-thumb {
+    background: rgba(134, 121, 110, 0.2);
+    border-radius: 2px;
+}
+.podcast-track-desc::-webkit-scrollbar-thumb:hover {
+    background: rgba(134, 121, 110, 0.4);
 }
 
 .podcast-timeline-section {
     display: flex;
     align-items: center;
     gap: 8px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .time-label {
@@ -805,6 +866,8 @@ body {
     background: var(--border-classic);
     outline: none;
     cursor: pointer;
+    width: 100%;
+    min-width: 0;
 }
 
 .podcast-timeline-slider::-webkit-slider-thumb {
@@ -865,20 +928,31 @@ body {
     color: var(--accent-blue);
 }
 
-.podcast-playlist-drawer {
-    border: 1px solid var(--border-classic);
-    padding: 12px;
-    border-radius: var(--radius-sm);
-    max-height: 140px;
-    overflow-y: auto;
-    background: var(--bg-card);
-    position: absolute;
-    left: 1rem;
-    right: 1rem;
-    bottom: 1rem;
-    z-index: 20;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-    animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* Playlist Section (Accordion style) */
+.podcast-playlist-section {
+    display: flex;
+    flex-direction: column;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease, margin-top 0.4s cubic-bezier(0.25, 1, 0.5, 1), padding-top 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    margin-top: 0;
+    border-top: 0 solid transparent;
+}
+
+.podcast-playlist-section.open {
+    max-height: 250px;
+    opacity: 1;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-classic);
+}
+
+.playlist-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
 }
 
 .playlist-drawer-title {
@@ -886,7 +960,51 @@ body {
     font-weight: 800;
     color: var(--text-muted);
     text-transform: uppercase;
-    margin-bottom: 6px;
+    margin: 0;
+}
+
+.playlist-drawer-close {
+    background: transparent;
+    border: none;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-quick);
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.playlist-drawer-close:hover {
+    color: var(--accent-red);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.playlist-drawer-items {
+    max-height: 160px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 4px;
+}
+
+/* Custom thin scrollbar for playlist items */
+.playlist-drawer-items::-webkit-scrollbar {
+    width: 4px;
+}
+.playlist-drawer-items::-webkit-scrollbar-track {
+    background: transparent;
+}
+.playlist-drawer-items::-webkit-scrollbar-thumb {
+    background: rgba(134, 121, 110, 0.2);
+    border-radius: 2px;
+}
+.playlist-drawer-items::-webkit-scrollbar-thumb:hover {
+    background: rgba(134, 121, 110, 0.4);
 }
 
 .playlist-item {
@@ -1460,6 +1578,8 @@ body {
     }
     .masthead-top {
         padding: 0.5rem 0;
+        position: relative;
+        justify-content: center;
     }
     .logo h1 {
         font-size: 1.6rem;
@@ -1474,8 +1594,16 @@ body {
         margin-top: 0;
         border-bottom: 1px solid rgba(0,0,0,0.06);
     }
-    .date-badge, .user-profile {
+    .date-badge, .avatar, .see-more-btn {
         display: none !important;
+    }
+    .user-profile {
+        display: flex !important;
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        gap: 0 !important;
     }
     
     .ticker-wrap {
@@ -1546,6 +1674,9 @@ body {
     }
     .stock-search-details-grid {
         grid-template-columns: 1fr 1fr;
+    }
+    .podcast-controls-section {
+        gap: 16px;
     }
 }
 
