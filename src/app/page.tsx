@@ -980,11 +980,11 @@ export default function Home() {
 
             {/* Spotify-style Podcast Player */}
             <div className={`widget-panel podcast-player-card ${activeMobileTab === "podcast" ? "" : "hidden-mobile"}`}>
-              <div className="widget-header" style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 style={{ margin: 0, fontSize: "0.85rem", letterSpacing: "1.5px" }}>
-                  <span style={{ marginRight: "6px" }}>🎧</span>{trans[lang].audioNews}
+              <div className="widget-header podcast-header">
+                <h3 className="podcast-header-title">
+                  <span className="podcast-header-icon">🎧</span>{trans[lang].audioNews}
                 </h3>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div className="podcast-header-status">
                   {loadingPodcast && <span className="podcast-live-dot"></span>}
                   <span className="podcast-source-tag">
                     {podcastPlaylist[currentTrackIndex]?.sourceName || (podcastSource === "Offline" ? trans[lang].offline : podcastSource)}

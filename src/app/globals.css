@@ -725,6 +725,30 @@ body {
     margin-bottom: 0px !important;
 }
 
+/* Podcast Header (replaces inline styles for responsive override) */
+.podcast-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.podcast-header-title {
+    margin: 0;
+    font-size: 0.85rem;
+    letter-spacing: 1.5px;
+}
+
+.podcast-header-icon {
+    margin-right: 6px;
+}
+
+.podcast-header-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .podcast-player-body {
     display: flex;
     flex-direction: column;
@@ -1674,36 +1698,66 @@ body {
         display: none !important;
     }
 
-    /* ====== MOBILE PODCAST PLAYER FIX — LOCKED DIMENSIONS ====== */
+    /* ═══════════════════════════════════════════════════════════════════
+       MOBILE PODCAST PLAYER — COMPLETE REWRITE
+       Kill ALL flex-grow/stretch. Every child is flex: 0 0 auto.
+       The card sizes purely to its content, no min-height, no space-between.
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /* --- Disable widget-panel hover float on mobile --- */
+    .widget-panel:hover {
+        transform: none !important;
+        box-shadow: var(--shadow-soft) !important;
+    }
+
+    /* --- Card Container --- */
     .podcast-player-card {
-        padding: 1rem 1rem 0.75rem !important;
-        min-height: unset !important;
+        min-height: 0 !important;
         height: auto !important;
         max-height: none !important;
-        gap: 0.5rem !important;
+        padding: 14px !important;
+        gap: 8px !important;
+        overflow: visible !important;
+        justify-content: flex-start !important;
+    }
+
+    /* --- Header (now class-based, no more inline style conflicts) --- */
+    .podcast-header {
+        margin-bottom: 4px !important;
+        flex: 0 0 auto !important;
+        padding-bottom: 6px !important;
+    }
+    .podcast-header-title {
+        font-size: 0.72rem !important;
+        letter-spacing: 1px !important;
+    }
+    .podcast-header-icon {
+        margin-right: 4px !important;
+    }
+
+    /* --- Body: NO flex-grow, NO space-between --- */
+    .podcast-player-body {
+        flex: 0 0 auto !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        margin-top: 0 !important;
+    }
+
+    /* --- Cover row: fixed 48px tall --- */
+    .podcast-cover-section {
+        height: 48px !important;
+        min-height: 48px !important;
+        max-height: 48px !important;
+        gap: 10px !important;
+        flex: 0 0 48px !important;
         overflow: hidden !important;
     }
 
-    .podcast-player-card .widget-header {
-        margin-bottom: 0.25rem !important;
-    }
-    .podcast-player-card .widget-header h3 {
-        font-size: 0.75rem !important;
-    }
-
-    .podcast-player-body {
-        gap: 0.5rem !important;
-        margin-top: 0.25rem !important;
-    }
-
-    .podcast-cover-section {
-        height: 52px !important;
-        gap: 10px !important;
-    }
-
     .podcast-cover-wrap {
-        width: 52px !important;
-        height: 52px !important;
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        border-radius: 10px !important;
     }
 
     .podcast-cover-center {
@@ -1711,29 +1765,56 @@ body {
         height: 10px !important;
     }
 
+    .podcast-track-details {
+        flex: 1 1 0% !important;
+        min-width: 0 !important;
+        max-height: 48px !important;
+        overflow: hidden !important;
+    }
+
+    .podcast-track-title-container {
+        max-height: 20px !important;
+        overflow: hidden !important;
+    }
+
     .podcast-track-title {
-        font-size: 0.8rem !important;
+        font-size: 0.78rem !important;
+        line-height: 1.25 !important;
     }
 
     .podcast-track-artist {
-        font-size: 0.7rem !important;
+        font-size: 0.68rem !important;
+        line-height: 1.2 !important;
+        max-height: 16px !important;
+        overflow: hidden !important;
     }
 
+    /* --- Description: strictly 2 lines max, then scrollable --- */
     .podcast-track-desc {
-        max-height: 40px !important;
-        font-size: 0.72rem !important;
-        line-height: 1.35 !important;
+        flex: 0 0 auto !important;
+        max-height: 36px !important;
+        min-height: 0 !important;
+        font-size: 0.7rem !important;
+        line-height: 1.3 !important;
         overflow-y: auto !important;
+        overflow-x: hidden !important;
         -webkit-overflow-scrolling: touch;
+        word-break: break-word !important;
+        margin: 0 !important;
+        padding-right: 4px !important;
     }
 
+    /* --- Timeline: fixed 20px tall --- */
     .podcast-timeline-section {
+        flex: 0 0 auto !important;
+        height: 20px !important;
+        min-height: 20px !important;
         gap: 6px !important;
     }
 
     .time-label {
-        font-size: 0.62rem !important;
-        width: 32px !important;
+        font-size: 0.6rem !important;
+        width: 30px !important;
     }
 
     .podcast-timeline-slider {
@@ -1741,30 +1822,40 @@ body {
     }
 
     .podcast-timeline-slider::-webkit-slider-thumb {
-        width: 12px !important;
-        height: 12px !important;
+        width: 14px !important;
+        height: 14px !important;
     }
 
+    /* --- Controls: fixed 42px tall --- */
     .podcast-controls-section {
-        gap: 18px !important;
-        padding: 2px 0 !important;
+        flex: 0 0 auto !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        gap: 20px !important;
+        padding: 0 !important;
     }
 
     .podcast-control-btn {
         width: 30px !important;
         height: 30px !important;
         font-size: 1rem !important;
+        flex-shrink: 0 !important;
     }
 
     .podcast-control-btn.play-btn {
         width: 38px !important;
         height: 38px !important;
-        font-size: 0.9rem !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* --- Playlist accordion: contained, no overflow --- */
+    .podcast-playlist-section {
+        flex: 0 0 auto !important;
     }
 
     .podcast-playlist-section.open {
         max-height: 180px !important;
-        margin-top: 8px !important;
+        margin-top: 6px !important;
         padding-top: 8px !important;
     }
 
@@ -1777,11 +1868,11 @@ body {
     }
 
     .playlist-item-title {
-        font-size: 0.75rem !important;
+        font-size: 0.74rem !important;
     }
 
     .playlist-item-meta {
-        font-size: 0.62rem !important;
+        font-size: 0.6rem !important;
     }
 
     .podcast-source-tag {
@@ -1801,56 +1892,85 @@ body {
         grid-template-columns: 1fr 1fr;
     }
 
-    /* Disable hover float on mobile to prevent layout jitter */
-    .widget-panel:hover {
-        transform: none !important;
-    }
-
+    /* --- Even tighter podcast for small phones (iPhone SE etc) --- */
     .podcast-player-card {
-        padding: 0.75rem 0.85rem 0.65rem !important;
-        gap: 0.35rem !important;
+        padding: 10px 12px !important;
+        gap: 6px !important;
     }
 
     .podcast-cover-section {
-        height: 44px !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        max-height: 42px !important;
+        flex: 0 0 42px !important;
         gap: 8px !important;
     }
 
     .podcast-cover-wrap {
-        width: 44px !important;
-        height: 44px !important;
+        width: 42px !important;
+        height: 42px !important;
+        min-width: 42px !important;
+    }
+
+    .podcast-track-details {
+        max-height: 42px !important;
     }
 
     .podcast-track-title {
-        font-size: 0.75rem !important;
+        font-size: 0.72rem !important;
+    }
+
+    .podcast-track-artist {
+        font-size: 0.64rem !important;
     }
 
     .podcast-track-desc {
-        max-height: 32px !important;
-        font-size: 0.68rem !important;
+        max-height: 28px !important;
+        font-size: 0.66rem !important;
+    }
+
+    .podcast-timeline-section {
+        height: 18px !important;
+        min-height: 18px !important;
+    }
+
+    .time-label {
+        font-size: 0.56rem !important;
+        width: 26px !important;
     }
 
     .podcast-controls-section {
-        gap: 14px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        gap: 16px !important;
     }
 
     .podcast-control-btn {
-        width: 28px !important;
-        height: 28px !important;
-        font-size: 0.9rem !important;
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 0.85rem !important;
     }
 
     .podcast-control-btn.play-btn {
         width: 34px !important;
         height: 34px !important;
+        font-size: 0.85rem !important;
     }
 
     .podcast-playlist-section.open {
-        max-height: 150px !important;
+        max-height: 140px !important;
     }
 
     .playlist-drawer-items {
-        max-height: 100px !important;
+        max-height: 90px !important;
+    }
+
+    .playlist-item-title {
+        font-size: 0.68rem !important;
+    }
+
+    .playlist-item-meta {
+        font-size: 0.56rem !important;
     }
 }
 
