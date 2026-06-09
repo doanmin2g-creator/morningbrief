@@ -33,9 +33,12 @@ interface PodcastTrack {
   audioUrl: string;
   coverUrl: string;
   description: string;
+  duration?: string;
+  pubDate?: string;
 }
 
-const podcastPlaylist: PodcastTrack[] = [
+// Fallback playlist if API fails
+const fallbackPlaylist: PodcastTrack[] = [
   {
     id: 1,
     title: "Xu hướng Vĩ mô & Dòng tiền đầu tư năm 2026",
@@ -231,6 +234,9 @@ export default function Home() {
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Podcast State Hooks
+  const [podcastPlaylist, setPodcastPlaylist] = useState<PodcastTrack[]>(fallbackPlaylist);
+  const [loadingPodcast, setLoadingPodcast] = useState(true);
+  const [podcastSource, setPodcastSource] = useState<string>("Offline");
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -448,9 +454,30 @@ export default function Home() {
     setIsSpeaking(true);
   };
 
+  // Fetch podcasts from API
+  const fetchPodcasts = async () => {
+    setLoadingPodcast(true);
+    try {
+      const res = await fetch("/api/podcast");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setPodcastPlaylist(data);
+          setPodcastSource(data[0].sourceName || "VnExpress");
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch podcasts:", e);
+      // Fallback already set as default
+    } finally {
+      setLoadingPodcast(false);
+    }
+  };
+
   useEffect(() => {
     fetchStocks();
     fetchMacroData();
+    fetchPodcasts();
 
     // Load watchlist
     const saved = localStorage.getItem("morningbrief_watchlist");
@@ -462,7 +489,13 @@ export default function Home() {
       }
     }
 
+    // Auto-refresh stocks every 60 seconds
+    const stockInterval = setInterval(() => {
+      fetchStocks();
+    }, 60000);
+
     return () => {
+      clearInterval(stockInterval);
       if (typeof window !== "undefined" && window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -739,8 +772,13 @@ export default function Home() {
             {/* Spotify-style Podcast Player */}
             <div className="widget-panel podcast-player-card">
               <div className="widget-header" style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 style={{ margin: 0, fontSize: "1.05rem" }}>Bản Tin Âm Thanh</h3>
-                <span className="podcast-source-tag">{podcastPlaylist[currentTrackIndex].sourceName}</span>
+                <h3 style={{ margin: 0, fontSize: "1.05rem" }}>
+                  <span style={{ marginRight: "6px" }}>🎙️</span>Bản Tin Âm Thanh
+                </h3>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  {loadingPodcast && <span className="podcast-live-dot"></span>}
+                  <span className="podcast-source-tag">{podcastPlaylist[currentTrackIndex]?.sourceName || podcastSource}</span>
+                </div>
               </div>
               
               <div className="podcast-player-body">
@@ -1286,7 +1324,69 @@ export default function Home() {
                   </button>
                 </div>
               </div>
+
+              {/* === TOP 5 GAINERS & LOSERS LEADERBOARD === */}
+              {!loadingStocks && stockFilterTab === "all" && (() => {
+                const stocksOnly = tickerList.filter(item => item.sector !== "Chỉ số");
+                const parseChangePercent = (s: string) => { try { return parseFloat(s.replace("%", "")); } catch { return 0; } };
+                const sorted = [...stocksOnly].sort((a, b) => parseChangePercent(b.change) - parseChangePercent(a.change));
+                const top5Gainers = sorted.filter(s => parseChangePercent(s.change) > 0).slice(0, 5);
+                const top5Losers = sorted.filter(s => parseChangePercent(s.change) < 0).reverse().slice(0, 5);
+
+                const renderLeaderItem = (item: TickerItem, rank: number, type: "gainer" | "loser") => {
+                  const code = item.symbol.split(" ")[0];
+                  const exTag = item.exchange ? ` ${item.exchange}` : "";
+                  const colorClass = getStockColorClass(item);
+                  return (
+                    <div key={code} className={`leaderboard-item ${type}`}>
+                      <div className="leaderboard-rank">{rank}</div>
+                      <div className="leaderboard-info">
+                        <span className="leaderboard-code">{code}</span>
+                        <span className="leaderboard-exchange">{exTag}</span>
+                      </div>
+                      <div className="leaderboard-price">{item.price}</div>
+                      <div className={`leaderboard-change ticker-change ${colorClass}`}>
+                        {item.change}
+                      </div>
+                    </div>
+                  );
+                };
+
+                return (
+                  <div className="leaderboard-grid">
+                    <div className="leaderboard-column">
+                      <div className="leaderboard-column-header gainer">
+                        <span className="leaderboard-icon">🔺</span>
+                        <span>Top 5 Tăng mạnh nhất</span>
+                      </div>
+                      {top5Gainers.length > 0 ? (
+                        top5Gainers.map((item, i) => renderLeaderItem(item, i + 1, "gainer"))
+                      ) : (
+                        <div className="leaderboard-empty">Không có mã tăng</div>
+                      )}
+                    </div>
+                    <div className="leaderboard-column">
+                      <div className="leaderboard-column-header loser">
+                        <span className="leaderboard-icon">🔻</span>
+                        <span>Top 5 Giảm mạnh nhất</span>
+                      </div>
+                      {top5Losers.length > 0 ? (
+                        top5Losers.map((item, i) => renderLeaderItem(item, i + 1, "loser"))
+                      ) : (
+                        <div className="leaderboard-empty">Không có mã giảm</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               
+              {/* Divider between leaderboard and full list */}
+              {!loadingStocks && stockFilterTab === "all" && (
+                <div style={{ borderTop: "1px dashed var(--border-classic)", margin: "12px 0 8px 0" }}>
+                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>Danh sách đầy đủ — Tất cả các sàn</span>
+                </div>
+              )}
+
               <div className="crypto-list" style={{ maxHeight: "350px", overflowY: "auto", paddingRight: "4px" }}>
                 {loadingStocks ? (
                   <>
