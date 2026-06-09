@@ -612,11 +612,11 @@ export default function Home() {
                           <line x1={0} y1={(paddingTop + height - paddingBottom) / 2} x2={width} y2={(paddingTop + height - paddingBottom) / 2} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.4" />
 
                           {/* Min/Max Text Labels */}
-                          <text x={width - 2} y={paddingTop - 4} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
-                            Cao nhất: {max.toLocaleString("en-US", { maximumFractionDigits: 1 })}
+                          <text x={width - 2} y={paddingTop + 10} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
+                            Cao: {max.toLocaleString("en-US", { maximumFractionDigits: 1 })}
                           </text>
-                          <text x={width - 2} y={height - paddingBottom + 12} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
-                            Thấp nhất: {min.toLocaleString("en-US", { maximumFractionDigits: 1 })}
+                          <text x={width - 2} y={height - paddingBottom - 4} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
+                            Thấp: {min.toLocaleString("en-US", { maximumFractionDigits: 1 })}
                           </text>
 
                           {/* Date Range Labels at bottom */}
