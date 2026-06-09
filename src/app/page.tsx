@@ -1923,43 +1923,44 @@ export default function Home() {
               </div>
               
               <div className="reader-modal-text">
-                {/* 1. First/Lead paragraph is always the description from RSS (available immediately) */}
-                <p className="reader-body-lead">
-                  {activeArticle.description}
-                </p>
-
-                {/* 2. Show a skeleton loading animation while loading content */}
+                {/* Show temporary RSS description while loading */}
                 {loadingContent && (
-                  <div className="skeleton-container" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "15px" }}>
-                    <div className="skeleton-item" style={{ height: "14px", width: "100%", borderRadius: "4px" }}></div>
-                    <div className="skeleton-item" style={{ height: "14px", width: "95%", borderRadius: "4px" }}></div>
-                    <div className="skeleton-item" style={{ height: "14px", width: "85%", borderRadius: "4px" }}></div>
-                    <div className="skeleton-item" style={{ height: "14px", width: "90%", borderRadius: "4px", marginTop: "10px" }}></div>
-                    <div className="skeleton-item" style={{ height: "14px", width: "98%", borderRadius: "4px" }}></div>
-                    <div className="skeleton-item" style={{ height: "14px", width: "70%", borderRadius: "4px" }}></div>
-                  </div>
+                  <>
+                    <p className="reader-body-lead">
+                      {activeArticle.description}
+                    </p>
+                    <div className="skeleton-container" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "15px" }}>
+                      <div className="skeleton-item" style={{ height: "14px", width: "100%", borderRadius: "4px" }}></div>
+                      <div className="skeleton-item" style={{ height: "14px", width: "95%", borderRadius: "4px" }}></div>
+                      <div className="skeleton-item" style={{ height: "14px", width: "85%", borderRadius: "4px" }}></div>
+                      <div className="skeleton-item" style={{ height: "14px", width: "90%", borderRadius: "4px", marginTop: "10px" }}></div>
+                      <div className="skeleton-item" style={{ height: "14px", width: "98%", borderRadius: "4px" }}></div>
+                      <div className="skeleton-item" style={{ height: "14px", width: "70%", borderRadius: "4px" }}></div>
+                    </div>
+                  </>
                 )}
 
-                {/* 3. Render the real scraped paragraphs */}
+                {/* Render the full 3-paragraph summary once loaded */}
                 {!loadingContent && scrapedParagraphs.length > 0 && (
-                  scrapedParagraphs.map((para, i) => {
-                    // Skip if the paragraph is identical/similar to description to avoid duplicates
-                    if (para.trim() === activeArticle.description.trim()) {
-                      return null;
-                    }
-                    return (
-                      <p key={i} className="reader-body-para" style={{ marginTop: "12px" }}>
-                        {para}
-                      </p>
-                    );
-                  })
+                  scrapedParagraphs.map((para, i) => (
+                    <p key={i} className={i === 0 ? "reader-body-lead" : "reader-body-para"} style={{ marginTop: i > 0 ? "12px" : "0" }}>
+                      {para}
+                    </p>
+                  ))
                 )}
 
-                {/* 4. Show a fallback error message if no paragraphs returned */}
-                {!loadingContent && scrapedParagraphs.length === 0 && !activeArticle.body && activeArticle.link && !activeArticle.link.startsWith("#") && (
-                  <p className="reader-body-para" style={{ color: "var(--ft-grey)", fontStyle: "italic", marginTop: "12px" }}>
-                    {lang === "vi" ? "Không thể tải thêm nội dung chi tiết cho bài viết này." : "Unable to load more detailed content for this article."}
-                  </p>
+                {/* If loaded but no paragraphs returned, display fallback description + error message */}
+                {!loadingContent && scrapedParagraphs.length === 0 && (
+                  <>
+                    <p className="reader-body-lead">
+                      {activeArticle.description}
+                    </p>
+                    {!activeArticle.body && activeArticle.link && !activeArticle.link.startsWith("#") && (
+                      <p className="reader-body-para" style={{ color: "var(--ft-grey)", fontStyle: "italic", marginTop: "12px" }}>
+                        {lang === "vi" ? "Không thể tải thêm nội dung chi tiết cho bài viết này." : "Unable to load more detailed content for this article."}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
               
