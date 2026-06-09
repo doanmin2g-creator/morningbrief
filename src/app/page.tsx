@@ -279,6 +279,9 @@ export default function Home() {
   // Stock list highlight filter
   const [stockFilterTab, setStockFilterTab] = useState<"all" | "gainers" | "losers">("all");
 
+  // Mobile Bottom Tab Navigation
+  const [activeMobileTab, setActiveMobileTab] = useState<"home" | "markets" | "calendar" | "podcast">("home");
+
   // Stock Search State
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<StockSearchResult[]>([]);
@@ -731,7 +734,7 @@ export default function Home() {
         <div className="broadsheet-grid">
           
           {/* Left Column: Lead Stories (News Feed) */}
-          <section className="news-section">
+          <section className={`news-section ${activeMobileTab === "home" ? "" : "hidden-mobile"}`}>
             <div className="column-header">
               <h2>Tin nổi bật & Phân tích</h2>
               <div className="tabs">
@@ -810,7 +813,7 @@ export default function Home() {
             />
 
             {/* Spotify-style Podcast Player */}
-            <div className="widget-panel podcast-player-card">
+            <div className={`widget-panel podcast-player-card ${activeMobileTab === "podcast" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h3 style={{ margin: 0, fontSize: "1.05rem" }}>
                   <span style={{ marginRight: "6px" }}>🎙️</span>Bản Tin Âm Thanh
@@ -906,9 +909,9 @@ export default function Home() {
             </div>
 
             {/* Dynamic AI Analysis Panel (VN Broad Market Perspective) */}
-            <div className="widget-panel" style={{ borderLeft: "4px solid var(--accent-red)", background: "var(--bg-paper-darker)" }}>
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`} style={{ borderLeft: "4px solid var(--text-primary)", background: "rgba(0,0,0,0.02)" }}>
               <div className="widget-header" style={{ marginBottom: "0.75rem" }}>
-                <h3 style={{ textTransform: "uppercase", fontSize: "0.9rem", letterSpacing: "1px", color: "var(--accent-red)", fontFamily: "var(--font-sans)" }}>
+                <h3 style={{ textTransform: "uppercase", fontSize: "0.78rem", letterSpacing: "0.8px", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
                   Báo cáo Thị trường Buổi sáng
                 </h3>
               </div>
@@ -950,7 +953,7 @@ export default function Home() {
             </div>
 
             {/* Market Trend Chart Panel */}
-            <div className="widget-panel">
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
                 <h3>Xu hướng Chỉ số</h3>
               </div>
@@ -1239,7 +1242,7 @@ export default function Home() {
             </div>
 
             {/* Market Indexes Panel */}
-            <div className="widget-panel">
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
                 <h3>Chỉ số Thị trường</h3>
               </div>
@@ -1270,7 +1273,7 @@ export default function Home() {
             </div>
 
             {/* Broker Stance Panel: Stated bullish/bearish/neutral from securities firms */}
-            <div className="widget-panel">
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
                 <h3>Đồng thuận Thị trường Định chế</h3>
               </div>
@@ -1295,7 +1298,7 @@ export default function Home() {
             </div>
 
             {/* Watchlist Panel */}
-            <div className="widget-panel">
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
                 <h3>Danh mục Theo dõi (Watchlist)</h3>
               </div>
@@ -1335,7 +1338,7 @@ export default function Home() {
             </div>
 
             {/* Top VN Stocks List (Điểm nhấn Thị trường) */}
-            <div className="widget-panel">
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingBottom: "0.75rem" }}>
                 <h3 style={{ margin: 0, fontSize: "1.05rem" }}>Điểm nhấn Thị trường</h3>
                 
@@ -1581,7 +1584,7 @@ export default function Home() {
             </div>
 
             {/* Macro Economics Panel */}
-            <div className="widget-panel">
+            <div className={`widget-panel ${activeMobileTab === "calendar" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
                 <h3>Giá Vàng & Tỷ Giá USD</h3>
               </div>
@@ -1634,7 +1637,7 @@ export default function Home() {
             </div>
 
             {/* Economic Calendar Panel (Interactive click-to-read) */}
-            <div className="widget-panel">
+            <div className={`widget-panel ${activeMobileTab === "calendar" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
                 <h3>Sự Kiện Tài Chính Sắp Tới</h3>
               </div>
@@ -1714,6 +1717,38 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Floating Bottom Tab Bar for Mobile Devices (Apple Style) */}
+      <nav className="mobile-tab-bar">
+        <button 
+          className={`mobile-tab-item ${activeMobileTab === "home" ? "active" : ""}`}
+          onClick={() => setActiveMobileTab("home")}
+        >
+          <span className="mobile-tab-icon">📰</span>
+          <span>Tin Tức</span>
+        </button>
+        <button 
+          className={`mobile-tab-item ${activeMobileTab === "markets" ? "active" : ""}`}
+          onClick={() => setActiveMobileTab("markets")}
+        >
+          <span className="mobile-tab-icon">📈</span>
+          <span>Thị Trường</span>
+        </button>
+        <button 
+          className={`mobile-tab-item ${activeMobileTab === "calendar" ? "active" : ""}`}
+          onClick={() => setActiveMobileTab("calendar")}
+        >
+          <span className="mobile-tab-icon">🗓️</span>
+          <span>Sự Kiện</span>
+        </button>
+        <button 
+          className={`mobile-tab-item ${activeMobileTab === "podcast" ? "active" : ""}`}
+          onClick={() => setActiveMobileTab("podcast")}
+        >
+          <span className="mobile-tab-icon">🎙️</span>
+          <span>Podcast</span>
+        </button>
+      </nav>
     </div>
   );
 }
