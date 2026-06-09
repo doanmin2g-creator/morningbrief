@@ -29,6 +29,16 @@ function getTradingDays(count: number) {
   return dates;
 }
 
+// Helper to generate a realistic mock article body from RSS short items
+function generateMockArticleBody(item: NewsItem) {
+  const desc = item.description;
+  return [
+    `${desc}. Đây là thông tin tài chính quan trọng được ghi nhận trong phiên giao dịch hôm nay, phản ánh diễn biến nhanh của các chuyển động tài chính trong nước cũng như sức khỏe dòng tiền thực tế ở phân khúc liên quan.`,
+    `Theo các chuyên gia vĩ mô, xu hướng này phản ánh sự điều chỉnh cục bộ khi dòng tiền có dấu hiệu phân hóa rõ nét. Sự thận trọng tăng cao tại các vùng kháng cự kỹ thuật khiến các nhà đầu tư lớn ưu tiên cơ cấu lại danh mục, trong khi dòng tiền cá nhân vẫn nỗ lực tìm kiếm cơ hội ở các cổ phiếu vừa và nhỏ có thông tin hỗ trợ riêng lẻ.`,
+    `Trong các phiên tiếp theo, thị trường dự kiến sẽ tiếp tục kiểm định cung cầu tại các vùng hỗ trợ kỹ thuật trọng yếu. Khuyến nghị chung được các định chế tài chính đưa ra cho các nhà đầu tư là duy trì tỷ trọng tiền mặt hợp lý, ưu tiên tích lũy các cổ phiếu có nền tảng cơ bản vững chắc và kết quả kinh doanh quý tăng trưởng ổn định, đồng thời hạn chế tối đa việc mua đuổi trong các nhịp phục hồi kỹ thuật ngắn hạn.`
+  ];
+}
+
 const indexAnalyses: Record<string, { expert: string; analysis: string; forecast: string }> = {
   "VN-Index": {
     expert: "Phan Dũng Khánh (Giám đốc Tư vấn Đầu tư Maybank)",
@@ -109,6 +119,11 @@ export default function Home() {
   const [selectedChartIndex, setSelectedChartIndex] = useState("VN-Index");
   const [hoveredPoint, setHoveredPoint] = useState<{ value: number; index: number; x: number; y: number } | null>(null);
   const [isChartTransitioning, setIsChartTransitioning] = useState(false);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [macroData, setMacroData] = useState<any>(null);
+  const [loadingMacro, setLoadingMacro] = useState(true);
+  const [activeArticle, setActiveArticle] = useState<NewsItem | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Format Date in traditional FT format (Vietnamese Locale)
   useEffect(() => {
@@ -147,8 +162,84 @@ export default function Home() {
     }
   };
 
+  const fetchMacroData = async () => {
+    setLoadingMacro(true);
+    try {
+      const res = await fetch("/api/macro");
+      if (res.ok) {
+        const data = await res.json();
+        setMacroData(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch macro data:", e);
+    } finally {
+      setLoadingMacro(false);
+    }
+  };
+
+  const toggleWatchlist = (symbol: string) => {
+    let updated;
+    if (watchlist.includes(symbol)) {
+      updated = watchlist.filter(s => s !== symbol);
+    } else {
+      updated = [...watchlist, symbol];
+    }
+    setWatchlist(updated);
+    localStorage.setItem("morningbrief_watchlist", JSON.stringify(updated));
+  };
+
+  const toggleSpeech = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const vnIndex = tickerList.find(t => t.symbol === "VN-Index");
+    const vnIndexReport = vnIndex ? `Chỉ số VN-Index hiện đang giao dịch tại mức ${vnIndex.price} điểm, thay đổi ${vnIndex.change}.` : "";
+    const topNews = newsList.slice(0, 3).map((n, i) => `Tin số ${i + 1}: ${n.title}`).join(". ");
+    const activeAnalysis = indexAnalyses["VN-Index"];
+    const expertReport = activeAnalysis ? `Nhận định từ chuyên gia Phan Dũng Khánh cho biết: ${activeAnalysis.analysis}` : "";
+
+    const textToRead = `Chào mừng bạn đến với bản tin âm thanh sáng hôm nay trên tờ The Morning Brief. ${vnIndexReport} ${expertReport} Sau đây là ba tin tức tiêu điểm nóng nhất sáng nay. ${topNews}. Chúc bạn một ngày giao dịch thành công.`;
+
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    const voices = window.speechSynthesis.getVoices();
+    const viVoice = voices.find(v => v.lang.includes("vi") || v.lang.includes("VI"));
+    if (viVoice) {
+      utterance.voice = viVoice;
+    }
+    
+    utterance.rate = 1.05;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
+
   useEffect(() => {
     fetchStocks();
+    fetchMacroData();
+
+    // Load watchlist
+    const saved = localStorage.getItem("morningbrief_watchlist");
+    if (saved) {
+      try {
+        setWatchlist(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -295,7 +386,24 @@ export default function Home() {
           <div className="logo">
             <h1>THE MORNING BRIEF</h1>
           </div>
-          <div className="user-profile">
+          <div className="user-profile" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <button
+              onClick={toggleSpeech}
+              className={`see-more-btn ${isSpeaking ? "active-audio" : ""}`}
+              style={{
+                margin: 0,
+                padding: "6px 12px",
+                fontSize: "0.78rem",
+                textTransform: "none",
+                borderRadius: "20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}
+              title={isSpeaking ? "Dừng đọc bản tin" : "Nghe đọc bản tin sáng"}
+            >
+              <span>{isSpeaking ? "■ Dừng nghe" : "🔊 Nghe bản tin"}</span>
+            </button>
             <div className="avatar" onClick={fetchStocks} title="Tải lại dữ liệu">↻</div>
           </div>
         </div>
@@ -360,7 +468,12 @@ export default function Home() {
               ) : (
                 <>
                   {newsList.slice(0, visibleNewsCount).map((item, idx) => (
-                    <a key={idx} href={item.link} target="_blank" rel="noopener noreferrer" className="news-card">
+                    <div 
+                      key={idx} 
+                      onClick={() => setActiveArticle(item)} 
+                      className="news-card" 
+                      style={{ cursor: "pointer" }}
+                    >
                       <div className="news-content">
                         <span className="news-source">{item.source}</span>
                         <h3 className="news-title">{item.title}</h3>
@@ -372,7 +485,7 @@ export default function Home() {
                       <div className="news-image-wrap">
                         <img src={item.image} alt={item.title} className="news-image" />
                       </div>
-                    </a>
+                    </div>
                   ))}
                   {newsList.length > visibleNewsCount && (
                     <button 
@@ -783,22 +896,32 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Top VN Stocks List */}
+            {/* Watchlist Panel */}
             <div className="widget-panel">
               <div className="widget-header">
-                <h3>Điểm nhấn VN-30</h3>
+                <h3>Danh mục Theo dõi (Watchlist)</h3>
               </div>
-              <div className="crypto-list" style={{ maxHeight: "350px", overflowY: "auto", paddingRight: "4px" }}>
-                {loadingStocks ? (
-                  <>
-                    <div className="skeleton-item"></div>
-                    <div className="skeleton-item"></div>
-                  </>
+              <div className="crypto-list" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {watchlist.length === 0 ? (
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "10px" }}>
+                    Nhấp chọn biểu tượng ngôi sao bên cạnh các mã ở "Điểm nhấn VN-30" bên dưới để ghim vào đây.
+                  </div>
                 ) : (
-                  tickerList.filter(item => item.sector !== "Chỉ số").map((item, idx) => (
-                    <div key={idx} className="crypto-item">
+                  tickerList.filter(item => watchlist.includes(item.symbol.split(" ")[0])).map((item, idx) => (
+                    <div key={idx} className="crypto-item" style={{ padding: "4px 0" }}>
                       <div className="crypto-info">
-                        <h4>{item.symbol.split(" ")[0]}</h4>
+                        <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleWatchlist(item.symbol.split(" ")[0]);
+                            }}
+                            style={{ color: "var(--accent-red)", cursor: "pointer", fontSize: "0.95rem" }}
+                          >
+                            ★
+                          </span>
+                          {item.symbol.split(" ")[0]}
+                        </h4>
                         <p style={{ fontSize: "0.7rem" }}>{item.sector}</p>
                       </div>
                       <div className="crypto-price-info">
@@ -813,6 +936,131 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Top VN Stocks List */}
+            <div className="widget-panel">
+              <div className="widget-header">
+                <h3>Điểm nhấn VN-30</h3>
+              </div>
+              <div className="crypto-list" style={{ maxHeight: "350px", overflowY: "auto", paddingRight: "4px" }}>
+                {loadingStocks ? (
+                  <>
+                    <div className="skeleton-item"></div>
+                    <div className="skeleton-item"></div>
+                  </>
+                ) : (
+                  tickerList.filter(item => item.sector !== "Chỉ số").map((item, idx) => {
+                    const code = item.symbol.split(" ")[0];
+                    const isStarred = watchlist.includes(code);
+                    return (
+                      <div key={idx} className="crypto-item">
+                        <div className="crypto-info">
+                          <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleWatchlist(code);
+                              }}
+                              style={{ color: isStarred ? "var(--accent-red)" : "var(--text-muted)", cursor: "pointer", fontSize: "0.95rem", transition: "color 0.2s" }}
+                            >
+                              {isStarred ? "★" : "☆"}
+                            </span>
+                            {code}
+                          </h4>
+                          <p style={{ fontSize: "0.7rem" }}>{item.sector}</p>
+                        </div>
+                        <div className="crypto-price-info">
+                          <h4 style={{ fontSize: "0.88rem" }}>{item.price}</h4>
+                          <span className={`ticker-change ${item.isPositive ? "positive" : "negative"}`} style={{ fontSize: "0.78rem" }}>
+                            {item.change}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Macro Economics Panel */}
+            <div className="widget-panel">
+              <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
+                <h3>Giá Vàng & Tỷ Giá USD</h3>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
+                {loadingMacro ? (
+                  <>
+                    <div className="skeleton-item" style={{ height: "30px" }}></div>
+                    <div className="skeleton-item" style={{ height: "30px" }}></div>
+                  </>
+                ) : macroData ? (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
+                      <div>
+                        <strong style={{ display: "block" }}>Vàng SJC (Miếng)</strong>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Đơn vị: Triệu đ/lượng</span>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldSjc.buy} - {macroData.goldSjc.sell}</span>
+                        <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0 }}>{macroData.goldSjc.change}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
+                      <div>
+                        <strong style={{ display: "block" }}>Vàng Nhẫn 9999</strong>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Đơn vị: Triệu đ/lượng</span>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldRing.buy} - {macroData.goldRing.sell}</span>
+                        <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0 }}>{macroData.goldRing.change}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <strong style={{ display: "block" }}>Tỷ giá USD/VND</strong>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Nguồn: Vietcombank</span>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <span style={{ fontWeight: "700", display: "block" }}>{macroData.usdRate.buy} - {macroData.usdRate.sell}</span>
+                        <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0, color: "var(--success-green)" }}>{macroData.usdRate.change}</span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textAlign: "right", marginTop: "4px" }}>
+                      Cập nhật: {macroData.updatedAt}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>Không tải được dữ liệu vĩ mô</div>
+                )}
+              </div>
+            </div>
+
+            {/* Economic Calendar Panel */}
+            <div className="widget-panel">
+              <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
+                <h3>Sự Kiện Tài Chính Sắp Tới</h3>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
+                {[
+                  { date: "15/06", event: "Báo cáo Tình hình Sản xuất Việt Nam (PMI) Tháng 5", impact: "LỚN", class: "positive" },
+                  { date: "24/06", event: "Tổng cục Thống kê công bố số liệu GDP Quý 2", impact: "RẤT LỚN", class: "negative" },
+                  { date: "29/06", event: "Báo cáo Chỉ số Giá tiêu dùng (CPI) Tháng 6", impact: "RẤT LỚN", class: "negative" },
+                  { date: "05/07", event: "Hạn chốt Báo cáo Tài chính Bán niên Soát xét 2026", impact: "TRUNG BÌNH", class: "neutral" }
+                ].map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", gap: "10px", paddingBottom: "8px", borderBottom: idx < 3 ? "1px dashed var(--border-classic)" : "none" }}>
+                    <div style={{ background: "var(--bg-paper-darker)", padding: "4px 8px", borderRadius: "4px", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center", height: "fit-content", minWidth: "42px" }}>
+                      {item.date}
+                    </div>
+                    <div>
+                      <strong style={{ display: "block", color: "var(--text-primary)", fontSize: "0.8rem", lineHeight: "1.3" }}>{item.event}</strong>
+                      <span className={`ticker-change ${item.class}`} style={{ fontSize: "0.65rem", padding: "1px 4px", borderRadius: "3px", fontWeight: "700", marginTop: "2px", display: "inline-block" }}>
+                        Mức độ: {item.impact}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </aside>
 
         </div>
@@ -822,6 +1070,42 @@ export default function Home() {
       <footer className="ft-footer">
         <p>© 2026 THE MORNING BRIEF. Thiết kế theo phong cách báo giấy hiện đại của FT.</p>
       </footer>
+
+      {/* Reader Mode Modal */}
+      {activeArticle && (
+        <div className="reader-modal-overlay" onClick={() => setActiveArticle(null)}>
+          <div className="reader-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="reader-modal-header">
+              <span className="reader-modal-source">{activeArticle.source}</span>
+              <button className="reader-modal-close" onClick={() => setActiveArticle(null)}>ĐÓNG [X]</button>
+            </div>
+            <div className="reader-modal-body">
+              <h2 className="reader-modal-title">{activeArticle.title}</h2>
+              <div className="reader-modal-meta">Đăng ngày {activeArticle.time}</div>
+              
+              <div className="reader-modal-text">
+                {generateMockArticleBody(activeArticle).map((para, i) => (
+                  <p key={i} className={i === 0 ? "reader-body-lead" : "reader-body-para"}>
+                    {para}
+                  </p>
+                ))}
+              </div>
+              
+              <div style={{ marginTop: "30px", display: "flex", justifyContent: "center" }}>
+                <a 
+                  href={activeArticle.link} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="see-more-btn"
+                  style={{ margin: 0, textTransform: "none", fontSize: "0.82rem" }}
+                >
+                  Đọc bài viết gốc tại {activeArticle.source} ↗
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

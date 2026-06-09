@@ -695,3 +695,184 @@ body {
     font-family: var(--font-sans);
     font-weight: 600;
 }
+
+/* --- AUDIO TTS BREATHING ACTIVATION --- */
+.see-more-btn.active-audio {
+    background-color: var(--accent-red);
+    color: white;
+    border-color: var(--accent-red);
+    box-shadow: 0 0 12px var(--accent-red);
+    animation: audioPulse 1.8s infinite;
+}
+
+@keyframes audioPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.02); opacity: 0.9; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- READER MODE MODAL --- */
+.reader-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(61, 41, 39, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.reader-modal-content {
+    background: var(--bg-paper);
+    border: 2px solid var(--border-dark);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 660px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 2.25rem;
+    box-shadow: 0 20px 40px rgba(61, 41, 39, 0.15);
+    position: relative;
+    animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalFadeIn {
+    0% { opacity: 0; transform: translateY(15px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.reader-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-classic);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.reader-modal-source {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--accent-red);
+    letter-spacing: 1px;
+}
+
+.reader-modal-close {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: var(--transition-quick);
+}
+
+.reader-modal-close:hover {
+    color: var(--accent-red);
+}
+
+.reader-modal-title {
+    font-family: var(--font-serif);
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.reader-modal-meta {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+.reader-modal-text {
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    line-height: 1.65;
+    color: var(--text-primary);
+}
+
+.reader-body-lead {
+    margin-bottom: 1.25rem;
+    font-weight: 500;
+}
+
+/* AUTOMATIC DROP CAP TYPOGRAPHY */
+.reader-body-lead::first-letter {
+    font-size: 3.8rem;
+    float: left;
+    font-family: var(--font-serif);
+    font-weight: 700;
+    line-height: 0.82;
+    margin-right: 8px;
+    margin-top: 4px;
+    color: var(--accent-red);
+}
+
+.reader-body-para {
+    margin-bottom: 1.25rem;
+    text-indent: 1.5rem; /* Paragraph indents like traditional print */
+}
+
+/* --- PRINT FRIENDLY MEDIA QUERY --- */
+@media print {
+    body {
+        background: #FFFFFF !important;
+        color: #000000 !important;
+    }
+    
+    .app-container {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+    
+    /* Hide all interactive components, buttons, audio player, marquee */
+    header.masthead .user-profile,
+    .ticker-wrap,
+    .tabs,
+    .see-more-btn,
+    .chart-tabs,
+    .reader-modal-overlay {
+        display: none !important;
+    }
+    
+    .broadsheet-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0 !important;
+    }
+    
+    /* Layout clean columns on print */
+    .news-section {
+        width: 100% !important;
+    }
+    
+    .news-card {
+        page-break-inside: avoid;
+        border-bottom: 1px solid #000000 !important;
+        padding-bottom: 1.5rem !important;
+    }
+    
+    .sidebar-section {
+        display: block !important;
+        width: 100% !important;
+        margin-top: 2rem !important;
+    }
+    
+    .widget-panel {
+        page-break-inside: avoid;
+        border: 1px solid #000000 !important;
+        margin-bottom: 1.5rem !important;
+    }
+}
