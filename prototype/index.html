@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="paper">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE MORNING BRIEF | Financial & Market Intelligence</title>
+    <meta name="description" content="Premium daily briefing inspired by classic financial journalism.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Floating Header/Masthead -->
+        <header class="masthead">
+            <div class="masthead-top">
+                <div class="date-badge" id="date-text">Tuesday, June 9, 2026</div>
+                <div class="logo">
+                    <h1>THE MORNING BRIEF</h1>
+                </div>
+                <div class="user-profile">
+                    <div class="avatar">U</div>
+                </div>
+            </div>
+            
+            <!-- Animated Market Ticker Banner -->
+            <div class="ticker-wrap">
+                <div class="ticker-label">MARKETS</div>
+                <div class="ticker-scroll" id="market-tickers">
+                    <!-- Tickers will slide continuously here -->
+                    <div class="ticker-item-placeholder">Loading live markets...</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Grid Layout mimicking a modern, elegant broadsheet -->
+            <div class="broadsheet-grid">
+                
+                <!-- Left Column: Lead Stories (News Feed) -->
+                <section class="news-section">
+                    <div class="column-header">
+                        <h2>Top Stories & Analysis</h2>
+                        <div class="tabs">
+                            <button class="tab active" data-category="general">Global</button>
+                            <button class="tab" data-category="business">Markets</button>
+                            <button class="tab" data-category="tech">Technology</button>
+                        </div>
+                    </div>
+                    
+                    <div class="news-feed" id="news-feed">
+                        <!-- News items will fade in here -->
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                    </div>
+                </section>
+
+                <!-- Right Column: Market Intelligence & Trending -->
+                <aside class="sidebar-section">
+                    <!-- Crypto & Commodities -->
+                    <div class="widget-panel">
+                        <div class="widget-header">
+                            <h3>Trending Assets</h3>
+                        </div>
+                        <div class="crypto-list" id="crypto-list">
+                            <!-- Crypto items will load here -->
+                            <div class="skeleton-item"></div>
+                            <div class="skeleton-item"></div>
+                        </div>
+                    </div>
+
+                    <!-- Briefing Summary / Editorial Quote -->
+                    <div class="widget-panel quote-panel">
+                        <span class="quote-tag">EDITORIAL DAILY BRIEFING</span>
+                        <blockquote>
+                            "Inflationary pressures show early signs of stabilizing, but central banks signal cautious optimism. Technology sectors remain robust as AI scaling drives structural enterprise demand."
+                        </blockquote>
+                        <div class="quote-author">— Chief Investment Analyst</div>
+                    </div>
+                </aside>
+
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="ft-footer">
+            <p>© 2026 THE MORNING BRIEF. Styled in FT-Modern Paper aesthetic.</p>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
