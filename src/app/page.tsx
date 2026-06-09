@@ -700,20 +700,20 @@ export default function Home() {
                 alignItems: "center",
                 gap: "6px"
               }}
-              title={isPlaying ? "Dừng phát Podcast" : "Nghe Podcast Bản tin"}
+              title={isPlaying ? "Dừng phát Podcast | Stop Podcast" : "Nghe Podcast Bản tin | Listen Podcast"}
             >
-              <span>{isPlaying ? "■ Dừng nghe" : "🔊 Nghe Podcast"}</span>
+              <span>{isPlaying ? "■ Dừng nghe | Stop" : "🎧 Nghe Podcast | Listen"}</span>
             </button>
-            <div className="avatar" onClick={fetchStocks} title="Tải lại dữ liệu">↻</div>
+            <div className="avatar" onClick={fetchStocks} title="Tải lại dữ liệu | Refresh data">🎀</div>
           </div>
         </div>
 
         {/* Animated Market Ticker Banner */}
         <div className="ticker-wrap">
-          <div className="ticker-label">THỊ TRƯỜNG VN</div>
+          <div className="ticker-label">📊 Thị trường VN | VN Market</div>
           <div className={`ticker-scroll ${loadingStocks ? "loading" : ""}`}>
             {loadingStocks ? (
-              <div className="ticker-item-placeholder">Đang tải dữ liệu thị trường...</div>
+              <div className="ticker-item-placeholder">Đang tải dữ liệu thị trường | Loading market data...</div>
             ) : (
               duplicatedTickers.map((item, idx) => (
                 <div key={idx} className="ticker-card">
@@ -736,25 +736,25 @@ export default function Home() {
           {/* Left Column: Lead Stories (News Feed) */}
           <section className={`news-section ${activeMobileTab === "home" ? "" : "hidden-mobile"}`}>
             <div className="column-header">
-              <h2>Tin nổi bật & Phân tích</h2>
+              <h2>🌸 Tin nổi bật & Phân tích | Lead Stories & Opinion</h2>
               <div className="tabs">
                 <button
                   className={`tab ${activeTab === "general" ? "active" : ""}`}
                   onClick={() => setActiveTab("general")}
                 >
-                  Tiêu điểm
+                  Tiêu điểm | Spotlight
                 </button>
                 <button
                   className={`tab ${activeTab === "business" ? "active" : ""}`}
                   onClick={() => setActiveTab("business")}
                 >
-                  Kinh Doanh
+                  Kinh doanh | Business
                 </button>
                 <button
                   className={`tab ${activeTab === "tech" ? "active" : ""}`}
                   onClick={() => setActiveTab("tech")}
                 >
-                  Số Hóa
+                  Số hóa | Tech
                 </button>
               </div>
             </div>
@@ -792,7 +792,7 @@ export default function Home() {
                       className="see-more-btn"
                       onClick={() => setVisibleNewsCount(prev => prev + 6)}
                     >
-                      Xem thêm tin cũ hơn
+                      Xem thêm tin cũ hơn | Load More News
                     </button>
                   )}
                 </>
@@ -816,7 +816,7 @@ export default function Home() {
             <div className={`widget-panel podcast-player-card ${activeMobileTab === "podcast" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h3 style={{ margin: 0, fontSize: "1.05rem" }}>
-                  <span style={{ marginRight: "6px" }}>🎙️</span>Bản Tin Âm Thanh
+                  <span style={{ marginRight: "6px" }}>🎧</span>Bản tin âm thanh | Audio Briefing
                 </h3>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   {loadingPodcast && <span className="podcast-live-dot"></span>}
@@ -909,53 +909,21 @@ export default function Home() {
             </div>
 
             {/* Dynamic AI Analysis Panel (VN Broad Market Perspective) */}
-            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`} style={{ borderLeft: "4px solid var(--text-primary)", background: "rgba(0,0,0,0.02)" }}>
-              <div className="widget-header" style={{ marginBottom: "0.75rem" }}>
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`} style={{ borderLeft: "4px solid var(--accent-red)", background: "rgba(0,0,0,0.01)" }}>
+              <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
                 <h3 style={{ textTransform: "uppercase", fontSize: "0.78rem", letterSpacing: "0.8px", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
-                  Báo cáo Thị trường Buổi sáng
+                  ✨ Báo cáo nhanh | Quick Briefing
                 </h3>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.9rem" }}>
-                <div>
-                  <strong style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                    Độ rộng thị trường chung:
-                  </strong>
-                  <div style={{ display: "flex", gap: "10px", marginTop: "4px", fontSize: "0.85rem", fontWeight: "700" }}>
-                    <span className="ticker-change positive" style={{ padding: "2px 8px", borderRadius: "4px" }}>
-                      Tăng: {analysis.advancing}
-                    </span>
-                    <span className="ticker-change negative" style={{ padding: "2px 8px", borderRadius: "4px" }}>
-                      Giảm: {analysis.declining}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: "0.82rem", fontWeight: "600", display: "inline-block", marginTop: "6px", color: "var(--text-secondary)" }}>
-                    Khái quát chung: {analysis.sentiment}
-                  </span>
-                </div>
-                <div>
-                  <strong style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                    Chủ đề chính trong ngày:
-                  </strong>
-                  <span style={{ fontFamily: "var(--font-serif)", fontSize: "1.05rem", fontWeight: "700", display: "block", marginTop: "2px" }}>
-                    {analysis.theme}
-                  </span>
-                </div>
-                <hr style={{ border: "none", borderTop: "1px dashed var(--border-classic)", margin: "4px 0" }} />
-                <div>
-                  <strong style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase", marginBottom: "4px" }}>
-                    Báo cáo nhanh:
-                  </strong>
-                  <p style={{ lineHeight: "1.5", fontSize: "0.88rem", fontStyle: "italic", fontFamily: "var(--font-serif)", color: "var(--text-secondary)" }}>
-                    "{analysis.summary}"
-                  </p>
-                </div>
-              </div>
+              <p style={{ lineHeight: "1.5", fontSize: "0.85rem", fontStyle: "italic", fontFamily: "var(--font-serif)", color: "var(--text-secondary)", margin: 0 }}>
+                "{analysis.summary}"
+              </p>
             </div>
 
             {/* Market Trend Chart Panel */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>Xu hướng Chỉ số</h3>
+                <h3>📈 Xu hướng Chỉ số | Index Trends</h3>
               </div>
               
               <div className="chart-widget-panel">
@@ -1244,7 +1212,7 @@ export default function Home() {
             {/* Market Indexes Panel */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
-                <h3>Chỉ số Thị trường</h3>
+                <h3>💸 Chỉ số Thị trường | Market Indexes</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {loadingStocks ? (
@@ -1275,7 +1243,7 @@ export default function Home() {
             {/* Broker Stance Panel: Stated bullish/bearish/neutral from securities firms */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
-                <h3>Đồng thuận Thị trường Định chế</h3>
+                <h3>🔮 Đồng thuận Định chế | Institutional Consensus</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {brokerOutlooks.map((broker, idx) => (
@@ -1300,12 +1268,12 @@ export default function Home() {
             {/* Watchlist Panel */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
-                <h3>Danh mục Theo dõi (Watchlist)</h3>
+                <h3>⭐ Danh mục Theo dõi | My Watchlist</h3>
               </div>
               <div className="crypto-list" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {watchlist.length === 0 ? (
                   <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "10px" }}>
-                    Nhấp chọn biểu tượng ngôi sao bên cạnh các mã ở "Điểm nhấn Thị trường" bên dưới để ghim vào đây.
+                    Nhấp chọn ngôi sao ⭐ bên cạnh các mã để ghim vào đây | Click the star ⭐ next to symbols to pin them here.
                   </div>
                 ) : (
                   tickerList.filter(item => watchlist.includes(item.symbol.split(" ")[0])).map((item, idx) => (
@@ -1319,7 +1287,7 @@ export default function Home() {
                             }}
                             style={{ color: "var(--accent-red)", cursor: "pointer", fontSize: "0.95rem" }}
                           >
-                            ★
+                            ⭐
                           </span>
                           {item.symbol.split(" ")[0]}
                         </h4>
@@ -1340,7 +1308,7 @@ export default function Home() {
             {/* Top VN Stocks List (Điểm nhấn Thị trường) */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingBottom: "0.75rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.05rem" }}>Điểm nhấn Thị trường</h3>
+                <h3 style={{ margin: 0, fontSize: "1.05rem" }}>📊 Điểm nhấn Thị trường | Market Highlights</h3>
                 
                 {/* Sub-tabs for Market Highlights */}
                 <div className="tabs" style={{ padding: "2px", borderRadius: "20px" }}>
@@ -1349,21 +1317,21 @@ export default function Home() {
                     onClick={() => setStockFilterTab("all")}
                     style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
                   >
-                    Tất cả
+                    Tất cả | All
                   </button>
                   <button
                     className={`tab ${stockFilterTab === "gainers" ? "active" : ""}`}
                     onClick={() => setStockFilterTab("gainers")}
                     style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
                   >
-                    Tăng mạnh
+                    Tăng mạnh | Gainers
                   </button>
                   <button
                     className={`tab ${stockFilterTab === "losers" ? "active" : ""}`}
                     onClick={() => setStockFilterTab("losers")}
                     style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
                   >
-                    Giảm mạnh
+                    Giảm mạnh | Losers
                   </button>
                 </div>
               </div>
@@ -1398,25 +1366,25 @@ export default function Home() {
                 return (
                   <div className="leaderboard-grid">
                     <div className="leaderboard-column">
-                      <div className="leaderboard-column-header gainer">
-                        <span className="leaderboard-icon">🔺</span>
-                        <span>Top 5 Tăng mạnh nhất</span>
+                      <div className="leaderboard-column-header gainer" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span className="leaderboard-icon">🌱</span>
+                        <span>Top 5 Tăng | Top Gainers</span>
                       </div>
                       {top5Gainers.length > 0 ? (
                         top5Gainers.map((item, i) => renderLeaderItem(item, i + 1, "gainer"))
                       ) : (
-                        <div className="leaderboard-empty">Không có mã tăng</div>
+                        <div className="leaderboard-empty">Không có mã tăng | No Gainers</div>
                       )}
                     </div>
                     <div className="leaderboard-column">
-                      <div className="leaderboard-column-header loser">
-                        <span className="leaderboard-icon">🔻</span>
-                        <span>Top 5 Giảm mạnh nhất</span>
+                      <div className="leaderboard-column-header loser" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span className="leaderboard-icon">🍂</span>
+                        <span>Top 5 Giảm | Top Losers</span>
                       </div>
                       {top5Losers.length > 0 ? (
                         top5Losers.map((item, i) => renderLeaderItem(item, i + 1, "loser"))
                       ) : (
-                        <div className="leaderboard-empty">Không có mã giảm</div>
+                        <div className="leaderboard-empty">Không có mã giảm | No Losers</div>
                       )}
                     </div>
                   </div>
@@ -1431,7 +1399,7 @@ export default function Home() {
                     <input
                       type="text"
                       className="stock-search-input"
-                      placeholder="Nhập mã CK hoặc tên công ty (VD: VCB, Vinamilk...)"
+                      placeholder="Nhập mã CK hoặc tên công ty | Search Symbol or Company (e.g. VCB, FPT...)"
                       value={searchQuery}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -1515,7 +1483,7 @@ export default function Home() {
                                   onClick={() => toggleWatchlist(item.symbol)}
                                   style={{ color: isStarred ? "var(--accent-red)" : "var(--text-muted)", cursor: "pointer", fontSize: "1rem" }}
                                 >
-                                  {isStarred ? "★" : "☆"}
+                                  {isStarred ? "⭐" : "☆"}
                                 </span>
                                 <div>
                                   <span className="stock-search-symbol">{item.symbol}</span>
@@ -1557,7 +1525,7 @@ export default function Home() {
                   {/* Empty state hint */}
                   {!searchLoading && searchResults.length === 0 && !searchError && !searchQuery && (
                     <div className="stock-search-hint">
-                      <p>💡 Tra cứu bất kỳ mã chứng khoán Việt Nam nào</p>
+                      <p>💡 Tra cứu bất kỳ mã chứng khoán Việt Nam nào | Search any Vietnamese stock symbol</p>
                       <div className="stock-search-hint-tags">
                         {["VCB", "FPT", "VNM", "HPG", "MWG", "NVL"].map(tag => (
                           <button
@@ -1586,7 +1554,7 @@ export default function Home() {
             {/* Macro Economics Panel */}
             <div className={`widget-panel ${activeMobileTab === "calendar" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>Giá Vàng & Tỷ Giá USD</h3>
+                <h3>💰 Vàng & Tỷ giá | Gold & Forex</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
                 {loadingMacro ? (
@@ -1598,8 +1566,8 @@ export default function Home() {
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
                       <div>
-                        <strong style={{ display: "block" }}>Vàng SJC (Miếng)</strong>
-                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Đơn vị: Triệu đ/lượng</span>
+                        <strong style={{ display: "block" }}>Vàng SJC | SJC Gold Bar</strong>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Đơn vị: Triệu đ/lượng | Unit: Million VND/Tael</span>
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldSjc.buy} - {macroData.goldSjc.sell}</span>
@@ -1608,8 +1576,8 @@ export default function Home() {
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
                       <div>
-                        <strong style={{ display: "block" }}>Vàng Nhẫn 9999</strong>
-                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Đơn vị: Triệu đ/lượng</span>
+                        <strong style={{ display: "block" }}>Vàng Nhẫn 9999 | 24K Gold Ring</strong>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Đơn vị: Triệu đ/lượng | Unit: Million VND/Tael</span>
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldRing.buy} - {macroData.goldRing.sell}</span>
@@ -1618,8 +1586,8 @@ export default function Home() {
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <strong style={{ display: "block" }}>Tỷ giá USD/VND</strong>
-                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Nguồn: Vietcombank</span>
+                        <strong style={{ display: "block" }}>Tỷ giá USD/VND | USD/VND Rate</strong>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Nguồn | Source: Vietcombank</span>
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <span style={{ fontWeight: "700", display: "block" }}>{macroData.usdRate.buy} - {macroData.usdRate.sell}</span>
@@ -1627,7 +1595,7 @@ export default function Home() {
                       </div>
                     </div>
                     <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textAlign: "right", marginTop: "4px" }}>
-                      Cập nhật: {macroData.updatedAt}
+                      Cập nhật | Updated: {macroData.updatedAt}
                     </div>
                   </>
                 ) : (
@@ -1639,7 +1607,7 @@ export default function Home() {
             {/* Economic Calendar Panel (Interactive click-to-read) */}
             <div className={`widget-panel ${activeMobileTab === "calendar" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>Sự Kiện Tài Chính Sắp Tới</h3>
+                <h3>🍓 Lịch sự kiện | Economic Calendar</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
                 {calendarEvents.map((item, idx) => (
@@ -1662,9 +1630,9 @@ export default function Home() {
                       <strong className="calendar-event-title" style={{ display: "block", color: "var(--text-primary)", fontSize: "0.8rem", lineHeight: "1.3", transition: "color 0.2s" }}>{item.event}</strong>
                       <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "2px" }}>
                         <span className={`ticker-change ${item.class}`} style={{ fontSize: "0.65rem", padding: "1px 4px", borderRadius: "3px", fontWeight: "700" }}>
-                          Mức độ: {item.impact}
+                          Tác động | Impact: {item.impact}
                         </span>
-                        <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>• Nguồn: {item.source}</span>
+                        <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>• Nguồn | Source: {item.source}</span>
                       </div>
                     </div>
                   </div>
@@ -1688,11 +1656,11 @@ export default function Home() {
           <div className="reader-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="reader-modal-header">
               <span className="reader-modal-source">{activeArticle.source}</span>
-              <button className="reader-modal-close" onClick={() => setActiveArticle(null)}>ĐÓNG [X]</button>
+              <button className="reader-modal-close" onClick={() => setActiveArticle(null)}>ĐÓNG | CLOSE [X]</button>
             </div>
             <div className="reader-modal-body">
               <h2 className="reader-modal-title">{activeArticle.title}</h2>
-              <div className="reader-modal-meta">Đăng ngày {activeArticle.time}</div>
+              <div className="reader-modal-meta">Đăng ngày | Published: {activeArticle.time}</div>
               
               <div className="reader-modal-text">
                 {generateMockArticleBody(activeArticle).map((para, i) => (
@@ -1710,7 +1678,7 @@ export default function Home() {
                   className="see-more-btn"
                   style={{ margin: 0, textTransform: "none", fontSize: "0.82rem" }}
                 >
-                  Đọc bài viết gốc tại {activeArticle.source} ↗
+                  Đọc bài gốc | Read Original at {activeArticle.source} ↗
                 </a>
               </div>
             </div>
@@ -1724,29 +1692,29 @@ export default function Home() {
           className={`mobile-tab-item ${activeMobileTab === "home" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("home")}
         >
-          <span className="mobile-tab-icon">📰</span>
-          <span>Tin Tức</span>
+          <span className="mobile-tab-icon">🌸</span>
+          <span>Tin Tức | News</span>
         </button>
         <button 
           className={`mobile-tab-item ${activeMobileTab === "markets" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("markets")}
         >
-          <span className="mobile-tab-icon">📈</span>
-          <span>Thị Trường</span>
+          <span className="mobile-tab-icon">📊</span>
+          <span>Thị Trường | Markets</span>
         </button>
         <button 
           className={`mobile-tab-item ${activeMobileTab === "calendar" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("calendar")}
         >
-          <span className="mobile-tab-icon">🗓️</span>
-          <span>Sự Kiện</span>
+          <span className="mobile-tab-icon">🍓</span>
+          <span>Sự Kiện | Calendar</span>
         </button>
         <button 
           className={`mobile-tab-item ${activeMobileTab === "podcast" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("podcast")}
         >
-          <span className="mobile-tab-icon">🎙️</span>
-          <span>Podcast</span>
+          <span className="mobile-tab-icon">🎧</span>
+          <span>Podcast | Audio</span>
         </button>
       </nav>
     </div>
