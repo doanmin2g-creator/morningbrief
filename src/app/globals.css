@@ -1,25 +1,25 @@
 :root {
-    /* Color Palette - Softer, Warmer Financial Times-Inspired Broadsheet */
-    --bg-paper: #FAF7F2; /* Soft linen off-white, very gentle on the eyes */
-    --bg-paper-darker: #F0EAE1; /* Soft oatmeal tone for banners/headers */
-    --bg-card: #FFFFFF; /* Crisp white for individual elements */
-    --border-classic: #E2D7C8; /* Very soft warm sand border */
-    --border-dark: #6E6356; /* Softer, low-contrast charcoal divider */
+    /* Color Palette - Elegant Pink Broadsheet Theme (Gazzetta dello Sport style) */
+    --bg-paper: #FDF1F0; /* Soft linen pastel pink, warm and gentle on the eyes */
+    --bg-paper-darker: #F7E0DD; /* Soft oatmeal-rose tone for banners/headers */
+    --bg-card: #FFFFFF; /* Clean white for card elements to pop */
+    --border-classic: #ECD4D1; /* Delicate rose-gold/warm sand border */
+    --border-dark: #8E6D6A; /* Soft mahogany/rose divider */
     
-    --text-primary: #332D28; /* Warm organic charcoal (much softer than black) */
-    --text-secondary: #5C534A; /* Gentle editorial slate grey */
-    --text-muted: #8F8273; /* Earthy muted tone for metadata */
+    --text-primary: #3D2927; /* Deep organic mahogany charcoal (highly readable on pink) */
+    --text-secondary: #6B5250; /* Slate rose-grey for descriptions */
+    --text-muted: #9A817E; /* Muted dusty rose slate for metadata */
     
     /* Branding Accent */
-    --accent-red: #A32A46; /* Softer, berry/crimson tone */
-    --accent-red-hover: #BF3454;
-    --accent-blue: #235F8E; /* Muted link blue */
+    --accent-red: #9B2337; /* Softer, elegant burgundy/wine tone */
+    --accent-red-hover: #B73248;
+    --accent-blue: #2A5D7C; /* Muted slate blue */
     
     /* Market indicators */
     --success-green: #117C5A;
     --success-green-bg: rgba(17, 124, 90, 0.05);
-    --danger-red: #B02A2A;
-    --danger-red-bg: rgba(176, 42, 42, 0.05);
+    --danger-red: #A82525;
+    --danger-red-bg: rgba(168, 37, 37, 0.05);
     
     /* Typography (Set dynamically by layout.tsx) */
     --font-serif: var(--font-serif), 'Lora', Georgia, serif;
@@ -30,9 +30,9 @@
     --radius-md: 12px;
     --radius-sm: 8px;
     
-    /* Shadows - Soft and organic */
-    --shadow-soft: 0 6px 20px rgba(110, 99, 86, 0.04), 0 2px 4px rgba(0, 0, 0, 0.01);
-    --shadow-hover: 0 16px 32px rgba(163, 42, 70, 0.05), 0 4px 8px rgba(0, 0, 0, 0.02);
+    /* Shadows - Soft and organic with matching rose tint */
+    --shadow-soft: 0 6px 20px rgba(142, 109, 106, 0.04), 0 2px 4px rgba(0, 0, 0, 0.01);
+    --shadow-hover: 0 16px 32px rgba(155, 35, 55, 0.05), 0 4px 8px rgba(0, 0, 0, 0.02);
     
     /* Transitions - Specific property targets for GPU optimization */
     --transition-smooth: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
