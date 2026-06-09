@@ -53,7 +53,7 @@ async function fetchSymbolsChunk(chunk: typeof TICKERS) {
 
 async function fetchEntradeIndex(symbol: string, displayName: string) {
   const to = Math.floor(Date.now() / 1000);
-  const from = to - 10 * 24 * 60 * 60; // 10 days ago to ensure enough data points
+  const from = to - 20 * 24 * 60 * 60; // 20 days to ensure we have enough trading days (~14 points)
   const url = `https://services.entrade.com.vn/chart-api/v2/ohlcs/index?from=${from}&to=${to}&symbol=${symbol}&resolution=1D`;
   
   try {
@@ -81,7 +81,8 @@ async function fetchEntradeIndex(symbol: string, displayName: string) {
         price: priceStr,
         change: changeStr,
         isPositive,
-        sector: "Chỉ số"
+        sector: "Chỉ số",
+        history: data.c
       };
     }
   } catch (error) {
@@ -106,9 +107,10 @@ export async function GET() {
     const chunk1 = TICKERS.slice(0, 12);
     const chunk2 = TICKERS.slice(12);
 
-    const [result1, result2, hnxIndex, upcomIndex] = await Promise.all([
+    const [result1, result2, vnIndexEntrade, hnxIndex, upcomIndex] = await Promise.all([
       fetchSymbolsChunk(chunk1),
       fetchSymbolsChunk(chunk2),
+      fetchEntradeIndex("VNINDEX", "VN-Index"),
       fetchEntradeIndex("HNX", "HNX-Index"),
       fetchEntradeIndex("UPCOM", "UPCoM-Index")
     ]);
@@ -123,6 +125,7 @@ export async function GET() {
       let price = "N/A";
       let change = "0.00%";
       let isPositive = true;
+      let history: number[] = [];
 
       if (meta) {
         const currentPrice = meta.regularMarketPrice;
@@ -142,13 +145,19 @@ export async function GET() {
         }
       }
 
+      // Merge history from Entrade for VN-Index
+      if (t.symbol === "^VNINDEX.VN" && vnIndexEntrade) {
+        history = vnIndexEntrade.history || [];
+      }
+
       return {
         symbol: t.displayName,
         ticker: t.symbol,
         price,
         change,
         isPositive,
-        sector: t.sector
+        sector: t.sector,
+        ...(history.length > 0 ? { history } : {})
       };
     });
 

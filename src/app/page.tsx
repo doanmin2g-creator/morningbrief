@@ -10,6 +10,23 @@ interface TickerItem {
   change: string;
   isPositive: boolean;
   sector: string;
+  history?: number[];
+}
+
+// Helper to get Vietnamese date labels for trading days
+function getTradingDays(count: number) {
+  if (count <= 0) return [];
+  const dates: string[] = [];
+  let current = new Date();
+  
+  while (dates.length < count) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) { // Skip Saturday and Sunday
+      dates.unshift(current.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }));
+    }
+    current.setDate(current.getDate() - 1);
+  }
+  return dates;
 }
 
 interface NewsItem {
@@ -71,6 +88,8 @@ export default function Home() {
   const [brokerOutlooks, setBrokerOutlooks] = useState<BrokerOutlook[]>(initialBrokerOutlooks);
   const [errorMsg, setErrorMsg] = useState("");
   const [visibleNewsCount, setVisibleNewsCount] = useState(8);
+  const [selectedChartIndex, setSelectedChartIndex] = useState("VN-Index");
+  const [hoveredPoint, setHoveredPoint] = useState<{ value: number; index: number; x: number; y: number } | null>(null);
 
   // Format Date in traditional FT format (Vietnamese Locale)
   useEffect(() => {
@@ -393,6 +412,186 @@ export default function Home() {
                     "{analysis.summary}"
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Market Trend Chart Panel */}
+            <div className="widget-panel">
+              <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
+                <h3>Xu hướng Chỉ số</h3>
+              </div>
+              
+              <div className="chart-widget-panel">
+                <div className="chart-tabs">
+                  {["VN-Index", "HNX-Index", "UPCoM-Index"].map((name) => (
+                    <button
+                      key={name}
+                      className={`chart-tab-btn ${selectedChartIndex === name ? "active" : ""}`}
+                      onClick={() => {
+                        setSelectedChartIndex(name);
+                        setHoveredPoint(null);
+                      }}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+
+                {(() => {
+                  const chartTicker = tickerList.find((t) => t.symbol === selectedChartIndex);
+                  
+                  if (loadingStocks) {
+                    return (
+                      <div className="chart-svg-container">
+                        <div className="skeleton-item" style={{ width: "100%", height: "100px", border: "none" }}></div>
+                      </div>
+                    );
+                  }
+
+                  if (!chartTicker || !chartTicker.history || chartTicker.history.length === 0) {
+                    return (
+                      <div className="chart-svg-container" style={{ fontSize: "0.82rem", color: "var(--text-muted)", textAlign: "center", padding: "20px" }}>
+                        Không có dữ liệu xu hướng cho {selectedChartIndex}
+                      </div>
+                    );
+                  }
+
+                  const history = chartTicker.history;
+                  const isPositive = chartTicker.isPositive;
+                  const lineColor = isPositive ? "var(--success-green)" : "var(--danger-red)";
+                  const areaGradientId = `chart-area-grad-${selectedChartIndex.replace(/\s+/g, "-")}`;
+                  
+                  const min = Math.min(...history);
+                  const max = Math.max(...history);
+                  const range = max - min === 0 ? 1 : max - min;
+                  
+                  const width = 320;
+                  const height = 130;
+                  const paddingTop = 15;
+                  const paddingBottom = 20;
+                  const paddingLeft = 10;
+                  const paddingRight = 10;
+
+                  const points = history.map((val, idx) => {
+                    const x = paddingLeft + (idx / (history.length - 1)) * (width - paddingLeft - paddingRight);
+                    const y = height - paddingBottom - ((val - min) / range) * (height - paddingTop - paddingBottom);
+                    return { x, y, val, idx };
+                  });
+
+                  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+                  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} L ${points[0].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} Z`;
+
+                  const dates = getTradingDays(history.length);
+                  
+                  // Detail overlay when hovered or current details
+                  const displayPrice = hoveredPoint ? hoveredPoint.value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : chartTicker.price;
+                  const displayDate = hoveredPoint ? `Phiên ${dates[hoveredPoint.index]}` : `Giá hiện tại`;
+                  const changeColorClass = isPositive ? "positive" : "negative";
+
+                  return (
+                    <>
+                      <div className="chart-info-header">
+                        <div className="chart-info-left">
+                          <h4 style={{ fontFamily: "var(--font-sans)", fontSize: "0.95rem", fontWeight: "700" }}>
+                            {selectedChartIndex}
+                          </h4>
+                          <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "500" }}>
+                            {displayDate}
+                          </p>
+                        </div>
+                        <div className="chart-info-right">
+                          <div className="chart-info-price" style={{ fontSize: "1.1rem", fontWeight: "700" }}>
+                            {displayPrice}
+                          </div>
+                          {!hoveredPoint && (
+                            <span className={`ticker-change ${changeColorClass}`} style={{ fontSize: "0.78rem" }}>
+                              {chartTicker.change}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="chart-svg-container" style={{ padding: "12px 6px 4px 6px" }}>
+                        <svg viewBox={`0 0 ${width} ${height}`} className="chart-svg" style={{ display: "block", width: "100%", height: "100%" }}>
+                          <defs>
+                            <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={lineColor} stopOpacity="0.18" />
+                              <stop offset="100%" stopColor={lineColor} stopOpacity="0.0" />
+                            </linearGradient>
+                          </defs>
+
+                          {/* Grid Lines */}
+                          <line x1={0} y1={paddingTop} x2={width} y2={paddingTop} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.5" />
+                          <line x1={0} y1={height - paddingBottom} x2={width} y2={height - paddingBottom} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.5" />
+
+                          {/* Min/Max Text Labels */}
+                          <text x={width - 2} y={paddingTop - 4} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
+                            Cao nhất: {max.toLocaleString("en-US", { maximumFractionDigits: 1 })}
+                          </text>
+                          <text x={width - 2} y={height - paddingBottom + 12} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
+                            Thấp nhất: {min.toLocaleString("en-US", { maximumFractionDigits: 1 })}
+                          </text>
+
+                          {/* Date Range Labels at bottom */}
+                          <text x={paddingLeft} y={height - 4} textAnchor="start" fontSize="8.5" fill="var(--text-muted)" fontWeight="500">
+                            {dates[0]}
+                          </text>
+                          <text x={width - paddingRight} y={height - 4} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="500">
+                            {dates[dates.length - 1] || "Hôm nay"}
+                          </text>
+
+                          {/* Area Shading */}
+                          <path d={areaPath} fill={`url(#${areaGradientId})`} />
+
+                          {/* Line Stroke */}
+                          <path d={linePath} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+
+                          {/* Hover Guide & Active Marker */}
+                          {hoveredPoint && (
+                            <>
+                              <line
+                                x1={hoveredPoint.x}
+                                y1={paddingTop}
+                                x2={hoveredPoint.x}
+                                y2={height - paddingBottom}
+                                stroke="var(--text-muted)"
+                                strokeDasharray="3,3"
+                                strokeWidth="0.75"
+                              />
+                              <circle
+                                cx={hoveredPoint.x}
+                                cy={hoveredPoint.y}
+                                r="4.5"
+                                fill={lineColor}
+                                stroke="var(--bg-card)"
+                                strokeWidth="2.5"
+                              />
+                            </>
+                          )}
+
+                          {/* Hover Hit Slices */}
+                          {points.map((pt, idx) => {
+                            const sliceWidth = (width - paddingLeft - paddingRight) / (points.length - 1);
+                            const hitX = pt.x - sliceWidth / 2;
+                            return (
+                              <rect
+                                key={idx}
+                                x={hitX}
+                                y={0}
+                                width={sliceWidth}
+                                height={height - paddingBottom}
+                                fill="transparent"
+                                style={{ cursor: "pointer" }}
+                                onMouseEnter={() => setHoveredPoint({ value: pt.val, index: pt.idx, x: pt.x, y: pt.y })}
+                                onMouseLeave={() => setHoveredPoint(null)}
+                              />
+                            );
+                          })}
+                        </svg>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
