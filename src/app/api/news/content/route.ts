@@ -60,6 +60,28 @@ function isCleanParagraph(pText: string): boolean {
   return true;
 }
 
+// Tăng điểm cho đoạn văn chỉ định rõ lỗi/hành vi cụ thể, giảm điểm từ tham chiếu lửng lơ
+function adjustForBehaviorDefinition(text: string, score: number): number {
+  let adjusted = score;
+  
+  // Định danh lỗi hoặc hành vi cụ thể
+  const definingKeywords = /\b(?:không đăng ký|chậm sang tên|giấy viết tay|chuyển nhượng|mua bán đất|tẩy xóa|sửa chữa|sổ đỏ giả|giấy chứng nhận giả|chậm kê khai|không thực hiện|trốn thuế|nhận hối lộ|khởi tố|tạm giam|lừa đảo|trục lợi)\b/gi;
+  if (definingKeywords.test(text)) {
+    adjusted += 4;
+  }
+  
+  // Từ tham chiếu lửng lơ (vi phạm này, lỗi này, hành vi này)
+  const pronounReferences = /\b(?:hành vi này|lỗi này|vi phạm này|hậu quả này|phạt này)\b/gi;
+  if (pronounReferences.test(text)) {
+    // Chỉ trừ điểm nếu câu không chứa từ định danh cụ thể để giải thích
+    if (!definingKeywords.test(text)) {
+      adjusted -= 3;
+    }
+  }
+  
+  return adjusted;
+}
+
 // Chấm điểm đoạn văn dựa trên mật độ số liệu tài chính
 function getMetricsScore(text: string): number {
   if (text.length < 40 || text.length > 300) return -5;
@@ -79,7 +101,7 @@ function getMetricsScore(text: string): number {
   const digitsCount = (text.match(/\d+/g) || []).length;
   score += Math.min(digitsCount * 0.5, 3);
   
-  return score;
+  return adjustForBehaviorDefinition(text, score);
 }
 
 // Chấm điểm đoạn văn dựa trên từ khóa mục tiêu & tác động
@@ -93,7 +115,7 @@ function getImpactScore(text: string): number {
   const matchCount = (text.match(targetKeywords) || []).length;
   score += matchCount * 2.5;
   
-  return score;
+  return adjustForBehaviorDefinition(text, score);
 }
 
 // Thuật toán Tóm tắt Lai cải tiến (Hybrid Paragraph Summarizer)
@@ -202,6 +224,7 @@ Sau khi đã chạy xong Bước 1 và 2, hãy xuất kết quả theo cấu tr�
 1. KHÔNG SÁNG TẠO: Chỉ dùng thông tin có trong bài. Nếu thiếu số liệu, ghi "Bài báo không nhắc tới", không tự suy đoán.
 2. KHÔNG DÙNG TỪ ĐÁNH GIÁ CẢM TÍNH: Thay vì viết "vốn rất lớn", hãy viết "vốn hơn 170.000 tỷ đồng". Thay vì viết "tăng rất nhiều câu hỏi", hãy viết "tăng lên 700 câu hỏi".
 3. KHÔNG THÊM LỜI THOẠI: Không chào hỏi, không giải thích "Đây là bản tóm tắt...". Vào thẳng nội dung.
+4. QUY TẮC ĐỊNH DANH HÀNH VI: Nếu tiêu đề hoặc nội dung bài báo nhắc đến một hình phạt, một hậu quả hoặc một phần thưởng dành cho một 'hành vi/lỗi/đối tượng' cụ thể, bản tóm tắt BẮT BUỘC phải gọi tên chính xác hành vi/lỗi/đối tượng đó là gì (Ví dụ: Không viết chung chung là 'mắc lỗi', phải viết rõ là 'lỗi không đăng ký biến động đất đai').
 
 ---
 NỘI DUNG BÀI BÁO CẦN TÓM TẮT:
