@@ -5,31 +5,39 @@ let cachedData: any = null;
 let lastCacheTime = 0;
 const CACHE_TTL_MS = 30 * 1000; // Cache for 30 seconds
 
-// Major Vietnamese tickers
+// Major Vietnamese tickers with explicit exchanges
 const TICKERS = [
-  { symbol: "^VNINDEX.VN", displayName: "VN-Index", sector: "Chỉ số" },
-  { symbol: "VCB.VN", displayName: "VCB (Vietcombank)", sector: "Ngân hàng" },
-  { symbol: "BID.VN", displayName: "BID (BIDV)", sector: "Ngân hàng" },
-  { symbol: "CTG.VN", displayName: "CTG (VietinBank)", sector: "Ngân hàng" },
-  { symbol: "TCB.VN", displayName: "TCB (Techcombank)", sector: "Ngân hàng" },
-  { symbol: "MBB.VN", displayName: "MBB (MBBank)", sector: "Ngân hàng" },
-  { symbol: "VPB.VN", displayName: "VPB (VPBank)", sector: "Ngân hàng" },
-  { symbol: "ACB.VN", displayName: "ACB (ACBBank)", sector: "Ngân hàng" },
-  { symbol: "VIC.VN", displayName: "VIC (Vingroup)", sector: "Bất động sản" },
-  { symbol: "VHM.VN", displayName: "VHM (Vinhomes)", sector: "Bất động sản" },
-  { symbol: "VRE.VN", displayName: "VRE (Vincom Retail)", sector: "Bất động sản" },
-  { symbol: "HPG.VN", displayName: "HPG (Hoa Phat Group)", sector: "Thép" },
-  { symbol: "GAS.VN", displayName: "GAS (PV Gas)", sector: "Dầu khí" },
-  { symbol: "PLX.VN", displayName: "PLX (Petrolimex)", sector: "Dầu khí" },
-  { symbol: "FPT.VN", displayName: "FPT Corp", sector: "Công nghệ" },
-  { symbol: "MWG.VN", displayName: "MWG (Thế Giới Di Động)", sector: "Bán lẻ" },
-  { symbol: "VNM.VN", displayName: "VNM (Vinamilk)", sector: "Tiêu dùng" },
-  { symbol: "MSN.VN", displayName: "MSN (Masan Group)", sector: "Tiêu dùng" },
-  { symbol: "SAB.VN", displayName: "SAB (Sabeco)", sector: "Tiêu dùng" },
-  { symbol: "PNJ.VN", displayName: "PNJ (Vàng bạc Đá quý)", sector: "Bán lẻ" },
-  { symbol: "VJC.VN", displayName: "VJC (Vietjet Air)", sector: "Hàng không" },
-  { symbol: "GMD.VN", displayName: "GMD (Gemadept)", sector: "Logistics" },
-  { symbol: "SSI.VN", displayName: "SSI Securities", sector: "Chứng khoán" }
+  { symbol: "^VNINDEX.VN", displayName: "VN-Index", sector: "Chỉ số", exchange: "INDEX" },
+  { symbol: "VCB.VN", displayName: "VCB (Vietcombank)", sector: "Ngân hàng", exchange: "HOSE" },
+  { symbol: "BID.VN", displayName: "BID (BIDV)", sector: "Ngân hàng", exchange: "HOSE" },
+  { symbol: "CTG.VN", displayName: "CTG (VietinBank)", sector: "Ngân hàng", exchange: "HOSE" },
+  { symbol: "TCB.VN", displayName: "TCB (Techcombank)", sector: "Ngân hàng", exchange: "HOSE" },
+  { symbol: "MBB.VN", displayName: "MBB (MBBank)", sector: "Ngân hàng", exchange: "HOSE" },
+  { symbol: "VPB.VN", displayName: "VPB (VPBank)", sector: "Ngân hàng", exchange: "HOSE" },
+  { symbol: "ACB.VN", displayName: "ACB (ACBBank)", sector: "Ngân hàng", exchange: "HOSE" },
+  { symbol: "VIC.VN", displayName: "VIC (Vingroup)", sector: "Bất động sản", exchange: "HOSE" },
+  { symbol: "VHM.VN", displayName: "VHM (Vinhomes)", sector: "Bất động sản", exchange: "HOSE" },
+  { symbol: "VRE.VN", displayName: "VRE (Vincom Retail)", sector: "Bất động sản", exchange: "HOSE" },
+  { symbol: "HPG.VN", displayName: "HPG (Hoa Phat Group)", sector: "Thép", exchange: "HOSE" },
+  { symbol: "GAS.VN", displayName: "GAS (PV Gas)", sector: "Dầu khí", exchange: "HOSE" },
+  { symbol: "PLX.VN", displayName: "PLX (Petrolimex)", sector: "Dầu khí", exchange: "HOSE" },
+  { symbol: "FPT.VN", displayName: "FPT Corp", sector: "Công nghệ", exchange: "HOSE" },
+  { symbol: "MWG.VN", displayName: "MWG (Thế Giới Di Động)", sector: "Bán lẻ", exchange: "HOSE" },
+  { symbol: "VNM.VN", displayName: "VNM (Vinamilk)", sector: "Tiêu dùng", exchange: "HOSE" },
+  { symbol: "MSN.VN", displayName: "MSN (Masan Group)", sector: "Tiêu dùng", exchange: "HOSE" },
+  { symbol: "SAB.VN", displayName: "SAB (Sabeco)", sector: "Tiêu dùng", exchange: "HOSE" },
+  { symbol: "PNJ.VN", displayName: "PNJ (Vàng bạc Đá quý)", sector: "Bán lẻ", exchange: "HOSE" },
+  { symbol: "VJC.VN", displayName: "VJC (Vietjet Air)", sector: "Hàng không", exchange: "HOSE" },
+  { symbol: "GMD.VN", displayName: "GMD (Gemadept)", sector: "Logistics", exchange: "HOSE" },
+  { symbol: "SSI.VN", displayName: "SSI Securities", sector: "Chứng khoán", exchange: "HOSE" },
+  // HNX Tickers
+  { symbol: "SHS.VN", displayName: "SHS (Chứng khoán SHS)", sector: "Chứng khoán", exchange: "HNX" },
+  { symbol: "CEO.VN", displayName: "CEO (Tập đoàn CEO)", sector: "Bất động sản", exchange: "HNX" },
+  { symbol: "PVS.VN", displayName: "PVS (Dịch vụ Dầu khí)", sector: "Dầu khí", exchange: "HNX" },
+  // UPCoM Tickers
+  { symbol: "BSR.VN", displayName: "BSR (Lọc dầu Bình Sơn)", sector: "Dầu khí", exchange: "UPCoM" },
+  { symbol: "ACV.VN", displayName: "ACV (Cảng hàng không)", sector: "Hàng không", exchange: "UPCoM" },
+  { symbol: "VEA.VN", displayName: "VEA (Máy động lực VEAM)", sector: "Công nghiệp", exchange: "UPCoM" }
 ];
 
 async function fetchSymbolsChunk(chunk: typeof TICKERS) {
@@ -82,6 +90,7 @@ async function fetchEntradeIndex(symbol: string, displayName: string) {
         change: changeStr,
         isPositive,
         sector: "Chỉ số",
+        exchange: "INDEX",
         history: data.c
       };
     }
@@ -103,9 +112,9 @@ export async function GET() {
 
   try {
     // Yahoo Finance has a limit of 20 symbols max per spark query.
-    // We split our 23 tickers into two chunks (12 and 11) and fetch them concurrently along with Entrade indexes.
-    const chunk1 = TICKERS.slice(0, 12);
-    const chunk2 = TICKERS.slice(12);
+    // We split our 29 tickers into two chunks (15 and 14) and fetch them concurrently along with Entrade indexes.
+    const chunk1 = TICKERS.slice(0, 15);
+    const chunk2 = TICKERS.slice(15);
 
     const [result1, result2, vnIndexEntrade, hnxIndex, upcomIndex] = await Promise.all([
       fetchSymbolsChunk(chunk1),
@@ -157,6 +166,7 @@ export async function GET() {
         change,
         isPositive,
         sector: t.sector,
+        exchange: t.exchange,
         ...(history.length > 0 ? { history } : {})
       };
     });

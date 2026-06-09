@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 // Types
 interface TickerItem {
@@ -10,8 +10,121 @@ interface TickerItem {
   change: string;
   isPositive: boolean;
   sector: string;
+  exchange?: string;
   history?: number[];
 }
+
+interface NewsItem {
+  source: string;
+  title: string;
+  description: string;
+  link: string;
+  time: string;
+  image: string;
+  body?: string[];
+}
+
+// Podcast Playlist Item Type
+interface PodcastTrack {
+  id: number;
+  title: string;
+  artist: string;
+  sourceName: string;
+  audioUrl: string;
+  coverUrl: string;
+  description: string;
+}
+
+const podcastPlaylist: PodcastTrack[] = [
+  {
+    id: 1,
+    title: "Xu hướng Vĩ mô & Dòng tiền đầu tư năm 2026",
+    artist: "Chuyên gia Phan Dũng Khánh",
+    sourceName: "CafeF Podcast",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    coverUrl: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=200&auto=format&fit=crop",
+    description: "Phân tích toàn diện về lãi suất, tỷ giá và xu thế dịch chuyển của dòng tiền thông minh trên thị trường tài chính Việt Nam trong giai đoạn vĩ mô mới."
+  },
+  {
+    id: 2,
+    title: "Đối thoại: Cơ hội đầu tư chứng khoán nửa cuối năm",
+    artist: "Quốc Khánh & Nguyễn Thế Minh",
+    sourceName: "The Quốc Khánh Show",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    coverUrl: "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?q=80&w=200&auto=format&fit=crop",
+    description: "Nhận định sâu sắc về triển vọng nâng hạng thị trường chứng khoán Việt Nam và chiến lược phân bổ danh mục cổ phiếu tiềm năng từ các quỹ lớn."
+  },
+  {
+    id: 3,
+    title: "Bản tin Tài chính Kinh doanh sáng nay",
+    artist: "BTV VTV24",
+    sourceName: "VTV24 News",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    coverUrl: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?q=80&w=200&auto=format&fit=crop",
+    description: "Cập nhật nhanh các thông tin nóng hổi đầu ngày về giá vàng SJC, chuyển động tỷ giá VND/USD và diễn biến giao dịch nổi bật trên các sàn chứng khoán."
+  },
+  {
+    id: 4,
+    title: "Tài chính cá nhân: Quản lý nợ & Đầu tư chủ động",
+    artist: "Host Vietcetera",
+    sourceName: "Vietcetera Podcast",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    coverUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=200&auto=format&fit=crop",
+    description: "Phương pháp thiết lập kế hoạch tài chính cá nhân bền vững dành cho nhà đầu tư trẻ trong môi trường tài chính biến động đầy thách thức."
+  }
+];
+
+// Curated Economic Calendar events with detailed read summaries
+const calendarEvents = [
+  {
+    date: "15/06",
+    event: "Báo cáo Tình hình Sản xuất Việt Nam (PMI) Tháng 5",
+    impact: "LỚN",
+    class: "positive",
+    source: "S&P Global / CafeF",
+    time: "15/06/2026",
+    description: "Chỉ số Nhà quản trị Mua hàng (PMI) ngành sản xuất Việt Nam kỳ vọng phục hồi mạnh mẽ nhờ sự gia tăng của các đơn đặt hàng xuất khẩu mới và nhu cầu tiêu dùng nội địa tăng cao.",
+    summary: `Chỉ số Nhà quản trị Mua hàng (PMI) ngành sản xuất Việt Nam dự kiến sẽ ghi nhận mức tăng trưởng đáng kể trong kỳ báo cáo này. Sự phục hồi được thúc đẩy bởi sự gia tăng mạnh mẽ của số lượng đơn đặt hàng mới từ cả thị trường trong nước lẫn xuất khẩu quốc tế.
+Các nhà sản xuất đã chủ động mở rộng quy mô công suất, tăng cường tuyển dụng lao động và tích lũy hàng tồn kho nguyên vật liệu để đáp ứng nhu cầu tăng cao đột biến của mùa tiêu dùng giữa năm.
+Theo các chuyên gia từ S&P Global, sự tăng trưởng này phản ánh niềm tin kinh doanh đang quay trở lại ở khối doanh nghiệp tư nhân. Tuy nhiên, áp lực chi phí đầu vào tăng do chi phí vận tải biển và nguyên vật liệu thô tăng vẫn là một thách thức không nhỏ mà các nhà quản trị cần đặc biệt lưu tâm để tối ưu hóa tỷ suất lợi nhuận vĩ mô.`
+  },
+  {
+    date: "24/06",
+    event: "Tổng cục Thống kê công bố số liệu GDP Quý 2",
+    impact: "RẤT LỚN",
+    class: "negative",
+    source: "Tổng cục Thống kê (GSO)",
+    time: "24/06/2026",
+    description: "Công bố số liệu chính thức về tăng trưởng GDP Quý 2/2026, đánh giá sức khỏe nền kinh tế và định hướng tăng trưởng vĩ mô.",
+    summary: `Tổng cục Thống kê Việt Nam sẽ chính thức công bố báo cáo kinh tế vĩ mô Quý 2/2026, trong đó tâm điểm là số liệu tăng trưởng GDP thực tế. Giới phân tích dự báo GDP Quý 2 tăng trưởng tích cực nhờ động lực mạnh mẽ từ khu vực công nghiệp chế biến chế tạo và sự phục hồi ấn tượng của ngành dịch vụ du lịch.
+Báo cáo cũng sẽ chi tiết hóa các dữ liệu về giải ngân vốn đầu tư công, tình hình thu hút FDI và tăng trưởng doanh thu bán lẻ hàng hóa dịch vụ tiêu dùng cả nước.
+Con số GDP này đóng vai trò tối quan trọng đối với việc điều hành chính sách tiền tệ của Ngân hàng Nhà nước trong nửa cuối năm, đặc biệt là định hướng lãi suất và kiểm soát trần tín dụng để vừa thúc đẩy phục hồi kinh tế vừa kiềm chế áp lực lạm phát cơ bản.`
+  },
+  {
+    date: "29/06",
+    event: "Báo cáo Chỉ số Giá tiêu dùng (CPI) Tháng 6",
+    impact: "RẤT LỚN",
+    class: "negative",
+    source: "Bộ Tài chính / GSO",
+    time: "29/06/2026",
+    description: "Báo cáo chính thức về chỉ số lạm phát CPI tháng 6 và lỹ kế 6 tháng đầu năm 2026, làm cơ sở điều tiết giá cả mặt hàng thiết yếu.",
+    summary: `Chỉ số Giá tiêu dùng (CPI) tháng 6/2026 dự báo sẽ chịu áp lực tăng nhẹ từ việc điều chỉnh giá các dịch vụ công ích và biến động của giá năng lượng toàn cầu. Tuy nhiên, nhờ sự chủ động bình ổn giá của Chính phủ và nguồn cung nông sản trong nước dào dạt, lạm phát chung vẫn sẽ được kiểm soát an toàn trong mục tiêu quốc hội giao phó.
+CPI lũy kế 6 tháng đầu năm dự kiến sẽ tăng khoảng 3.8% so với cùng kỳ, tạo dư địa an toàn cho các chính sách kích cầu kinh tế tiếp theo.
+Sự chú ý của các quỹ đầu tư tài chính hướng về số liệu lạm phát lõi nhằm đánh giá mức độ ổn định của đồng nội tệ VND và dự đoán hành động tiếp theo của các cơ quan hoạch định chính sách tài khóa vĩ mô.`
+  },
+  {
+    date: "05/07",
+    event: "Hạn chốt Báo cáo Tài chính Bán niên Soát xét 2026",
+    impact: "TRUNG BÌNH",
+    class: "neutral",
+    source: "Ủy ban Chứng khoán Nhà nước",
+    time: "05/07/2026",
+    description: "Thời hạn cuối cùng để các doanh nghiệp niêm yết công bố báo cáo tài chính bán niên đã được các công ty kiểm toán soát xét độc lập.",
+    summary: `Mùa báo cáo tài chính bán niên soát xét 2026 là thời điểm quan trọng để nhà đầu tư kiểm chứng tính xác thực của các con số lợi nhuận tự lập do doanh nghiệp công bố trước đó. Lịch sử thị trường cho thấy thường xuất hiện những biến động lệch pha đáng kể giữa báo cáo tự lập và báo cáo soát xét của kiểm toán viên ở nhóm doanh nghiệp quy mô vừa và nhỏ.
+Các công ty kiểm toán lớn (Big 4) sẽ đưa ra các kết luận soát xét liên quan đến khả năng hoạt động liên tục, trích lập dự phòng nợ xấu và ghi nhận doanh thu các dự án lớn.
+Việc công bố thông tin minh bạch, đúng thời hạn sẽ giúp duy trì niềm tin bền vững của cổ đông và là cơ sở để các định chế tài chính định giá lại doanh nghiệp trước thềm giai đoạn đầu tư cuối năm.`
+  }
+];
 
 // Helper to get Vietnamese date labels for trading days
 function getTradingDays(count: number) {
@@ -31,6 +144,7 @@ function getTradingDays(count: number) {
 
 // Helper to generate a realistic mock article body from RSS short items
 function generateMockArticleBody(item: NewsItem) {
+  if (item.body) return item.body;
   const desc = item.description;
   return [
     `${desc}. Đây là thông tin tài chính quan trọng được ghi nhận trong phiên giao dịch hôm nay, phản ánh diễn biến nhanh của các chuyển động tài chính trong nước cũng như sức khỏe dòng tiền thực tế ở phân khúc liên quan.`,
@@ -56,15 +170,6 @@ const indexAnalyses: Record<string, { expert: string; analysis: string; forecast
     forecast: "Chỉ số dự kiến sẽ tiếp tục đi ngang tích lũy biên độ rộng. Khuyến nghị nhà đầu tư tập trung vào câu chuyện nội tại doanh nghiệp thay vì đầu cơ lướt sóng."
   }
 };
-
-interface NewsItem {
-  source: string;
-  title: string;
-  description: string;
-  link: string;
-  time: string;
-  image: string;
-}
 
 interface BrokerOutlook {
   name: string;
@@ -125,13 +230,25 @@ export default function Home() {
   const [activeArticle, setActiveArticle] = useState<NewsItem | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
+  // Podcast State Hooks
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showPlaylist, setShowPlaylist] = useState(false);
+  
+  // Stock list highlight filter
+  const [stockFilterTab, setStockFilterTab] = useState<"all" | "gainers" | "losers">("all");
+  
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   // Format Date in traditional FT format (Vietnamese Locale)
   useEffect(() => {
     const options: Intl.DateTimeFormatOptions = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
     setDateText(new Date().toLocaleDateString("vi-VN", options));
   }, []);
 
-  // Fetch Vietnamese Stocks (22 items)
+  // Fetch Vietnamese Stocks
   const fetchStocks = async () => {
     setLoadingStocks(true);
     try {
@@ -187,6 +304,116 @@ export default function Home() {
     setWatchlist(updated);
     localStorage.setItem("morningbrief_watchlist", JSON.stringify(updated));
   };
+
+  // Podcast Helper functions
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleTrackEnded = () => {
+    handleNextTrack();
+  };
+
+  const handleNextTrack = () => {
+    setCurrentTrackIndex((prev) => (prev + 1) % podcastPlaylist.length);
+  };
+
+  const handlePrevTrack = () => {
+    setCurrentTrackIndex((prev) => (prev - 1 + podcastPlaylist.length) % podcastPlaylist.length);
+  };
+
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(err => console.log("Audio play error:", err));
+    }
+  };
+
+  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!audioRef.current) return;
+    const newTime = parseFloat(e.target.value);
+    audioRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const selectTrack = (index: number) => {
+    setCurrentTrackIndex(index);
+    setIsPlaying(true);
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return "0:00";
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  // Stock Market Limit Pricing Color Code Helper (Ceiling/Floor)
+  const getStockColorClass = (item: TickerItem) => {
+    if (item.sector === "Chỉ số") {
+      return item.isPositive ? "positive" : "negative";
+    }
+    try {
+      const pct = parseFloat(item.change.replace("%", ""));
+      if (isNaN(pct)) return item.isPositive ? "positive" : "negative";
+      
+      const ex = item.exchange || "HOSE";
+      if (ex === "HOSE") {
+        if (pct >= 6.85) return "ceiling";
+        if (pct <= -6.85) return "floor";
+      } else if (ex === "HNX") {
+        if (pct >= 9.85) return "ceiling";
+        if (pct <= -9.85) return "floor";
+      } else if (ex === "UPCoM") {
+        if (pct >= 14.85) return "ceiling";
+        if (pct <= -14.85) return "floor";
+      }
+    } catch (e) {
+      console.error("Error parsing stock change percentage:", e);
+    }
+    return item.isPositive ? "positive" : "negative";
+  };
+
+  // Click handler for financial calendar event reading
+  const handleCalendarClick = (event: typeof calendarEvents[number]) => {
+    const mockArticle: NewsItem = {
+      source: event.source,
+      title: event.event,
+      description: event.description,
+      link: "#",
+      time: event.time,
+      image: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=600&auto=format&fit=crop",
+      body: [
+        event.summary,
+        `Sự kiện kinh tế vĩ mô này được đánh giá có mức độ tác động ${event.impact} tới thị trường tài chính Việt Nam. Nhà đầu tư được khuyến nghị theo sát các báo cáo phân tích chi tiết hơn từ các tổ chức tài chính uy tín nhằm chủ động quản trị rủi ro danh mục kinh doanh của mình.`,
+        `Nguồn tin chi tiết và chính thống được cung cấp trực tiếp bởi các cơ quan quản lý nhà nước có thẩm quyền hoặc từ các tổ chức nghiên cứu kinh tế hàng đầu.`
+      ]
+    };
+    setActiveArticle(mockArticle);
+  };
+
+  // Synchronize track change and playing state
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.load();
+      if (isPlaying) {
+        audioRef.current.play().catch(err => console.log("Audio auto-play failed:", err));
+      }
+    }
+  }, [currentTrackIndex]);
 
   const toggleSpeech = () => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -303,20 +530,17 @@ export default function Home() {
       };
     }
 
-    // 1. Calculate stock market sentiment index across 21 equities (excluding VN-Index)
-    const equities = tickerList.filter(t => t.symbol !== "VN-Index");
+    // 1. Calculate stock market sentiment index across equities (excluding indices)
+    const equities = tickerList.filter(t => t.sector !== "Chỉ số");
     const advancing = equities.filter(t => t.isPositive).length;
     const declining = equities.length - advancing;
     const greenRatio = equities.length > 0 ? (advancing / equities.length) * 100 : 50;
 
     let sentiment = "GIẰNG CO (TRUNG LẬP)";
-    let sentimentClass = "neutral-stance";
     if (greenRatio >= 60) {
       sentiment = `TÍCH CỰC (TĂNG) — ${advancing}/${equities.length} mã tăng điểm`;
-      sentimentClass = "positive-stance";
     } else if (greenRatio <= 40) {
       sentiment = `THẬN TRỌNG (GIẢM) — ${declining}/${equities.length} mã giảm điểm`;
-      sentimentClass = "negative-stance";
     } else {
       sentiment = `GIẰNG CO (TRUNG LẬP) — ${advancing} mã tăng / ${declining} mã giảm`;
     }
@@ -344,17 +568,17 @@ export default function Home() {
     keywordScores.sort((a, b) => b.score - a.score);
     const topTheme = keywordScores[0].score > 0 ? keywordScores[0].term : "Thông tin Tổng hợp";
 
-    // 3. Generate cohesive Executive Summary
+    // 3. Generate Executive Summary
     const vnIndex = tickerList.find(t => t.symbol === "VN-Index");
     const indexLine = vnIndex 
       ? `Chỉ số VN-Index hôm nay giao dịch quanh mức ${vnIndex.price} (thay đổi ${vnIndex.change}).`
       : "";
     
     const marketDirectionLine = greenRatio >= 60 
-      ? `Độ rộng thị trường nghiêng hẳn về phía tăng điểm với ${advancing} mã trong rổ vốn hóa lớn giữ được sắc xanh, tạo lực đỡ vững chắc cho chỉ số chung.`
+      ? `Độ rộng thị trường nghiêng hẳn về phía tăng điểm với ${advancing} mã tăng giá, tạo lực đỡ vững chắc cho chỉ số chung.`
       : greenRatio <= 40
       ? `Áp lực bán chiếm ưu thế khiến ${declining} mã giảm điểm, phản ánh sự thận trọng đáng kể từ phía dòng tiền đầu tư.`
-      : `Bảng điện tử ghi nhận sự cân bằng tương đối khi có ${advancing} mã tăng và ${declining} mã giảm, dòng tiền luân chuyển cục bộ phân hóa sâu sắc giữa các phân khúc ngành.`;
+      : `Bảng điện tử ghi nhận sự cân bằng tương đối khi có ${advancing} mã tăng và ${declining} mã giảm, dòng tiền luân chuyển cục bộ phân hóa sâu sắc.`;
 
     const newsTrendLine = keywordScores[0].score > 0 
       ? `Tin tức vĩ mô hàng đầu phản ánh tiêu điểm về lĩnh vực ${keywordScores[0].term.toLowerCase()}.`
@@ -364,7 +588,7 @@ export default function Home() {
 
     return {
       sentiment,
-      sentimentClass,
+      sentimentClass: greenRatio >= 60 ? "positive-stance" : greenRatio <= 40 ? "negative-stance" : "neutral-stance",
       theme: topTheme,
       summary,
       advancing,
@@ -388,8 +612,8 @@ export default function Home() {
           </div>
           <div className="user-profile" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <button
-              onClick={toggleSpeech}
-              className={`see-more-btn ${isSpeaking ? "active-audio" : ""}`}
+              onClick={togglePlayPause}
+              className={`see-more-btn ${isPlaying ? "active-audio" : ""}`}
               style={{
                 margin: 0,
                 padding: "6px 12px",
@@ -400,9 +624,9 @@ export default function Home() {
                 alignItems: "center",
                 gap: "6px"
               }}
-              title={isSpeaking ? "Dừng đọc bản tin" : "Nghe đọc bản tin sáng"}
+              title={isPlaying ? "Dừng phát Podcast" : "Nghe Podcast Bản tin"}
             >
-              <span>{isSpeaking ? "■ Dừng nghe" : "🔊 Nghe bản tin"}</span>
+              <span>{isPlaying ? "■ Dừng nghe" : "🔊 Nghe Podcast"}</span>
             </button>
             <div className="avatar" onClick={fetchStocks} title="Tải lại dữ liệu">↻</div>
           </div>
@@ -419,7 +643,7 @@ export default function Home() {
                 <div key={idx} className="ticker-card">
                   <span className="ticker-symbol">{item.symbol}</span>
                   <span className="ticker-price">{item.price}</span>
-                  <span className={`ticker-change ${item.isPositive ? "positive" : "negative"}`}>
+                  <span className={`ticker-change ${getStockColorClass(item)}`}>
                     {item.change}
                   </span>
                 </div>
@@ -503,6 +727,106 @@ export default function Home() {
           {/* Right Column: Market Intelligence & Institutional Consensus */}
           <aside className="sidebar-section">
             
+            {/* Audio tag for podcast streaming */}
+            <audio
+              ref={audioRef}
+              src={podcastPlaylist[currentTrackIndex].audioUrl}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={handleTrackEnded}
+            />
+
+            {/* Spotify-style Podcast Player */}
+            <div className="widget-panel podcast-player-card">
+              <div className="widget-header" style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h3 style={{ margin: 0, fontSize: "1.05rem" }}>Bản Tin Âm Thanh</h3>
+                <span className="podcast-source-tag">{podcastPlaylist[currentTrackIndex].sourceName}</span>
+              </div>
+              
+              <div className="podcast-player-body">
+                <div className="podcast-cover-section">
+                  <div className={`podcast-cover-wrap ${isPlaying ? "spinning" : ""}`}>
+                    <img 
+                      src={podcastPlaylist[currentTrackIndex].coverUrl} 
+                      alt={podcastPlaylist[currentTrackIndex].title} 
+                      className="podcast-cover-image"
+                    />
+                    <div className="podcast-cover-center"></div>
+                  </div>
+                  <div className="podcast-track-details">
+                    <div className="podcast-track-title-container">
+                      <div className={`podcast-track-title ${isPlaying ? "marquee-text" : ""}`}>
+                        {podcastPlaylist[currentTrackIndex].title}
+                      </div>
+                    </div>
+                    <div className="podcast-track-artist">
+                      {podcastPlaylist[currentTrackIndex].artist}
+                    </div>
+                  </div>
+                </div>
+
+                <p className="podcast-track-desc">
+                  {podcastPlaylist[currentTrackIndex].description}
+                </p>
+
+                {/* Seekbar Slider */}
+                <div className="podcast-timeline-section">
+                  <span className="time-label">{formatTime(currentTime)}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max={duration || 100}
+                    value={currentTime}
+                    onChange={handleSeekChange}
+                    className="podcast-timeline-slider"
+                  />
+                  <span className="time-label">{formatTime(duration)}</span>
+                </div>
+
+                {/* Player Controls */}
+                <div className="podcast-controls-section">
+                  <button onClick={handlePrevTrack} className="podcast-control-btn" title="Tập trước">
+                    ⏮
+                  </button>
+                  <button onClick={togglePlayPause} className="podcast-control-btn play-btn" title={isPlaying ? "Tạm dừng" : "Phát"}>
+                    {isPlaying ? "⏸" : "▶"}
+                  </button>
+                  <button onClick={handleNextTrack} className="podcast-control-btn" title="Tập tiếp theo">
+                    ⏭
+                  </button>
+                  <button 
+                    onClick={() => setShowPlaylist(!showPlaylist)} 
+                    className={`podcast-control-btn list-btn ${showPlaylist ? "active" : ""}`}
+                    title="Danh sách tập"
+                  >
+                    ☰
+                  </button>
+                </div>
+
+                {/* Playlist Drawer (Slide Down) */}
+                {showPlaylist && (
+                  <div className="podcast-playlist-drawer">
+                    <h4 className="playlist-drawer-title">Danh sách phát</h4>
+                    <div className="playlist-drawer-items">
+                      {podcastPlaylist.map((track, index) => (
+                        <div 
+                          key={track.id} 
+                          onClick={() => selectTrack(index)} 
+                          className={`playlist-item ${currentTrackIndex === index ? "active" : ""}`}
+                        >
+                          <div className="playlist-item-index">{index + 1}</div>
+                          <div className="playlist-item-details">
+                            <div className="playlist-item-title">{track.title}</div>
+                            <div className="playlist-item-meta">{track.sourceName} • {track.artist}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Dynamic AI Analysis Panel (VN Broad Market Perspective) */}
             <div className="widget-panel" style={{ borderLeft: "4px solid var(--accent-red)", background: "var(--bg-paper-darker)" }}>
               <div className="widget-header" style={{ marginBottom: "0.75rem" }}>
@@ -513,7 +837,7 @@ export default function Home() {
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.9rem" }}>
                 <div>
                   <strong style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                    Độ rộng thị trường VN-30:
+                    Độ rộng thị trường chung:
                   </strong>
                   <div style={{ display: "flex", gap: "10px", marginTop: "4px", fontSize: "0.85rem", fontWeight: "700" }}>
                     <span className="ticker-change positive" style={{ padding: "2px 8px", borderRadius: "4px" }}>
@@ -604,7 +928,7 @@ export default function Home() {
                   const paddingTop = 12;
                   const paddingBottom = 18;
                   const paddingLeft = 12;
-                  const paddingRight = 68; // Leave space on the right for price labels
+                  const paddingRight = 68;
 
                   const points = history.map((val, idx) => {
                     const x = paddingLeft + (idx / (history.length - 1)) * (width - paddingLeft - paddingRight);
@@ -612,7 +936,6 @@ export default function Home() {
                     return { x, y, val, idx };
                   });
 
-                  // Cubic Bezier curve generator for smooth drawing
                   const getBezierPath = (pts: typeof points) => {
                     if (pts.length === 0) return "";
                     let path = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
@@ -633,12 +956,10 @@ export default function Home() {
 
                   const dates = getTradingDays(history.length);
                   
-                  // Detail overlay when hovered or current details
                   const displayPrice = hoveredPoint ? hoveredPoint.value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : chartTicker.price;
                   const displayDate = hoveredPoint ? `Phiên ${dates[hoveredPoint.index]}` : `Giá hiện tại`;
                   const changeColorClass = isPositive ? "positive" : "negative";
 
-                  // Extra Stats for premium feel and functionality
                   const firstPrice = history[0];
                   const lastPrice = history[history.length - 1];
                   const netDiff = lastPrice - firstPrice;
@@ -647,7 +968,6 @@ export default function Home() {
                   const trendColorClass = netPct >= 0 ? "positive" : "negative";
                   const rangeValue = max - min;
 
-                  // Handle mouse movement for smooth continuous snapping
                   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
                     const svg = e.currentTarget;
                     const rect = svg.getBoundingClientRect();
@@ -742,7 +1062,7 @@ export default function Home() {
                           <line x1={0} y1={height - paddingBottom} x2={width} y2={height - paddingBottom} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.5" />
                           <line x1={0} y1={(paddingTop + height - paddingBottom) / 2} x2={width} y2={(paddingTop + height - paddingBottom) / 2} stroke="var(--border-classic)" strokeDasharray="3,3" strokeWidth="0.4" />
 
-                          {/* Price Axis Text Labels (placed on the right margin axis) */}
+                          {/* Price Axis Text Labels */}
                           <text x={width - 2} y={paddingTop + 3} textAnchor="end" fontSize="8.5" fill="var(--text-muted)" fontWeight="600">
                             {max.toLocaleString("en-US", { maximumFractionDigits: 1 })}
                           </text>
@@ -753,7 +1073,7 @@ export default function Home() {
                             {min.toLocaleString("en-US", { maximumFractionDigits: 1 })}
                           </text>
 
-                          {/* Date Range Labels at bottom */}
+                          {/* Date Range Labels */}
                           <text x={paddingLeft} y={height - 4} textAnchor="start" fontSize="8.5" fill="var(--text-muted)" fontWeight="500">
                             {dates[0]}
                           </text>
@@ -861,7 +1181,7 @@ export default function Home() {
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <h4 style={{ fontSize: "0.88rem", fontWeight: "700" }}>{item.price}</h4>
-                        <span className={`ticker-change ${item.isPositive ? "positive" : "negative"}`} style={{ fontSize: "0.78rem" }}>
+                        <span className={`ticker-change ${getStockColorClass(item)}`} style={{ fontSize: "0.78rem" }}>
                           {item.change}
                         </span>
                       </div>
@@ -904,7 +1224,7 @@ export default function Home() {
               <div className="crypto-list" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {watchlist.length === 0 ? (
                   <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "10px" }}>
-                    Nhấp chọn biểu tượng ngôi sao bên cạnh các mã ở "Điểm nhấn VN-30" bên dưới để ghim vào đây.
+                    Nhấp chọn biểu tượng ngôi sao bên cạnh các mã ở "Điểm nhấn Thị trường" bên dưới để ghim vào đây.
                   </div>
                 ) : (
                   tickerList.filter(item => watchlist.includes(item.symbol.split(" ")[0])).map((item, idx) => (
@@ -926,7 +1246,7 @@ export default function Home() {
                       </div>
                       <div className="crypto-price-info">
                         <h4 style={{ fontSize: "0.88rem" }}>{item.price}</h4>
-                        <span className={`ticker-change ${item.isPositive ? "positive" : "negative"}`} style={{ fontSize: "0.78rem" }}>
+                        <span className={`ticker-change ${getStockColorClass(item)}`} style={{ fontSize: "0.78rem" }}>
                           {item.change}
                         </span>
                       </div>
@@ -936,11 +1256,37 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Top VN Stocks List */}
+            {/* Top VN Stocks List (Điểm nhấn Thị trường) */}
             <div className="widget-panel">
-              <div className="widget-header">
-                <h3>Điểm nhấn VN-30</h3>
+              <div className="widget-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingBottom: "0.75rem" }}>
+                <h3 style={{ margin: 0, fontSize: "1.05rem" }}>Điểm nhấn Thị trường</h3>
+                
+                {/* Sub-tabs for Market Highlights */}
+                <div className="tabs" style={{ padding: "2px", borderRadius: "20px" }}>
+                  <button
+                    className={`tab ${stockFilterTab === "all" ? "active" : ""}`}
+                    onClick={() => setStockFilterTab("all")}
+                    style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    className={`tab ${stockFilterTab === "gainers" ? "active" : ""}`}
+                    onClick={() => setStockFilterTab("gainers")}
+                    style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
+                  >
+                    Tăng mạnh
+                  </button>
+                  <button
+                    className={`tab ${stockFilterTab === "losers" ? "active" : ""}`}
+                    onClick={() => setStockFilterTab("losers")}
+                    style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
+                  >
+                    Giảm mạnh
+                  </button>
+                </div>
               </div>
+              
               <div className="crypto-list" style={{ maxHeight: "350px", overflowY: "auto", paddingRight: "4px" }}>
                 {loadingStocks ? (
                   <>
@@ -948,35 +1294,67 @@ export default function Home() {
                     <div className="skeleton-item"></div>
                   </>
                 ) : (
-                  tickerList.filter(item => item.sector !== "Chỉ số").map((item, idx) => {
-                    const code = item.symbol.split(" ")[0];
-                    const isStarred = watchlist.includes(code);
-                    return (
-                      <div key={idx} className="crypto-item">
-                        <div className="crypto-info">
-                          <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleWatchlist(code);
-                              }}
-                              style={{ color: isStarred ? "var(--accent-red)" : "var(--text-muted)", cursor: "pointer", fontSize: "0.95rem", transition: "color 0.2s" }}
-                            >
-                              {isStarred ? "★" : "☆"}
+                  (() => {
+                    const stocksOnly = tickerList.filter(item => item.sector !== "Chỉ số");
+                    const parseChangePercent = (changeStr: string) => {
+                      try {
+                        return parseFloat(changeStr.replace("%", ""));
+                      } catch {
+                        return 0;
+                      }
+                    };
+                    
+                    let filteredStocks = [...stocksOnly];
+                    if (stockFilterTab === "gainers") {
+                      filteredStocks = stocksOnly
+                        .filter(item => parseChangePercent(item.change) > 0)
+                        .sort((a, b) => parseChangePercent(b.change) - parseChangePercent(a.change));
+                    } else if (stockFilterTab === "losers") {
+                      filteredStocks = stocksOnly
+                        .filter(item => parseChangePercent(item.change) < 0)
+                        .sort((a, b) => parseChangePercent(a.change) - parseChangePercent(b.change));
+                    }
+                    
+                    if (filteredStocks.length === 0) {
+                      return (
+                        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "20px" }}>
+                          Không có mã chứng khoán nào thỏa mãn bộ lọc.
+                        </div>
+                      );
+                    }
+                    
+                    return filteredStocks.map((item, idx) => {
+                      const code = item.symbol.split(" ")[0];
+                      const isStarred = watchlist.includes(code);
+                      const exTag = item.exchange ? ` (${item.exchange})` : "";
+                      return (
+                        <div key={idx} className="crypto-item">
+                          <div className="crypto-info">
+                            <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleWatchlist(code);
+                                }}
+                                style={{ color: isStarred ? "var(--accent-red)" : "var(--text-muted)", cursor: "pointer", fontSize: "0.95rem", transition: "color 0.2s" }}
+                              >
+                                {isStarred ? "★" : "☆"}
+                              </span>
+                              {code}
+                              <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: "normal" }}>{exTag}</span>
+                            </h4>
+                            <p style={{ fontSize: "0.7rem" }}>{item.sector}</p>
+                          </div>
+                          <div className="crypto-price-info">
+                            <h4 style={{ fontSize: "0.88rem" }}>{item.price}</h4>
+                            <span className={`ticker-change ${getStockColorClass(item)}`} style={{ fontSize: "0.78rem" }}>
+                              {item.change}
                             </span>
-                            {code}
-                          </h4>
-                          <p style={{ fontSize: "0.7rem" }}>{item.sector}</p>
+                          </div>
                         </div>
-                        <div className="crypto-price-info">
-                          <h4 style={{ fontSize: "0.88rem" }}>{item.price}</h4>
-                          <span className={`ticker-change ${item.isPositive ? "positive" : "negative"}`} style={{ fontSize: "0.78rem" }}>
-                            {item.change}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
+                      );
+                    });
+                  })()
                 )}
               </div>
             </div>
@@ -1034,27 +1412,36 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Economic Calendar Panel */}
+            {/* Economic Calendar Panel (Interactive click-to-read) */}
             <div className="widget-panel">
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
                 <h3>Sự Kiện Tài Chính Sắp Tới</h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
-                {[
-                  { date: "15/06", event: "Báo cáo Tình hình Sản xuất Việt Nam (PMI) Tháng 5", impact: "LỚN", class: "positive" },
-                  { date: "24/06", event: "Tổng cục Thống kê công bố số liệu GDP Quý 2", impact: "RẤT LỚN", class: "negative" },
-                  { date: "29/06", event: "Báo cáo Chỉ số Giá tiêu dùng (CPI) Tháng 6", impact: "RẤT LỚN", class: "negative" },
-                  { date: "05/07", event: "Hạn chốt Báo cáo Tài chính Bán niên Soát xét 2026", impact: "TRUNG BÌNH", class: "neutral" }
-                ].map((item, idx) => (
-                  <div key={idx} style={{ display: "flex", gap: "10px", paddingBottom: "8px", borderBottom: idx < 3 ? "1px dashed var(--border-classic)" : "none" }}>
-                    <div style={{ background: "var(--bg-paper-darker)", padding: "4px 8px", borderRadius: "4px", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center", height: "fit-content", minWidth: "42px" }}>
+                {calendarEvents.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => handleCalendarClick(item)}
+                    className="calendar-item-card"
+                    style={{ 
+                      display: "flex", 
+                      gap: "10px", 
+                      paddingBottom: "8px", 
+                      borderBottom: idx < calendarEvents.length - 1 ? "1px dashed var(--border-classic)" : "none",
+                      cursor: "pointer" 
+                    }}
+                  >
+                    <div className="calendar-date-badge">
                       {item.date}
                     </div>
                     <div>
-                      <strong style={{ display: "block", color: "var(--text-primary)", fontSize: "0.8rem", lineHeight: "1.3" }}>{item.event}</strong>
-                      <span className={`ticker-change ${item.class}`} style={{ fontSize: "0.65rem", padding: "1px 4px", borderRadius: "3px", fontWeight: "700", marginTop: "2px", display: "inline-block" }}>
-                        Mức độ: {item.impact}
-                      </span>
+                      <strong className="calendar-event-title" style={{ display: "block", color: "var(--text-primary)", fontSize: "0.8rem", lineHeight: "1.3", transition: "color 0.2s" }}>{item.event}</strong>
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "2px" }}>
+                        <span className={`ticker-change ${item.class}`} style={{ fontSize: "0.65rem", padding: "1px 4px", borderRadius: "3px", fontWeight: "700" }}>
+                          Mức độ: {item.impact}
+                        </span>
+                        <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>• Nguồn: {item.source}</span>
+                      </div>
                     </div>
                   </div>
                 ))}
