@@ -407,6 +407,8 @@ export default function Home() {
   const [macroData, setMacroData] = useState<any>(null);
   const [loadingMacro, setLoadingMacro] = useState(true);
   const [activeArticle, setActiveArticle] = useState<NewsItem | null>(null);
+  const [scrapedParagraphs, setScrapedParagraphs] = useState<string[]>([]);
+  const [loadingContent, setLoadingContent] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Podcast State Hooks
@@ -440,6 +442,55 @@ export default function Home() {
     const locale = lang === "vi" ? "vi-VN" : "en-US";
     setDateText(new Date().toLocaleDateString(locale, options));
   }, [lang]);
+
+  // Load full article content dynamically when activeArticle changes
+  useEffect(() => {
+    if (!activeArticle) {
+      setScrapedParagraphs([]);
+      setLoadingContent(false);
+      return;
+    }
+
+    // Case 1: Article has pre-defined body (e.g. mock articles or calendar events)
+    if (activeArticle.body && activeArticle.body.length > 0) {
+      setScrapedParagraphs(activeArticle.body);
+      setLoadingContent(false);
+      return;
+    }
+
+    // Case 2: Article has a real external link, fetch content via scraper API
+    if (activeArticle.link && !activeArticle.link.startsWith("#")) {
+      setLoadingContent(true);
+      setScrapedParagraphs([]);
+
+      const fetchContent = async () => {
+        try {
+          const res = await fetch(`/api/news/content?url=${encodeURIComponent(activeArticle.link)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.paragraphs && Array.isArray(data.paragraphs)) {
+              setScrapedParagraphs(data.paragraphs);
+            } else {
+              setScrapedParagraphs([]);
+            }
+          } else {
+            console.error("Failed to fetch article content:", res.status);
+            setScrapedParagraphs([]);
+          }
+        } catch (err) {
+          console.error("Error fetching article content:", err);
+          setScrapedParagraphs([]);
+        } finally {
+          setLoadingContent(false);
+        }
+      };
+
+      fetchContent();
+    } else {
+      setScrapedParagraphs([]);
+      setLoadingContent(false);
+    }
+  }, [activeArticle]);
 
   // Fetch Vietnamese Stocks
   const fetchStocks = async () => {
@@ -1872,11 +1923,44 @@ export default function Home() {
               </div>
               
               <div className="reader-modal-text">
-                {generateMockArticleBody(activeArticle).map((para, i) => (
-                  <p key={i} className={i === 0 ? "reader-body-lead" : "reader-body-para"}>
-                    {para}
+                {/* 1. First/Lead paragraph is always the description from RSS (available immediately) */}
+                <p className="reader-body-lead">
+                  {activeArticle.description}
+                </p>
+
+                {/* 2. Show a skeleton loading animation while loading content */}
+                {loadingContent && (
+                  <div className="skeleton-container" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "15px" }}>
+                    <div className="skeleton-item" style={{ height: "14px", width: "100%", borderRadius: "4px" }}></div>
+                    <div className="skeleton-item" style={{ height: "14px", width: "95%", borderRadius: "4px" }}></div>
+                    <div className="skeleton-item" style={{ height: "14px", width: "85%", borderRadius: "4px" }}></div>
+                    <div className="skeleton-item" style={{ height: "14px", width: "90%", borderRadius: "4px", marginTop: "10px" }}></div>
+                    <div className="skeleton-item" style={{ height: "14px", width: "98%", borderRadius: "4px" }}></div>
+                    <div className="skeleton-item" style={{ height: "14px", width: "70%", borderRadius: "4px" }}></div>
+                  </div>
+                )}
+
+                {/* 3. Render the real scraped paragraphs */}
+                {!loadingContent && scrapedParagraphs.length > 0 && (
+                  scrapedParagraphs.map((para, i) => {
+                    // Skip if the paragraph is identical/similar to description to avoid duplicates
+                    if (para.trim() === activeArticle.description.trim()) {
+                      return null;
+                    }
+                    return (
+                      <p key={i} className="reader-body-para" style={{ marginTop: "12px" }}>
+                        {para}
+                      </p>
+                    );
+                  })
+                )}
+
+                {/* 4. Show a fallback error message if no paragraphs returned */}
+                {!loadingContent && scrapedParagraphs.length === 0 && !activeArticle.body && activeArticle.link && !activeArticle.link.startsWith("#") && (
+                  <p className="reader-body-para" style={{ color: "var(--ft-grey)", fontStyle: "italic", marginTop: "12px" }}>
+                    {lang === "vi" ? "Không thể tải thêm nội dung chi tiết cho bài viết này." : "Unable to load more detailed content for this article."}
                   </p>
-                ))}
+                )}
               </div>
               
               <div style={{ marginTop: "30px", display: "flex", justifyContent: "center" }}>
