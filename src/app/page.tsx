@@ -29,6 +29,24 @@ function getTradingDays(count: number) {
   return dates;
 }
 
+const indexAnalyses: Record<string, { expert: string; analysis: string; forecast: string }> = {
+  "VN-Index": {
+    expert: "Phan Dũng Khánh (Giám đốc Tư vấn Đầu tư Maybank)",
+    analysis: "VN-Index đại diện nhóm vốn hóa lớn đang giữ nhịp tích lũy ổn định trước sức ép từ khối ngoại. Dòng vốn nội hấp thụ tốt cung giá thấp ở nhóm ngân hàng vĩ mô giúp giữ vững xu thế trung hạn.",
+    forecast: "Chỉ số có xu hướng tiếp tục tích lũy trong biên độ 1.780 - 1.820 điểm để thiết lập nền giá vững chắc trước khi mở rộng nhịp tăng trưởng mới."
+  },
+  "HNX-Index": {
+    expert: "Nguyễn Thế Minh (Giám đốc Phân tích CTCK Yuanta)",
+    analysis: "Dòng tiền đầu cơ trên sàn HNX duy trì sự linh hoạt cao ở các nhóm Midcap như chứng khoán, xây dựng. Lực cầu chủ động gia tăng chứng tỏ mức định giá hiện tại vẫn khá hấp dẫn dòng tiền.",
+    forecast: "Kỳ vọng chỉ số HNX-Index sẽ sớm hoàn tất nhịp kiểm định kỹ thuật quanh hỗ trợ cứng để bắt đầu nhịp phục hồi theo dòng tiền xoay vòng nhóm ngành."
+  },
+  "UPCoM-Index": {
+    expert: "Trần Hoàng Sơn (Giám đốc Chiến lược Thị trường VPBankS)",
+    analysis: "Thị trường UPCoM với biên độ lớn (+/- 15%) đang trải qua giai đoạn phân hóa sâu sắc. Dòng tiền lớn tập trung rõ rệt vào các cổ phiếu năng lượng, dầu khí có lợi nhuận tăng trưởng tốt.",
+    forecast: "Chỉ số dự kiến sẽ tiếp tục đi ngang tích lũy biên độ rộng. Khuyến nghị nhà đầu tư tập trung vào câu chuyện nội tại doanh nghiệp thay vì đầu cơ lướt sóng."
+  }
+};
+
 interface NewsItem {
   source: string;
   title: string;
@@ -681,6 +699,26 @@ export default function Home() {
                           <span style={{ fontWeight: "700", color: "var(--text-secondary)", fontSize: "0.85rem", marginTop: "2px" }}>
                             {rangeValue.toFixed(1)} điểm
                           </span>
+                        </div>
+                      </div>
+
+                      {/* Expert Analysis & Forecast */}
+                      <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed var(--border-classic)", fontSize: "0.8rem", display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <div>
+                          <span style={{ color: "var(--accent-red)", fontSize: "0.68rem", textTransform: "uppercase", fontWeight: "700", display: "block", letterSpacing: "0.5px", marginBottom: "3px" }}>
+                            Nhận định chuyên gia • {indexAnalyses[selectedChartIndex]?.expert}
+                          </span>
+                          <p style={{ lineHeight: "1.45", color: "var(--text-secondary)", fontStyle: "italic", fontFamily: "var(--font-serif)", fontSize: "0.82rem" }}>
+                            "{indexAnalyses[selectedChartIndex]?.analysis}"
+                          </p>
+                        </div>
+                        <div>
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.68rem", textTransform: "uppercase", fontWeight: "700", display: "block", letterSpacing: "0.5px", marginBottom: "2px" }}>
+                            Dự đoán tương lai
+                          </span>
+                          <p style={{ lineHeight: "1.45", color: "var(--text-primary)", fontSize: "0.82rem", fontWeight: "500" }}>
+                            {indexAnalyses[selectedChartIndex]?.forecast}
+                          </p>
                         </div>
                       </div>
                     </div>
