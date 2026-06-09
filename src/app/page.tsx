@@ -70,6 +70,7 @@ export default function Home() {
   const [tickerList, setTickerList] = useState<TickerItem[]>([]);
   const [brokerOutlooks, setBrokerOutlooks] = useState<BrokerOutlook[]>(initialBrokerOutlooks);
   const [errorMsg, setErrorMsg] = useState("");
+  const [visibleNewsCount, setVisibleNewsCount] = useState(8);
 
   // Format Date in traditional FT format
   useEffect(() => {
@@ -113,6 +114,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    setVisibleNewsCount(8);
     fetchNews(activeTab);
   }, [activeTab]);
 
@@ -318,21 +320,31 @@ export default function Home() {
                   <div className="skeleton-card"></div>
                 </>
               ) : (
-                newsList.map((item, idx) => (
-                  <a key={idx} href={item.link} target="_blank" rel="noopener noreferrer" className="news-card">
-                    <div className="news-content">
-                      <span className="news-source">{item.source}</span>
-                      <h3 className="news-title">{item.title}</h3>
-                      <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
-                        {item.description}
-                      </p>
-                      <span className="news-meta">{item.time}</span>
-                    </div>
-                    <div className="news-image-wrap">
-                      <img src={item.image} alt={item.title} className="news-image" />
-                    </div>
-                  </a>
-                ))
+                <>
+                  {newsList.slice(0, visibleNewsCount).map((item, idx) => (
+                    <a key={idx} href={item.link} target="_blank" rel="noopener noreferrer" className="news-card">
+                      <div className="news-content">
+                        <span className="news-source">{item.source}</span>
+                        <h3 className="news-title">{item.title}</h3>
+                        <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                          {item.description}
+                        </p>
+                        <span className="news-meta">{item.time}</span>
+                      </div>
+                      <div className="news-image-wrap">
+                        <img src={item.image} alt={item.title} className="news-image" />
+                      </div>
+                    </a>
+                  ))}
+                  {newsList.length > visibleNewsCount && (
+                    <button 
+                      className="see-more-btn"
+                      onClick={() => setVisibleNewsCount(prev => prev + 6)}
+                    >
+                      Xem thêm tin cũ hơn
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </section>

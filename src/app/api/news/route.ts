@@ -116,8 +116,8 @@ export async function GET(request: NextRequest) {
     const isCafeF = feedUrl.includes("cafef.vn");
     const parsedItems = parseRssXml(xmlText, isCafeF);
 
-    // Limit to top 8 items to keep payload lightweight
-    const results = parsedItems.slice(0, 8);
+    // Limit to top 40 items to allow loading more articles
+    const results = parsedItems.slice(0, 40);
 
     // Update Cache
     cache[category] = {
