@@ -135,7 +135,7 @@ export async function GET() {
 
           price = isIndex
             ? currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-            : currentPrice.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " đ";
+            : (currentPrice / 1000).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
           change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
           isPositive = pctChange >= 0;
