@@ -316,31 +316,49 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 3. Extract and clean paragraph tags
+    // 3. Extract paragraphs and images in chronological order
     const paragraphs: string[] = [];
-    const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
-    let pMatch;
+    const fullContent: Array<{ type: "paragraph" | "image"; text?: string; url?: string }> = [];
     
-    while ((pMatch = pRegex.exec(bodyHtml)) !== null) {
-      const pText = pMatch[1]
-        .replace(/<[^>]*>/g, "") // Strip HTML tags
-        .replace(/&nbsp;/g, " ")
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .trim();
-        
-      if (isCleanParagraph(pText)) {
-        paragraphs.push(pText);
+    const elementRegex = /<p[^>]*>([\s\S]*?)<\/p>|<img\b[^>]*>/gi;
+    let match;
+    
+    while ((match = elementRegex.exec(bodyHtml)) !== null) {
+      const matchedTag = match[0];
+      
+      if (matchedTag.toLowerCase().startsWith("<p")) {
+        const pText = match[1]
+          .replace(/<[^>]*>/g, "") // Strip HTML tags
+          .replace(/&nbsp;/g, " ")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .trim();
+          
+        if (isCleanParagraph(pText)) {
+          paragraphs.push(pText);
+          fullContent.push({ type: "paragraph", text: pText });
+        }
+      } else if (matchedTag.toLowerCase().startsWith("<img")) {
+        // Extract image URL from lazy attributes or src
+        const srcMatch = matchedTag.match(/(?:data-src|data-original|original-src|src)=["']([^"']+)["']/i);
+        if (srcMatch) {
+          const url = srcMatch[1];
+          // Filter out tiny icons, transparent pixels or spacers
+          if (url && !url.includes("base64") && !url.includes("spacer.gif") && !url.includes("icon") && !url.endsWith(".gif")) {
+            fullContent.push({ type: "image", url });
+          }
+        }
       }
     }
 
     if (paragraphs.length === 0) {
       return NextResponse.json({ 
         source: "fallback",
-        paragraphs: ["Không thể tự động trích xuất nội dung bài viết. Bạn vui lòng nhấp vào liên kết nguồn để xem trực tiếp."] 
+        paragraphs: ["Không thể tự động trích xuất nội dung bài viết. Bạn vui lòng nhấp vào liên kết nguồn để xem trực tiếp."],
+        fullContent: []
       });
     }
 
@@ -352,7 +370,8 @@ export async function GET(request: NextRequest) {
       if (aiSummary) {
         return NextResponse.json({
           source: "gemini-ai",
-          paragraphs: aiSummary
+          paragraphs: aiSummary,
+          fullContent
         });
       }
     }
@@ -361,7 +380,8 @@ export async function GET(request: NextRequest) {
     const heuristicSummary = generateBestHybridSummary(paragraphs);
     return NextResponse.json({
       source: "heuristic-extractor",
-      paragraphs: heuristicSummary
+      paragraphs: heuristicSummary,
+      fullContent
     });
 
   } catch (error: any) {

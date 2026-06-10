@@ -408,6 +408,8 @@ export default function Home() {
   const [loadingMacro, setLoadingMacro] = useState(true);
   const [activeArticle, setActiveArticle] = useState<NewsItem | null>(null);
   const [scrapedParagraphs, setScrapedParagraphs] = useState<string[]>([]);
+  const [fullContent, setFullContent] = useState<Array<{ type: "paragraph" | "image"; text?: string; url?: string }>>([]);
+  const [readerTab, setReaderTab] = useState<"summary" | "full">("summary");
   const [loadingContent, setLoadingContent] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
@@ -445,6 +447,10 @@ export default function Home() {
 
   // Load full article content dynamically when activeArticle changes
   useEffect(() => {
+    // Reset reader states
+    setReaderTab("summary");
+    setFullContent([]);
+
     if (!activeArticle) {
       setScrapedParagraphs([]);
       setLoadingContent(false);
@@ -454,6 +460,7 @@ export default function Home() {
     // Case 1: Article has pre-defined body (e.g. mock articles or calendar events)
     if (activeArticle.body && activeArticle.body.length > 0) {
       setScrapedParagraphs(activeArticle.body);
+      setFullContent(activeArticle.body.map(para => ({ type: "paragraph", text: para })));
       setLoadingContent(false);
       return;
     }
@@ -468,18 +475,29 @@ export default function Home() {
           const res = await fetch(`/api/news/content?url=${encodeURIComponent(activeArticle.link)}`);
           if (res.ok) {
             const data = await res.json();
+            
+            // Set summary paragraphs
             if (data.paragraphs && Array.isArray(data.paragraphs)) {
               setScrapedParagraphs(data.paragraphs);
             } else {
               setScrapedParagraphs([]);
             }
+
+            // Set full content (paragraphs + images)
+            if (data.fullContent && Array.isArray(data.fullContent)) {
+              setFullContent(data.fullContent);
+            } else {
+              setFullContent([]);
+            }
           } else {
             console.error("Failed to fetch article content:", res.status);
             setScrapedParagraphs([]);
+            setFullContent([]);
           }
         } catch (err) {
           console.error("Error fetching article content:", err);
           setScrapedParagraphs([]);
+          setFullContent([]);
         } finally {
           setLoadingContent(false);
         }
@@ -488,6 +506,7 @@ export default function Home() {
       fetchContent();
     } else {
       setScrapedParagraphs([]);
+      setFullContent([]);
       setLoadingContent(false);
     }
   }, [activeArticle]);
@@ -1922,8 +1941,26 @@ export default function Home() {
                 {lang === "vi" ? "Đăng ngày" : "Published"}: {activeArticle.time}
               </div>
               
+              {/* Segmented Tab switcher for Tóm tắt vs Đọc toàn bộ */}
+              <div className="reader-tabs-container">
+                <div className="reader-tabs">
+                  <button 
+                    className={`reader-tab-btn ${readerTab === "summary" ? "active" : ""}`}
+                    onClick={() => setReaderTab("summary")}
+                  >
+                    {lang === "vi" ? "Tóm tắt nhanh" : "Quick Summary"}
+                  </button>
+                  <button 
+                    className={`reader-tab-btn ${readerTab === "full" ? "active" : ""}`}
+                    onClick={() => setReaderTab("full")}
+                  >
+                    {lang === "vi" ? "Đọc toàn bộ" : "Full Article"}
+                  </button>
+                </div>
+              </div>
+              
               <div className="reader-modal-text">
-                {/* Show temporary RSS description while loading */}
+                {/* 1. Show temporary RSS description while loading */}
                 {loadingContent && (
                   <>
                     <p className="reader-body-lead">
@@ -1940,8 +1977,8 @@ export default function Home() {
                   </>
                 )}
 
-                {/* Render the full 3-paragraph summary once loaded */}
-                {!loadingContent && scrapedParagraphs.length > 0 && (
+                {/* 2. TAB A: Quick Summary (3 paragraphs) */}
+                {!loadingContent && readerTab === "summary" && scrapedParagraphs.length > 0 && (
                   scrapedParagraphs.map((para, i) => (
                     <p key={i} className={i === 0 ? "reader-body-lead" : "reader-body-para"} style={{ marginTop: i > 0 ? "12px" : "0" }}>
                       {para}
@@ -1949,8 +1986,31 @@ export default function Home() {
                   ))
                 )}
 
-                {/* If loaded but no paragraphs returned, display fallback description + error message */}
-                {!loadingContent && scrapedParagraphs.length === 0 && (
+                {/* 3. TAB B: Full Article (Paragraphs + Inline Images) */}
+                {!loadingContent && readerTab === "full" && fullContent.length > 0 && (
+                  fullContent.map((el, i) => {
+                    if (el.type === "paragraph" && el.text) {
+                      return (
+                        <p key={i} className={i === 0 ? "reader-body-lead" : "reader-body-para"} style={{ marginTop: i > 0 ? "12px" : "0" }}>
+                          {el.text}
+                        </p>
+                      );
+                    } else if (el.type === "image" && el.url) {
+                      return (
+                        <div key={i} className="reader-inline-image-wrap">
+                          <img src={el.url} alt="Nội dung bài báo gốc" loading="lazy" />
+                        </div>
+                      );
+                    }
+                    return null;
+                  })
+                )}
+
+                {/* 4. Fallbacks if loading failed or no contents are available */}
+                {!loadingContent && (
+                  (readerTab === "summary" && scrapedParagraphs.length === 0) || 
+                  (readerTab === "full" && fullContent.length === 0)
+                ) && (
                   <>
                     <p className="reader-body-lead">
                       {activeArticle.description}

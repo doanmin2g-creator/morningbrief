@@ -2052,3 +2052,72 @@ body {
     }
 }
 
+/* --- READER TABS (APPLE NEWS SEGMENTED STYLE) --- */
+.reader-tabs-container {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0 20px 0;
+    width: 100%;
+}
+
+.reader-tabs {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-classic);
+    border-radius: 8px;
+    padding: 3px;
+    display: flex;
+    width: 100%;
+    max-width: 380px;
+    box-sizing: border-box;
+}
+
+[data-theme="dark"] .reader-tabs,
+.dark-theme .reader-tabs {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.reader-tab-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    text-transform: uppercase;
+}
+
+.reader-tab-btn.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* --- INLINE IMAGES IN READER MODAL --- */
+.reader-inline-image-wrap {
+    margin: 24px auto;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-classic);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    max-width: 100%;
+    background: var(--bg-paper);
+}
+
+.reader-inline-image-wrap img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.reader-inline-image-wrap img:hover {
+    transform: scale(1.01);
+}
+
