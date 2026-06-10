@@ -2,59 +2,65 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Helper to filter out boilerplate paragraphs (ads, links, captions, footer metadata, etc.)
 function isCleanParagraph(pText: string): boolean {
-  if (pText.length < 35 || pText.length > 800) return false;
+  const clean = pText.trim();
+  if (clean.length < 25 || clean.length > 800) return false;
   
-  const badPatterns = [
-    /ảnh:/i,
-    /hình:/i,
-    /video:/i,
-    /báo lỗi/i,
-    /xem thêm:/i,
-    /đọc thêm:/i,
-    /nguồn:/i,
-    /theo cafef/i,
-    /theo vnexpress/i,
-    /chụp màn hình/i,
-    /nhấp vào đây/i,
-    /tải ứng dụng/i,
-    /liên kết nguồn/i,
-    /bản quyền thuộc về/i,
-    /tin liên quan/i,
-    /chia sẻ/i,
-    /đăng ký/i,
-    /email/i,
-    /liên hệ/i,
-    /quảng cáo/i,
-    /phóng viên/i,
-    /tác giả/i,
-    /bài viết liên quan/i,
-    /hình ảnh:/i,
-    /độc giả/i,
-    /kênh/i,
-    /theo dòng sự kiện/i,
-    /bình luận/i,
-    /chủ đề/i,
-    /nhấn vào đây/i,
-    /điện thoại:/i,
-    /fax:/i,
-    /chịu trách nhiệm/i,
-    /copyright/i,
-    /vccorp/i,
-    /giấy phép/i,
-    /thiết lập trang/i,
-    /sở thông tin/i,
-    /tòa soạn/i,
-    /tổng biên tập/i,
-    /liên hệ quảng cáo/i,
-    /máy lẻ/i,
-    /ban biên tập/i,
-    /hộp thư/i
+  const lower = clean.toLowerCase();
+  
+  // Boilerplate prefixes
+  const badPrefixes = [
+    "xem thêm",
+    "đọc thêm",
+    "ảnh:",
+    "hình:",
+    "video:",
+    "nguồn:",
+    "chụp màn hình",
+    "liên hệ quảng cáo",
+    "bản quyền thuộc về",
+    "tác giả:",
+    "tác giả bài viết",
+    "phóng viên:",
+    "liên hệ tòa soạn",
+    "hộp thư:",
+    "mọi ý kiến đóng góp",
+    "hotline:",
+    "số điện thoại:",
+    "chia sẻ qua:",
+    "theo dòng sự kiện",
+    "tin liên quan:",
+    "đăng ký nhận bản tin",
+    "tải ứng dụng",
+    "theo dõi chúng tôi",
+    "bình luận:",
+    "chịu trách nhiệm nội dung",
+    "giấy phép thiết lập trang",
+    "sở thông tin và truyền thông",
+    "tổng biên tập",
+    "copyright"
   ];
   
-  for (const pattern of badPatterns) {
-    if (pattern.test(pText)) {
+  for (const prefix of badPrefixes) {
+    if (lower.startsWith(prefix)) {
       return false;
     }
+  }
+
+  // Exact boilerplate matches
+  const badExacts = [
+    "chia sẻ",
+    "báo lỗi",
+    "đăng ký",
+    "gửi bình luận",
+    "phóng viên",
+    "tòa soạn",
+    "liên hệ",
+    "quảng cáo",
+    "vccorp"
+  ];
+  
+  if (badExacts.includes(lower)) {
+    return false;
   }
   
   return true;
@@ -295,24 +301,75 @@ export async function GET(request: NextRequest) {
 
     const html = await response.text();
 
-    // 2. Locate the main article container (segmented HTML slicing)
-    let bodyHtml = html;
-    const startMatch = html.match(/class=["'][^"']*(?:detail-content|fck_detail|singlenews-content)[^"']*["']/i) || 
-                       html.match(/class=["'][^"']*(?:contentdetail|sidebar-1)[^"']*["']/i);
-                       
+    // 2. Locate the main article container (CSS Selector based)
+    const cleanHtml = html.replace(/<!--[\s\S]*?-->/g, "");
+    let bodyHtml = cleanHtml;
+    
+    const startMatch = cleanHtml.match(/<(div|article|section)[^>]*\bclass=["'][^"']*\b(knc-content|detail-content|fck_detail|singlenews-content)\b[^"']*["']/i);
+    
     if (startMatch && startMatch.index !== undefined) {
       const startIdx = startMatch.index;
-      const restHtml = html.substring(startIdx);
+      const tag = startMatch[1];
+      let depth = 0;
+      const tagRegex = new RegExp(`<${tag}\\b|</${tag}\\s*>`, "gi");
+      tagRegex.lastIndex = startIdx;
       
-      // Find an end marker to slice out footers, sidebars, comments
-      const endMatch = restHtml.match(/class=["'](?:link-source-wrapper|sidebar-section|footer|comment-section)["']/i) || 
-                       restHtml.match(/<\/article>/i) ||
-                       restHtml.match(/<footer/i);
-                       
-      if (endMatch && endMatch.index !== undefined) {
-        bodyHtml = restHtml.substring(0, endMatch.index);
+      let tagMatch;
+      let foundEnd = false;
+      
+      while ((tagMatch = tagRegex.exec(cleanHtml)) !== null) {
+        const matchedText = tagMatch[0];
+        if (matchedText.toLowerCase().startsWith(`<${tag}`)) {
+          depth++;
+        } else {
+          depth--;
+          if (depth === 0) {
+            const endIdx = tagMatch.index + matchedText.length;
+            bodyHtml = cleanHtml.substring(startIdx, endIdx);
+            foundEnd = true;
+            break;
+          }
+        }
+      }
+      
+      if (!foundEnd) {
+        bodyHtml = cleanHtml.substring(startIdx);
+      }
+    } else {
+      // Try fallback classes
+      const fallbackMatch = cleanHtml.match(/<(div|article|section)[^>]*\bclass=["'][^"']*\b(contentdetail|sidebar-1)\b[^"']*["']/i);
+      if (fallbackMatch && fallbackMatch.index !== undefined) {
+        const startIdx = fallbackMatch.index;
+        const tag = fallbackMatch[1];
+        let depth = 0;
+        const tagRegex = new RegExp(`<${tag}\\b|</${tag}\\s*>`, "gi");
+        tagRegex.lastIndex = startIdx;
+        
+        let tagMatch;
+        let foundEnd = false;
+        
+        while ((tagMatch = tagRegex.exec(cleanHtml)) !== null) {
+          const matchedText = tagMatch[0];
+          if (matchedText.toLowerCase().startsWith(`<${tag}`)) {
+            depth++;
+          } else {
+            depth--;
+            if (depth === 0) {
+              const endIdx = tagMatch.index + matchedText.length;
+              bodyHtml = cleanHtml.substring(startIdx, endIdx);
+              foundEnd = true;
+              break;
+            }
+          }
+        }
+        
+        if (!foundEnd) {
+          bodyHtml = cleanHtml.substring(startIdx);
+        }
       } else {
-        bodyHtml = restHtml;
+        // Final fallback to body
+        const bodyTag = cleanHtml.match(/<body[\s\S]*?>([\s\S]*?)<\/body>/i);
+        bodyHtml = bodyTag ? bodyTag[1] : cleanHtml;
       }
     }
 
@@ -341,17 +398,18 @@ export async function GET(request: NextRequest) {
           .trim();
           
         if (cleanText.length > 5) {
-          if (tagName === "p") {
-            const textStripped = cleanText.replace(/<[^>]*>/g, ""); // Strip for checking boilerplate
-            if (isCleanParagraph(textStripped)) {
-              paragraphs.push(textStripped);
+          const textStripped = cleanText.replace(/<[^>]*>/g, ""); // Strip for checking boilerplate
+          if (isCleanParagraph(textStripped)) {
+            paragraphs.push(textStripped);
+            
+            if (tagName === "p") {
               fullContent.push({ type: "paragraph", text: cleanText });
+            } else if (tagName === "li") {
+              fullContent.push({ type: "list-item", text: cleanText });
+            } else {
+              const level = parseInt(tagName.substring(1)) || 3;
+              fullContent.push({ type: "header", text: cleanText, level });
             }
-          } else if (tagName === "li") {
-            fullContent.push({ type: "list-item", text: cleanText });
-          } else {
-            const level = parseInt(tagName.substring(1)) || 3;
-            fullContent.push({ type: "header", text: cleanText, level });
           }
         }
       } else if (matchedTag.toLowerCase().startsWith("<img")) {

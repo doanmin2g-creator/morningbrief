@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-
-// Yahoo Finance quote API for individual stock lookup
-// Supports Vietnamese stocks with .VN suffix
+import companies from "./companies.json";
 
 interface SearchResult {
   symbol: string;
@@ -18,91 +16,136 @@ interface SearchResult {
   marketCap: string;
 }
 
+interface CompanyInfo {
+  symbol: string;
+  name: string;
+  name_vn: string;
+  exchange: string;
+}
+
 // Simple in-memory cache per symbol (30 seconds)
 const searchCache = new Map<string, { data: SearchResult; timestamp: number }>();
 const CACHE_TTL = 30 * 1000;
 
-// Common Vietnamese stock company names for text search
-const VN_STOCK_DIRECTORY: { symbol: string; names: string[]; exchange: string }[] = [
-  { symbol: "VCB", names: ["vietcombank", "ngoại thương", "vcb"], exchange: "HOSE" },
-  { symbol: "BID", names: ["bidv", "đầu tư phát triển", "bid"], exchange: "HOSE" },
-  { symbol: "CTG", names: ["vietinbank", "công thương", "ctg"], exchange: "HOSE" },
-  { symbol: "TCB", names: ["techcombank", "kỹ thương", "tcb"], exchange: "HOSE" },
-  { symbol: "MBB", names: ["mbbank", "quân đội", "mbb", "mb"], exchange: "HOSE" },
-  { symbol: "VPB", names: ["vpbank", "việt nam thịnh vượng", "vpb"], exchange: "HOSE" },
-  { symbol: "ACB", names: ["acb", "á châu", "acbbank"], exchange: "HOSE" },
-  { symbol: "VIC", names: ["vingroup", "vic", "tập đoàn vin"], exchange: "HOSE" },
-  { symbol: "VHM", names: ["vinhomes", "vhm"], exchange: "HOSE" },
-  { symbol: "VRE", names: ["vincom retail", "vre"], exchange: "HOSE" },
-  { symbol: "HPG", names: ["hòa phát", "hpg", "hoa phat"], exchange: "HOSE" },
-  { symbol: "GAS", names: ["pv gas", "gas", "khí việt nam"], exchange: "HOSE" },
-  { symbol: "PLX", names: ["petrolimex", "plx", "xăng dầu"], exchange: "HOSE" },
-  { symbol: "FPT", names: ["fpt", "fpt corp"], exchange: "HOSE" },
-  { symbol: "MWG", names: ["thế giới di động", "mwg", "mobile world"], exchange: "HOSE" },
-  { symbol: "VNM", names: ["vinamilk", "vnm", "sữa việt nam"], exchange: "HOSE" },
-  { symbol: "MSN", names: ["masan", "msn", "masan group"], exchange: "HOSE" },
-  { symbol: "SAB", names: ["sabeco", "sab", "bia sài gòn"], exchange: "HOSE" },
-  { symbol: "PNJ", names: ["pnj", "phú nhuận", "vàng bạc đá quý"], exchange: "HOSE" },
-  { symbol: "VJC", names: ["vietjet", "vjc", "vietjet air"], exchange: "HOSE" },
-  { symbol: "GMD", names: ["gemadept", "gmd"], exchange: "HOSE" },
-  { symbol: "SSI", names: ["ssi", "ssi securities", "chứng khoán ssi"], exchange: "HOSE" },
-  { symbol: "VNI", names: ["vnindex", "vn-index", "vn index"], exchange: "INDEX" },
-  { symbol: "SHS", names: ["shs", "chứng khoán sài gòn hà nội"], exchange: "HNX" },
-  { symbol: "CEO", names: ["ceo", "tập đoàn ceo", "c.e.o group"], exchange: "HNX" },
-  { symbol: "PVS", names: ["pvs", "dịch vụ dầu khí", "pv dịch vụ"], exchange: "HNX" },
-  { symbol: "BSR", names: ["bsr", "lọc dầu bình sơn", "lọc hóa dầu"], exchange: "UPCoM" },
-  { symbol: "ACV", names: ["acv", "cảng hàng không", "airports"], exchange: "UPCoM" },
-  { symbol: "VEA", names: ["vea", "veam", "máy động lực"], exchange: "UPCoM" },
-  { symbol: "DIG", names: ["dig", "đầu tư phát triển xây dựng", "dic"], exchange: "HOSE" },
-  { symbol: "PDR", names: ["pdr", "phát đạt", "phat dat"], exchange: "HOSE" },
-  { symbol: "STB", names: ["stb", "sacombank", "sài gòn thương tín"], exchange: "HOSE" },
-  { symbol: "TPB", names: ["tpb", "tpbank", "tiên phong"], exchange: "HOSE" },
-  { symbol: "HDB", names: ["hdb", "hdbank", "phát triển tp hcm"], exchange: "HOSE" },
-  { symbol: "EIB", names: ["eib", "eximbank", "xuất nhập khẩu"], exchange: "HOSE" },
-  { symbol: "LPB", names: ["lpb", "lienvietpostbank", "bưu điện liên việt"], exchange: "HOSE" },
-  { symbol: "SHB", names: ["shb", "sài gòn hà nội", "shbank"], exchange: "HOSE" },
-  { symbol: "KDH", names: ["kdh", "khang điền", "nhà khang điền"], exchange: "HOSE" },
-  { symbol: "NVL", names: ["nvl", "novaland", "nova"], exchange: "HOSE" },
-  { symbol: "DXG", names: ["dxg", "đất xanh", "dat xanh"], exchange: "HOSE" },
-  { symbol: "HDG", names: ["hdg", "hà đô", "ha do group"], exchange: "HOSE" },
-  { symbol: "KBC", names: ["kbc", "kinh bắc", "kinh bac city"], exchange: "HOSE" },
-  { symbol: "REE", names: ["ree", "cơ điện lạnh"], exchange: "HOSE" },
-  { symbol: "GVR", names: ["gvr", "cao su việt nam", "rubber"], exchange: "HOSE" },
-  { symbol: "POW", names: ["pow", "điện lực dầu khí", "pv power"], exchange: "HOSE" },
-  { symbol: "BCM", names: ["bcm", "becamex", "bình dương"], exchange: "HOSE" },
-  { symbol: "VGC", names: ["vgc", "viglacera"], exchange: "HOSE" },
-  { symbol: "DCM", names: ["dcm", "đạm cà mau", "phân bón"], exchange: "HOSE" },
-  { symbol: "DPM", names: ["dpm", "đạm phú mỹ", "petrovietnam"], exchange: "HOSE" },
-  { symbol: "PVD", names: ["pvd", "khoan dầu khí", "pv drilling"], exchange: "HOSE" },
-  { symbol: "HCM", names: ["hcm", "chứng khoán hcm", "hsc"], exchange: "HOSE" },
-  { symbol: "VND", names: ["vnd", "vndirect", "chứng khoán vndirect"], exchange: "HOSE" },
-  { symbol: "HAG", names: ["hag", "hoàng anh gia lai", "hagl"], exchange: "HOSE" },
-  { symbol: "DGC", names: ["dgc", "hóa chất đức giang", "duc giang"], exchange: "HOSE" },
-  { symbol: "NT2", names: ["nt2", "nhiệt điện nhơn trạch 2"], exchange: "HOSE" },
-  { symbol: "PHR", names: ["phr", "cao su phước hòa"], exchange: "HOSE" },
-  { symbol: "PC1", names: ["pc1", "xây lắp điện 1"], exchange: "HOSE" },
-  { symbol: "HSG", names: ["hsg", "tôn hoa sen", "hoa sen"], exchange: "HOSE" },
-  { symbol: "NKG", names: ["nkg", "thép nam kim", "nam kim"], exchange: "HOSE" },
-  { symbol: "VCG", names: ["vcg", "vinaconex", "xây dựng"], exchange: "HOSE" },
+const INDEXES: CompanyInfo[] = [
+  { symbol: "^VNINDEX.VN", name: "VN-Index", name_vn: "Chỉ số VN-Index", exchange: "INDEX" },
+  { symbol: "HNXINDEX", name: "HNX-Index", name_vn: "Chỉ số HNX-Index", exchange: "INDEX" },
+  { symbol: "UPCOM", name: "UPCoM-Index", name_vn: "Chỉ số UPCoM-Index", exchange: "INDEX" }
 ];
+
+const ALL_COMPANIES = [...INDEXES, ...(companies as CompanyInfo[])];
 
 function searchDirectory(query: string): string[] {
   const q = query.toLowerCase().trim();
   if (!q) return [];
 
-  // First try exact symbol match
-  const exactMatch = VN_STOCK_DIRECTORY.find(
-    (s) => s.symbol.toLowerCase() === q
+  // First try exact symbol match (with or without index caret)
+  const exactMatch = ALL_COMPANIES.find(
+    (s) => s.symbol.toLowerCase() === q || s.symbol.replace("^", "").toLowerCase() === q
   );
   if (exactMatch) return [exactMatch.symbol];
 
-  // Then fuzzy search by symbol prefix + company names
-  const results = VN_STOCK_DIRECTORY.filter((s) => {
-    if (s.symbol.toLowerCase().startsWith(q)) return true;
-    return s.names.some((name) => name.includes(q));
+  // Then fuzzy search by symbol contains + company names contains
+  const results = ALL_COMPANIES.filter((s) => {
+    if (s.symbol.toLowerCase().includes(q)) return true;
+    if (s.name && s.name.toLowerCase().includes(q)) return true;
+    if (s.name_vn && s.name_vn.toLowerCase().includes(q)) return true;
+    return false;
   });
 
   return results.map((r) => r.symbol).slice(0, 8);
+}
+
+async function fetchEntradeQuote(entradeSymbol: string, displayName: string, exchange: string): Promise<SearchResult | null> {
+  const to = Math.floor(Date.now() / 1000);
+  const from = to - 10 * 24 * 60 * 60; // 10 days
+  const url = `https://services.entrade.com.vn/chart-api/v2/ohlcs/index?from=${from}&to=${to}&symbol=${entradeSymbol}&resolution=1D`;
+  
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+      }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.c && data.c.length >= 2) {
+      const latestPrice = data.c[data.c.length - 1];
+      const prevPrice = data.c[data.c.length - 2];
+      const diff = latestPrice - prevPrice;
+      const pctChange = (diff / prevPrice) * 100;
+      
+      return {
+        symbol: entradeSymbol === "HNX" ? "HNXINDEX" : "UPCOM",
+        displayName,
+        price: latestPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        change: (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%",
+        isPositive: pctChange >= 0,
+        sector: "Chỉ số",
+        exchange,
+        prevClose: prevPrice.toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        dayHigh: Math.max(...data.h.slice(-2)).toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        dayLow: Math.min(...data.l.slice(-2)).toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        volume: "N/A",
+        marketCap: "N/A"
+      };
+    }
+  } catch (error) {
+    console.error(`Error fetching Entrade quote for ${entradeSymbol}:`, error);
+  }
+  return null;
+}
+
+async function fetchEntradeStockQuote(symbol: string, displayName: string, exchange: string): Promise<SearchResult | null> {
+  const to = Math.floor(Date.now() / 1000);
+  const from = to - 10 * 24 * 60 * 60; // 10 days
+  const url = `https://services.entrade.com.vn/chart-api/v2/ohlcs/stock?from=${from}&to=${to}&symbol=${symbol}&resolution=1D`;
+  
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+      }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.c && data.c.length >= 1) {
+      const latestPrice = data.c[data.c.length - 1];
+      const prevPrice = data.c.length >= 2 ? data.c[data.c.length - 2] : latestPrice;
+      const diff = latestPrice - prevPrice;
+      const pctChange = prevPrice !== 0 ? (diff / prevPrice) * 100 : 0;
+      
+      const priceStr = latestPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const changeStr = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
+      const isPositive = pctChange >= 0;
+      
+      const lastVol = data.v && data.v.length >= 1 ? data.v[data.v.length - 1] : 0;
+      const volumeStr = lastVol > 0 
+        ? (lastVol / 1000).toLocaleString("en-US", { maximumFractionDigits: 0 }) + "K"
+        : "N/A";
+        
+      const highPrice = data.h && data.h.length >= 1 ? Math.max(...data.h.slice(-2)) : latestPrice;
+      const lowPrice = data.l && data.l.length >= 1 ? Math.min(...data.l.slice(-2)) : latestPrice;
+      
+      return {
+        symbol,
+        displayName,
+        price: priceStr,
+        change: changeStr,
+        isPositive,
+        sector: displayName.split(" - ")[1] || "N/A",
+        exchange,
+        prevClose: prevPrice.toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        dayHigh: highPrice.toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        dayLow: lowPrice.toLocaleString("en-US", { maximumFractionDigits: 2 }),
+        volume: volumeStr,
+        marketCap: "N/A"
+      };
+    }
+  } catch (error) {
+    console.error(`Error fetching Entrade stock quote for ${symbol}:`, error);
+  }
+  return null;
 }
 
 async function fetchStockQuote(symbol: string): Promise<SearchResult | null> {
@@ -112,90 +155,120 @@ async function fetchStockQuote(symbol: string): Promise<SearchResult | null> {
     return cached.data;
   }
 
-  // Determine Yahoo Finance ticker
-  const yahooSymbol = symbol.startsWith("^") ? symbol : `${symbol}.VN`;
+  // Handle Entrade indexes
+  if (symbol === "HNXINDEX") {
+    const quote = await fetchEntradeQuote("HNX", "HNX-Index", "INDEX");
+    if (quote) {
+      searchCache.set(symbol, { data: quote, timestamp: Date.now() });
+      return quote;
+    }
+    return null;
+  }
+  if (symbol === "UPCOM") {
+    const quote = await fetchEntradeQuote("UPCOM", "UPCoM-Index", "INDEX");
+    if (quote) {
+      searchCache.set(symbol, { data: quote, timestamp: Date.now() });
+      return quote;
+    }
+    return null;
+  }
+
+  const dirEntry = ALL_COMPANIES.find(
+    (s) => s.symbol === symbol
+  );
+  const displayName = dirEntry
+    ? `${dirEntry.symbol} - ${dirEntry.name_vn}`
+    : symbol;
+  const exchange = dirEntry?.exchange || "HOSE";
+
+  // Try Yahoo Finance first
+  const isIndex = symbol.startsWith("^");
+  const yahooSymbol = isIndex ? symbol : `${symbol}.VN`;
 
   try {
     const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${encodeURIComponent(yahooSymbol)}&range=1d&interval=1d`;
     const res = await fetch(url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       },
       cache: "no-store",
     });
 
-    if (!res.ok) return null;
+    if (res.ok) {
+      const data = await res.json();
+      const result = data?.spark?.result?.[0];
+      const meta = result?.response?.[0]?.meta;
 
-    const data = await res.json();
-    const result = data?.spark?.result?.[0];
-    const meta = result?.response?.[0]?.meta;
+      if (meta) {
+        const currentPrice = meta.regularMarketPrice;
+        const prevClose = meta.previousClose || meta.chartPreviousClose;
 
-    if (!meta) return null;
+        if (currentPrice !== undefined && prevClose !== undefined) {
+          const diff = currentPrice - prevClose;
+          const pctChange = (diff / prevClose) * 100;
 
-    const currentPrice = meta.regularMarketPrice;
-    const prevClose = meta.previousClose || meta.chartPreviousClose;
-    const isIndex = symbol.startsWith("^");
+          const searchResult: SearchResult = {
+            symbol: dirEntry?.symbol || symbol,
+            displayName,
+            price: isIndex
+              ? currentPrice.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : (currentPrice / 1000).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }),
+            change:
+              (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%",
+            isPositive: pctChange >= 0,
+            sector: dirEntry ? dirEntry.name_vn : "N/A",
+            exchange,
+            prevClose: isIndex
+              ? prevClose.toLocaleString("en-US", { maximumFractionDigits: 2 })
+              : (prevClose / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 }),
+            dayHigh: meta.regularMarketDayHigh
+              ? isIndex
+                ? meta.regularMarketDayHigh.toLocaleString("en-US", { maximumFractionDigits: 2 })
+                : (meta.regularMarketDayHigh / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })
+              : "N/A",
+            dayLow: meta.regularMarketDayLow
+              ? isIndex
+                ? meta.regularMarketDayLow.toLocaleString("en-US", { maximumFractionDigits: 2 })
+                : (meta.regularMarketDayLow / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })
+              : "N/A",
+            volume: meta.regularMarketVolume
+              ? (meta.regularMarketVolume / 1000).toLocaleString("en-US", {
+                  maximumFractionDigits: 0,
+                }) + "K"
+              : "N/A",
+            marketCap: meta.marketCap
+              ? (meta.marketCap / 1e9).toLocaleString("en-US", {
+                  maximumFractionDigits: 1,
+                }) + " tỷ"
+              : "N/A",
+          };
 
-    if (currentPrice === undefined || prevClose === undefined) return null;
-
-    const diff = currentPrice - prevClose;
-    const pctChange = (diff / prevClose) * 100;
-
-    const dirEntry = VN_STOCK_DIRECTORY.find(
-      (s) => s.symbol === symbol
-    );
-
-    const searchResult: SearchResult = {
-      symbol: dirEntry?.symbol || symbol,
-      displayName: dirEntry
-        ? `${dirEntry.symbol} (${dirEntry.names[0]})`
-        : symbol,
-      price: isIndex
-        ? currentPrice.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })
-        : (currentPrice / 1000).toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }),
-      change:
-        (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%",
-      isPositive: pctChange >= 0,
-      sector: dirEntry?.names[0] || "N/A",
-      exchange: dirEntry?.exchange || "HOSE",
-      prevClose: isIndex
-        ? prevClose.toLocaleString("en-US", { maximumFractionDigits: 2 })
-        : (prevClose / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 }),
-      dayHigh: meta.regularMarketDayHigh
-        ? isIndex
-          ? meta.regularMarketDayHigh.toLocaleString("en-US", { maximumFractionDigits: 2 })
-          : (meta.regularMarketDayHigh / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })
-        : "N/A",
-      dayLow: meta.regularMarketDayLow
-        ? isIndex
-          ? meta.regularMarketDayLow.toLocaleString("en-US", { maximumFractionDigits: 2 })
-          : (meta.regularMarketDayLow / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })
-        : "N/A",
-      volume: meta.regularMarketVolume
-        ? (meta.regularMarketVolume / 1000).toLocaleString("en-US", {
-            maximumFractionDigits: 0,
-          }) + "K"
-        : "N/A",
-      marketCap: meta.marketCap
-        ? (meta.marketCap / 1e9).toLocaleString("en-US", {
-            maximumFractionDigits: 1,
-          }) + " tỷ"
-        : "N/A",
-    };
-
-    searchCache.set(symbol, { data: searchResult, timestamp: Date.now() });
-    return searchResult;
+          searchCache.set(symbol, { data: searchResult, timestamp: Date.now() });
+          return searchResult;
+        }
+      }
+    }
   } catch (error) {
-    console.error(`Error fetching quote for ${symbol}:`, error);
-    return null;
+    console.warn(`Yahoo Finance failed for ${symbol}, falling back to Entrade:`, error);
   }
+
+  // Fallback to Entrade Stock API if Yahoo fails or returns 404
+  if (!isIndex) {
+    const entradeQuote = await fetchEntradeStockQuote(symbol, displayName, exchange);
+    if (entradeQuote) {
+      searchCache.set(symbol, { data: entradeQuote, timestamp: Date.now() });
+      return entradeQuote;
+    }
+  }
+
+  return null;
 }
 
 export async function GET(request: Request) {
