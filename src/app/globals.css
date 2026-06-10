@@ -498,6 +498,16 @@ body {
 .mobile-tab-icon {
     font-size: 1.3rem;
     line-height: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.mobile-tab-icon img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
 }
 
 .hidden-mobile {

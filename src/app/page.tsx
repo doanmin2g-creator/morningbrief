@@ -2555,28 +2555,36 @@ export default function Home() {
           className={`mobile-tab-item ${activeMobileTab === "home" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("home")}
         >
-          <span className="mobile-tab-icon">🌸</span>
+          <span className="mobile-tab-icon">
+            <img src="/icon/calendar-icon.png" alt="" />
+          </span>
           <span>{lang === "vi" ? "TIN TỨC" : "NEWS"}</span>
         </button>
         <button 
           className={`mobile-tab-item ${activeMobileTab === "markets" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("markets")}
         >
-          <span className="mobile-tab-icon">📊</span>
+          <span className="mobile-tab-icon">
+            <img src="/icon/chart-icon.png" alt="" />
+          </span>
           <span>{lang === "vi" ? "THỊ TRƯỜNG" : "MARKETS"}</span>
         </button>
         <button 
           className={`mobile-tab-item ${activeMobileTab === "portfolio" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("portfolio")}
         >
-          <span className="mobile-tab-icon">💼</span>
+          <span className="mobile-tab-icon">
+            <img src="/icon/wallet-icon.png" alt="" />
+          </span>
           <span>{lang === "vi" ? "DANH MỤC" : "PORTFOLIO"}</span>
         </button>
         <button 
           className={`mobile-tab-item ${activeMobileTab === "podcast" ? "active" : ""}`}
           onClick={() => setActiveMobileTab("podcast")}
         >
-          <span className="mobile-tab-icon">🎧</span>
+          <span className="mobile-tab-icon">
+            <img src="/icon/headphone-icon.png" alt="" />
+          </span>
           <span>AUDIO</span>
         </button>
       </nav>
