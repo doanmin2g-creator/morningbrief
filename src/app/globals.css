@@ -2440,3 +2440,66 @@ body {
     color: var(--accent-red);
     text-decoration: underline;
 }
+
+/* ==========================================================================
+   PREMIUM ANIMATIONS & SKELETON LOADERS
+   ========================================================================== */
+.animate-fade-in-up {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Skeleton Pulse Loaders */
+.news-skeleton-item {
+    animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+.skeleton-pill {
+    display: inline-block;
+    background-color: var(--border-classic);
+    opacity: 0.6;
+}
+
+.skeleton-line {
+    display: block;
+    background-color: var(--border-classic);
+    opacity: 0.6;
+    border-radius: 3px;
+}
+
+@keyframes skeleton-pulse {
+    0% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 1;
+        filter: brightness(0.96);
+    }
+    100% {
+        opacity: 0.5;
+    }
+}
+
+/* Watchlist Hover Transitions */
+.crypto-item {
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border-left: 2px solid transparent;
+    padding-left: 4px;
+}
+
+.crypto-item:hover {
+    transform: translateX(4px);
+    border-left-color: var(--accent-red);
+}
+
+.stock-search-result-card {
+    animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

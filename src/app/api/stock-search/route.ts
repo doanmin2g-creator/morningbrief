@@ -159,7 +159,7 @@ async function fetchCafeFStockNews(symbol: string): Promise<RelatedNews[]> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const url = `https://s.cafef.vn/Ajax/Events_RelatedNews_NEW.ashx?symbol=${symbol}&pageindex=1&pagesize=3`;
+    const url = `https://cafef.vn/du-lieu/Ajax/PageNew/News.ashx?Symbol=${symbol}&NewsType=0&PageIndex=1&PageSize=3`;
     const res = await fetch(url, {
       signal: controller.signal,
       headers: CAFEF_HEADERS
@@ -169,27 +169,32 @@ async function fetchCafeFStockNews(symbol: string): Promise<RelatedNews[]> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
-    const list = data?.Data || data?.ResultData || [];
+    const list = data?.Data || [];
 
-    const news: RelatedNews[] = list.slice(0, 3).map((item: any) => {
-      // Format time: CafeF returns date strings like "10/06/2026 14:30:00"
-      let timeStr = item.PublishDate || item.NgayDang || item.Time || "";
+    const news: RelatedNews[] = list.map((item: any) => {
+      let timeStr = "";
       try {
-        if (timeStr) {
-          const parts = timeStr.split(" ");
-          const dateParts = parts[0].split("/");
-          const d = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${parts[1] || "00:00:00"}`);
-          const now = Date.now();
-          const diff = Math.floor((now - d.getTime()) / 60000); // minutes
-          if (diff < 60) timeStr = `${diff} phút trước`;
-          else if (diff < 1440) timeStr = `${Math.floor(diff / 60)} giờ trước`;
-          else timeStr = `${Math.floor(diff / 1440)} ngày trước`;
+        if (item.DeployDate) {
+          const match = item.DeployDate.match(/\/Date\((\d+)\)\//);
+          if (match) {
+            const timestamp = parseInt(match[1]);
+            const now = Date.now();
+            const diff = Math.floor((now - timestamp) / 60000); // minutes
+            if (diff < 60) timeStr = `${Math.max(1, diff)} phút trước`;
+            else if (diff < 1440) timeStr = `${Math.floor(diff / 60)} giờ trước`;
+            else timeStr = `${Math.floor(diff / 1440)} ngày trước`;
+          }
         }
-      } catch { /* keep raw timeStr */ }
+      } catch { /* keep empty timeStr */ }
+
+      const relativeLink = item.LinkDetail || "";
+      const absoluteLink = relativeLink.startsWith("http") 
+        ? relativeLink 
+        : `https://cafef.vn${relativeLink}`;
 
       return {
-        title: item.Title || item.TieuDe || "",
-        link: item.Href || item.Url || item.Link || `https://cafef.vn/search/${symbol}`,
+        title: item.Title || "",
+        link: absoluteLink || `https://cafef.vn/search/${symbol}`,
         time: timeStr
       };
     }).filter((n: RelatedNews) => n.title);

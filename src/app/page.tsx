@@ -546,7 +546,21 @@ export default function Home() {
   const fetchStocks = async () => {
     setLoadingStocks(true);
     try {
-      const res = await fetch("/api/stocks");
+      // Load watchlist from localStorage directly to get the latest updated values
+      const saved = localStorage.getItem("morningbrief_watchlist");
+      let watchlistParams = "";
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            watchlistParams = `?watchlist=${encodeURIComponent(parsed.join(","))}`;
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      const res = await fetch(`/api/stocks${watchlistParams}`);
       if (!res.ok) throw new Error("Failed to fetch stock data");
       const data = await res.json();
       const combined = [...(data.indices || []), ...(data.watchlistTickers || [])];
@@ -607,6 +621,9 @@ export default function Home() {
     }
     setWatchlist(updated);
     localStorage.setItem("morningbrief_watchlist", JSON.stringify(updated));
+    setTimeout(() => {
+      fetchStocks();
+    }, 50);
   };
 
   // Podcast Helper functions
@@ -1772,11 +1789,17 @@ export default function Home() {
                 </div>
                 
                 {loadingWatchlistNews ? (
-                  <div className="stock-search-status" style={{ padding: "15px 0", textAlign: "center" }}>
-                    <span className="podcast-live-dot" style={{ display: "inline-block", marginRight: "8px" }}></span>
-                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {lang === "vi" ? "Đang tải tin tức..." : "Loading ecosystem news..."}
-                    </span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "10px" }}>
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="news-skeleton-item" style={{ paddingBottom: "10px", borderBottom: "1px dashed var(--border-classic)" }}>
+                        <div style={{ display: "flex", gap: "6px", marginBottom: "6px" }}>
+                          <span className="skeleton-pill" style={{ width: "45px", height: "14px", borderRadius: "3px" }}></span>
+                          <span className="skeleton-pill" style={{ width: "60px", height: "14px", borderRadius: "3px" }}></span>
+                        </div>
+                        <div className="skeleton-line" style={{ width: "90%", height: "14px", marginBottom: "4px" }}></div>
+                        <div className="skeleton-line" style={{ width: "70%", height: "14px" }}></div>
+                      </div>
+                    ))}
                   </div>
                 ) : watchlistNews.length === 0 ? (
                   <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "15px" }}>
@@ -1787,7 +1810,16 @@ export default function Home() {
                 ) : (
                   <ul className="watchlist-news-list" style={{ listStyle: "none", padding: 0, margin: "10px 0 0 0", display: "flex", flexDirection: "column", gap: "12px" }}>
                     {watchlistNews.map((news, ni) => (
-                      <li key={ni} className="watchlist-news-item" style={{ borderBottom: "1px dashed var(--border-classic)", paddingBottom: "10px" }}>
+                      <li 
+                        key={ni} 
+                        className="watchlist-news-item animate-fade-in-up" 
+                        style={{ 
+                          borderBottom: "1px dashed var(--border-classic)", 
+                          paddingBottom: "10px",
+                          animationDelay: `${ni * 0.08}s`,
+                          animationFillMode: "both"
+                        }}
+                      >
                         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
                           {news.relatedSymbol && (
                             <span className="watchlist-news-tag" style={{ 

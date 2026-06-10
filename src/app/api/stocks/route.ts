@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import companies from "../stock-search/companies.json";
 
 // Cache structure in memory — 5 minutes TTL
 let cachedData: any = null;
@@ -60,8 +61,8 @@ interface IndexOverview {
   noChange: number;          // Số mã không đổi
 }
 
-async function fetchSymbolsChunk(chunk: typeof TICKERS) {
-  const symbolsStr = chunk.map(t => encodeURIComponent(t.symbol)).join(",");
+async function fetchSymbolsChunk(symbols: string[]) {
+  const symbolsStr = symbols.map(s => encodeURIComponent(s)).join(",");
   const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${symbolsStr}&range=1d&interval=1d`;
   
   try {
@@ -212,155 +213,234 @@ async function fetchCafeFHighlight(exchange: string, type: "UP" | "DOWN" | "VOLU
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const now = Date.now();
-  
-  // Return cached data if valid (5 min TTL)
-  if (cachedData && (now - lastCacheTime < CACHE_TTL_MS)) {
-    return NextResponse.json(cachedData, {
-      headers: { "x-cache": "HIT", "x-cache-age": String(Math.floor((now - lastCacheTime) / 1000)) + "s" }
-    });
-  }
+  const { searchParams } = new URL(request.url);
+  const watchlistQuery = searchParams.get("watchlist") || "";
 
-  try {
-    // 1. Fetch all data concurrently
-    const chunk1 = TICKERS.slice(0, 15);
-    const chunk2 = TICKERS.slice(15);
+  let baseData = cachedData;
+  let isHit = "HIT";
 
-    const [
-      result1, 
-      result2, 
-      vnIndexEntrade, 
-      hnxIndex, 
-      upcomIndex,
-      // CafeF index overviews (liquidity, breadth, foreign)
-      hoseOverview, hnxOverview, upcomOverview,
-      // CafeF highlights (3 exchanges x 3 categories)
-      hoseUp, hoseDown, hoseVol,
-      hnxUp, hnxDown, hnxVol,
-      upcomUp, upcomDown, upcomVol
-    ] = await Promise.all([
-      fetchSymbolsChunk(chunk1),
-      fetchSymbolsChunk(chunk2),
-      fetchEntradeIndex("VNINDEX", "VN-Index"),
-      fetchEntradeIndex("HNX", "HNX-Index"),
-      fetchEntradeIndex("UPCOM", "UPCoM-Index"),
-      // Index overviews from CafeF
-      fetchCafeFIndexOverview("HOSE"),
-      fetchCafeFIndexOverview("HNX"),
-      fetchCafeFIndexOverview("UPCOM"),
-      // Top stock highlights
-      fetchCafeFHighlight("HOSE", "UP"),
-      fetchCafeFHighlight("HOSE", "DOWN"),
-      fetchCafeFHighlight("HOSE", "VOLUME"),
-      fetchCafeFHighlight("HNX", "UP"),
-      fetchCafeFHighlight("HNX", "DOWN"),
-      fetchCafeFHighlight("HNX", "VOLUME"),
-      fetchCafeFHighlight("UPCOM", "UP"),
-      fetchCafeFHighlight("UPCOM", "DOWN"),
-      fetchCafeFHighlight("UPCOM", "VOLUME")
-    ]);
+  if (!baseData || (now - lastCacheTime >= CACHE_TTL_MS)) {
+    isHit = "MISS";
+    try {
+      // 1. Fetch all default data concurrently
+      const chunk1Symbols = TICKERS.slice(0, 15).map(t => t.symbol);
+      const chunk2Symbols = TICKERS.slice(15).map(t => t.symbol);
 
-    const resultList = [...(result1 || []), ...(result2 || [])];
+      const [
+        result1, 
+        result2, 
+        vnIndexEntrade, 
+        hnxIndex, 
+        upcomIndex,
+        // CafeF index overviews (liquidity, breadth, foreign)
+        hoseOverview, hnxOverview, upcomOverview,
+        // CafeF highlights (3 exchanges x 3 categories)
+        hoseUp, hoseDown, hoseVol,
+        hnxUp, hnxDown, hnxVol,
+        upcomUp, upcomDown, upcomVol
+      ] = await Promise.all([
+        fetchSymbolsChunk(chunk1Symbols),
+        fetchSymbolsChunk(chunk2Symbols),
+        fetchEntradeIndex("VNINDEX", "VN-Index"),
+        fetchEntradeIndex("HNX", "HNX-Index"),
+        fetchEntradeIndex("UPCOM", "UPCoM-Index"),
+        // Index overviews from CafeF
+        fetchCafeFIndexOverview("HOSE"),
+        fetchCafeFIndexOverview("HNX"),
+        fetchCafeFIndexOverview("UPCOM"),
+        // Top stock highlights
+        fetchCafeFHighlight("HOSE", "UP"),
+        fetchCafeFHighlight("HOSE", "DOWN"),
+        fetchCafeFHighlight("HOSE", "VOLUME"),
+        fetchCafeFHighlight("HNX", "UP"),
+        fetchCafeFHighlight("HNX", "DOWN"),
+        fetchCafeFHighlight("HNX", "VOLUME"),
+        fetchCafeFHighlight("UPCOM", "UP"),
+        fetchCafeFHighlight("UPCOM", "DOWN"),
+        fetchCafeFHighlight("UPCOM", "VOLUME")
+      ]);
 
-    // 2. Map standard Watchlist/Banner tickers
-    const watchlistTickers = TICKERS.map(t => {
-      const tickerResult = resultList.find((r: any) => r.symbol === t.symbol);
-      const meta = tickerResult?.response?.[0]?.meta;
+      const resultList = [...(result1 || []), ...(result2 || [])];
 
-      let price = "N/A";
-      let change = "0.00%";
-      let isPositive = true;
+      // 2. Map standard Watchlist/Banner tickers
+      const defaultWatchlistTickers = TICKERS.map(t => {
+        const tickerResult = resultList.find((r: any) => r.symbol === t.symbol);
+        const meta = tickerResult?.response?.[0]?.meta;
 
-      if (meta) {
-        const currentPrice = meta.regularMarketPrice;
-        const prevClose = meta.previousClose || meta.chartPreviousClose;
+        let price = "N/A";
+        let change = "0.00%";
+        let isPositive = true;
 
-        if (currentPrice !== undefined && prevClose !== undefined) {
-          const diff = currentPrice - prevClose;
-          const pctChange = (diff / prevClose) * 100;
-          const isIndex = t.symbol.startsWith("^");
+        if (meta) {
+          const currentPrice = meta.regularMarketPrice;
+          const prevClose = meta.previousClose || meta.chartPreviousClose;
 
-          price = isIndex
-            ? currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-            : (currentPrice / 1000).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          if (currentPrice !== undefined && prevClose !== undefined) {
+            const diff = currentPrice - prevClose;
+            const pctChange = (diff / prevClose) * 100;
+            const isIndex = t.symbol.startsWith("^");
 
-          change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
-          isPositive = pctChange >= 0;
+            price = isIndex
+              ? currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : (currentPrice / 1000).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
+            isPositive = pctChange >= 0;
+          }
         }
+
+        return {
+          symbol: t.displayName,
+          ticker: t.symbol,
+          price,
+          change,
+          isPositive,
+          sector: t.sector,
+          exchange: t.exchange
+        };
+      });
+
+      // 3. Merge Entrade index history + CafeF index overview data
+      const indices: any[] = [];
+      
+      if (vnIndexEntrade) {
+        indices.push({
+          ...vnIndexEntrade,
+          overview: hoseOverview  // Attach CafeF liquidity/breadth/foreign data
+        });
+      }
+      if (hnxIndex) {
+        indices.push({
+          ...hnxIndex,
+          overview: hnxOverview
+        });
+      }
+      if (upcomIndex) {
+        indices.push({
+          ...upcomIndex,
+          overview: upcomOverview
+        });
       }
 
-      return {
-        symbol: t.displayName,
-        ticker: t.symbol,
-        price,
-        change,
-        isPositive,
-        sector: t.sector,
-        exchange: t.exchange
+      // 4. Process CafeF highlights
+      const gainers = [...hoseUp, ...hnxUp, ...upcomUp]
+        .sort((a, b) => b.pctChange - a.pctChange)
+        .slice(0, 10);
+
+      const losers = [...hoseDown, ...hnxDown, ...upcomDown]
+        .sort((a, b) => a.pctChange - b.pctChange)
+        .slice(0, 10);
+
+      const volume = [...hoseVol, ...hnxVol, ...upcomVol]
+        .sort((a, b) => b.volume - a.volume)
+        .slice(0, 10);
+
+      baseData = {
+        indices,
+        defaultWatchlistTickers,
+        highlights: {
+          gainers,
+          losers,
+          volume
+        }
       };
-    });
 
-    // 3. Merge Entrade index history + CafeF index overview data
-    const indices: any[] = [];
-    
-    if (vnIndexEntrade) {
-      indices.push({
-        ...vnIndexEntrade,
-        overview: hoseOverview  // Attach CafeF liquidity/breadth/foreign data
-      });
-    }
-    if (hnxIndex) {
-      indices.push({
-        ...hnxIndex,
-        overview: hnxOverview
-      });
-    }
-    if (upcomIndex) {
-      indices.push({
-        ...upcomIndex,
-        overview: upcomOverview
-      });
-    }
-
-    // 4. Process CafeF highlights
-    const gainers = [...hoseUp, ...hnxUp, ...upcomUp]
-      .sort((a, b) => b.pctChange - a.pctChange)
-      .slice(0, 10);
-
-    const losers = [...hoseDown, ...hnxDown, ...upcomDown]
-      .sort((a, b) => a.pctChange - b.pctChange)
-      .slice(0, 10);
-
-    const volume = [...hoseVol, ...hnxVol, ...upcomVol]
-      .sort((a, b) => b.volume - a.volume)
-      .slice(0, 10);
-
-    const parsedData = {
-      indices,
-      watchlistTickers,
-      highlights: {
-        gainers,
-        losers,
-        volume
+      cachedData = baseData;
+      lastCacheTime = now;
+    } catch (error: any) {
+      console.error("Error compiling stock data:", error);
+      
+      // Use cached data as fallback if available
+      if (cachedData) {
+        baseData = cachedData;
+        isHit = "FALLBACK";
+      } else {
+        return NextResponse.json({ error: "Failed to fetch stock data", details: error.message }, { status: 500 });
       }
-    };
-
-    cachedData = parsedData;
-    lastCacheTime = now;
-
-    return NextResponse.json(parsedData, {
-      headers: { "x-cache": "MISS" }
-    });
-  } catch (error: any) {
-    console.error("Error compiling stock data:", error);
-    
-    // Return cached data as fallback if available, otherwise return error
-    if (cachedData) {
-      return NextResponse.json(cachedData, {
-        headers: { "x-cache": "FALLBACK" }
-      });
     }
-    return NextResponse.json({ error: "Failed to fetch stock data", details: error.message }, { status: 500 });
   }
+
+  // 5. Fetch custom watchlist tickers dynamically (bypass global cache for customization)
+  let customTickers: any[] = [];
+  const watchlistSymbols = watchlistQuery
+    .split(",")
+    .map(s => s.trim().toUpperCase())
+    .filter(s => {
+      if (!s) return false;
+      // Filter out symbols already covered in TICKERS
+      const inDefault = TICKERS.some(t => {
+        const cleanDefaultSym = t.symbol.replace(".VN", "").replace("^", "").toUpperCase();
+        const cleanDisplayName = t.displayName.split(" ")[0].toUpperCase();
+        return cleanDefaultSym === s || cleanDisplayName === s;
+      });
+      return !inDefault;
+    });
+
+  if (watchlistSymbols.length > 0) {
+    try {
+      const customYahooSymbols = watchlistSymbols.map(s => s.startsWith("^") ? s : `${s}.VN`);
+      const customResults = await fetchSymbolsChunk(customYahooSymbols);
+
+      customTickers = watchlistSymbols.map(sym => {
+        const yahooSym = sym.startsWith("^") ? sym : `${sym}.VN`;
+        const info = (companies as any[]).find((c: any) => c.symbol === sym) || { name_vn: "Cổ phiếu Việt Nam", exchange: "HOSE" };
+        const displayName = `${sym} - ${info.name_vn}`;
+        const exchange = info.exchange || "HOSE";
+
+        const tickerResult = customResults.find((r: any) => r.symbol === yahooSym);
+        const meta = tickerResult?.response?.[0]?.meta;
+
+        let price = "N/A";
+        let change = "0.00%";
+        let isPositive = true;
+
+        if (meta) {
+          const currentPrice = meta.regularMarketPrice;
+          const prevClose = meta.previousClose || meta.chartPreviousClose;
+
+          if (currentPrice !== undefined && prevClose !== undefined) {
+            const diff = currentPrice - prevClose;
+            const pctChange = (diff / prevClose) * 100;
+
+            price = sym.startsWith("^")
+              ? currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : (currentPrice / 1000).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
+            isPositive = pctChange >= 0;
+          }
+        }
+
+        return {
+          symbol: displayName,
+          ticker: sym,
+          price,
+          change,
+          isPositive,
+          sector: info.name_vn,
+          exchange
+        };
+      });
+    } catch (err) {
+      console.error("Error fetching custom watchlist quotes:", err);
+    }
+  }
+
+  const combinedWatchlistTickers = [
+    ...baseData.defaultWatchlistTickers,
+    ...customTickers
+  ];
+
+  return NextResponse.json({
+    indices: baseData.indices,
+    watchlistTickers: combinedWatchlistTickers,
+    highlights: baseData.highlights
+  }, {
+    headers: {
+      "x-cache": isHit,
+      "x-cache-age": String(Math.floor((now - lastCacheTime) / 1000)) + "s"
+    }
+  });
 }
