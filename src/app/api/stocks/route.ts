@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
 
-// Cache structure in memory to avoid hammering Entrade & CafeF APIs
+// Cache structure in memory — 5 minutes TTL
 let cachedData: any = null;
 let lastCacheTime = 0;
-const CACHE_TTL_MS = 30 * 1000; // Cache for 30 seconds
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// CafeF browser simulation headers
+const CAFEF_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Referer": "https://cafef.vn/",
+  "Accept": "application/json, text/javascript, */*; q=0.01",
+  "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+  "X-Requested-With": "XMLHttpRequest",
+  "Connection": "keep-alive"
+};
 
 // Major Vietnamese tickers with explicit exchanges (used for the watchlist fallback/ticker marquee)
 const TICKERS = [
@@ -39,6 +49,16 @@ const TICKERS = [
   { symbol: "ACV.VN", displayName: "ACV (Cảng hàng không)", sector: "Hàng không", exchange: "UPCoM" },
   { symbol: "VEA.VN", displayName: "VEA (Máy động lực VEAM)", sector: "Công nghiệp", exchange: "UPCoM" }
 ];
+
+interface IndexOverview {
+  totalValue: number;        // Tổng GTGD (tỷ VNĐ)
+  foreignBuyValue: number;   // GT mua khối ngoại (tỷ VNĐ)
+  foreignSellValue: number;  // GT bán khối ngoại (tỷ VNĐ)
+  foreignNetValue: number;   // GT ròng khối ngoại (tỷ VNĐ)
+  advance: number;           // Số mã tăng
+  decline: number;           // Số mã giảm
+  noChange: number;          // Số mã không đổi
+}
 
 async function fetchSymbolsChunk(chunk: typeof TICKERS) {
   const symbolsStr = chunk.map(t => encodeURIComponent(t.symbol)).join(",");
@@ -105,15 +125,62 @@ async function fetchEntradeIndex(symbol: string, displayName: string) {
   return null;
 }
 
+// Fetch comprehensive index overview from CafeF (liquidity, breadth, foreign trading)
+async function fetchCafeFIndexOverview(exchange: "HOSE" | "HNX" | "UPCOM"): Promise<IndexOverview | null> {
+  // Map exchange to CafeF centerID parameter
+  const centerIDMap: Record<string, string> = {
+    "HOSE": "1",
+    "HNX": "2", 
+    "UPCOM": "9"
+  };
+  const centerID = centerIDMap[exchange];
+  const url = `https://cafef.vn/du-lieu/Ajax/Mobile/Smart/AjaxMarketSummary.ashx?centerID=${centerID}`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: CAFEF_HEADERS
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    
+    // CafeF returns nested Data object
+    const d = data?.Data || data;
+    if (!d) return null;
+
+    // Parse values — CafeF returns values in billions VND (tỷ)
+    const totalValue = parseFloat(d.TotalDeal || d.TotalValue || d.GiaTriGiaoDich || 0);
+    const foreignBuyValue = parseFloat(d.ForeignBuyValue || d.NNMua || 0);
+    const foreignSellValue = parseFloat(d.ForeignSellValue || d.NNBan || 0);
+    const foreignNetValue = foreignBuyValue - foreignSellValue;
+    const advance = parseInt(d.Advance || d.Tang || d.SoMaTang || 0);
+    const decline = parseInt(d.Decline || d.Giam || d.SoMaGiam || 0);
+    const noChange = parseInt(d.NoChange || d.KhongDoi || d.SoMaKhongDoi || 0);
+
+    return { totalValue, foreignBuyValue, foreignSellValue, foreignNetValue, advance, decline, noChange };
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      console.warn(`CafeF index overview timeout for ${exchange}`);
+    } else {
+      console.error(`Error fetching CafeF index overview (${exchange}):`, err);
+    }
+    return null;
+  }
+}
+
 // Scrape Top Stock highlights from CafeF
 async function fetchCafeFHighlight(exchange: string, type: "UP" | "DOWN" | "VOLUME"): Promise<any[]> {
   const url = `https://cafef.vn/du-lieu/Ajax/Mobile/Smart/AjaxTop10CP.ashx?centerID=${exchange}&type=${type}`;
   try {
     const response = await fetch(url, {
       next: { revalidate: 30 },
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      }
+      headers: CAFEF_HEADERS
     });
 
     if (!response.ok) {
@@ -148,15 +215,15 @@ async function fetchCafeFHighlight(exchange: string, type: "UP" | "DOWN" | "VOLU
 export async function GET() {
   const now = Date.now();
   
-  // Return cached data if valid
+  // Return cached data if valid (5 min TTL)
   if (cachedData && (now - lastCacheTime < CACHE_TTL_MS)) {
     return NextResponse.json(cachedData, {
-      headers: { "x-cache": "HIT" }
+      headers: { "x-cache": "HIT", "x-cache-age": String(Math.floor((now - lastCacheTime) / 1000)) + "s" }
     });
   }
 
   try {
-    // 1. Fetch Entrade indices and Yahoo watchlist chunks concurrently
+    // 1. Fetch all data concurrently
     const chunk1 = TICKERS.slice(0, 15);
     const chunk2 = TICKERS.slice(15);
 
@@ -166,6 +233,8 @@ export async function GET() {
       vnIndexEntrade, 
       hnxIndex, 
       upcomIndex,
+      // CafeF index overviews (liquidity, breadth, foreign)
+      hoseOverview, hnxOverview, upcomOverview,
       // CafeF highlights (3 exchanges x 3 categories)
       hoseUp, hoseDown, hoseVol,
       hnxUp, hnxDown, hnxVol,
@@ -176,7 +245,11 @@ export async function GET() {
       fetchEntradeIndex("VNINDEX", "VN-Index"),
       fetchEntradeIndex("HNX", "HNX-Index"),
       fetchEntradeIndex("UPCOM", "UPCoM-Index"),
-      // Scrape CafeF gainers, losers, active stocks
+      // Index overviews from CafeF
+      fetchCafeFIndexOverview("HOSE"),
+      fetchCafeFIndexOverview("HNX"),
+      fetchCafeFIndexOverview("UPCOM"),
+      // Top stock highlights
       fetchCafeFHighlight("HOSE", "UP"),
       fetchCafeFHighlight("HOSE", "DOWN"),
       fetchCafeFHighlight("HOSE", "VOLUME"),
@@ -228,13 +301,29 @@ export async function GET() {
       };
     });
 
-    // Merge Entrade index history if available
+    // 3. Merge Entrade index history + CafeF index overview data
     const indices: any[] = [];
-    if (vnIndexEntrade) indices.push(vnIndexEntrade);
-    if (hnxIndex) indices.push(hnxIndex);
-    if (upcomIndex) indices.push(upcomIndex);
+    
+    if (vnIndexEntrade) {
+      indices.push({
+        ...vnIndexEntrade,
+        overview: hoseOverview  // Attach CafeF liquidity/breadth/foreign data
+      });
+    }
+    if (hnxIndex) {
+      indices.push({
+        ...hnxIndex,
+        overview: hnxOverview
+      });
+    }
+    if (upcomIndex) {
+      indices.push({
+        ...upcomIndex,
+        overview: upcomOverview
+      });
+    }
 
-    // 3. Process CafeF highlights
+    // 4. Process CafeF highlights
     const gainers = [...hoseUp, ...hnxUp, ...upcomUp]
       .sort((a, b) => b.pctChange - a.pctChange)
       .slice(0, 10);

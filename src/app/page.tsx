@@ -27,6 +27,23 @@ interface StockSearchResult {
   dayLow: string;
   volume: string;
   marketCap: string;
+  // CafeF enrichment
+  pe?: string;
+  pb?: string;
+  eps?: string;
+  marketCapVnd?: string;
+  description?: string;
+  relatedNews?: { title: string; link: string; time: string }[];
+}
+
+interface IndexOverview {
+  totalValue: number;
+  foreignBuyValue: number;
+  foreignSellValue: number;
+  foreignNetValue: number;
+  advance: number;
+  decline: number;
+  noChange: number;
 }
 
 interface NewsItem {
@@ -410,6 +427,8 @@ export default function Home() {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [macroData, setMacroData] = useState<any>(null);
   const [loadingMacro, setLoadingMacro] = useState(true);
+  // Index overview stats (liquidity, breadth, foreign trading) from CafeF
+  const [indexStats, setIndexStats] = useState<Record<string, IndexOverview>>({});
   const [activeArticle, setActiveArticle] = useState<NewsItem | null>(null);
   const [scrapedParagraphs, setScrapedParagraphs] = useState<string[]>([]);
   const [fullContent, setFullContent] = useState<Array<{ type: "paragraph" | "header" | "list-item" | "image"; text?: string; url?: string; level?: number }>>([]);
@@ -531,6 +550,14 @@ export default function Home() {
       const combined = [...(data.indices || []), ...(data.watchlistTickers || [])];
       setTickerList(combined);
       setHighlights(data.highlights || null);
+      // Extract index overview stats from each index entry
+      const statsMap: Record<string, IndexOverview> = {};
+      (data.indices || []).forEach((idx: any) => {
+        if (idx.overview) {
+          statsMap[idx.symbol] = idx.overview;
+        }
+      });
+      setIndexStats(statsMap);
     } catch (error) {
       console.error(error);
       setErrorMsg("Unable to retrieve stock data");
@@ -1539,6 +1566,45 @@ export default function Home() {
                         </div>
                       </div>
 
+                      {/* CafeF Index Stat Bar: Liquidity, Breadth, Foreign */}
+                      {(() => {
+                        const stats = indexStats[selectedChartIndex];
+                        const exchangeMap: Record<string, string> = {
+                          "VN-Index": "HOSE",
+                          "HNX-Index": "HNX",
+                          "UPCoM-Index": "UPCoM"
+                        };
+                        const exchangeLabel = exchangeMap[selectedChartIndex] || selectedChartIndex;
+                        if (!stats) return null;
+                        const netSign = stats.foreignNetValue >= 0 ? "+" : "";
+                        const netColor = stats.foreignNetValue >= 0 ? "var(--success-green)" : "var(--danger-red)";
+                        const totalVal = stats.totalValue > 0 ? stats.totalValue.toLocaleString("vi-VN", { maximumFractionDigits: 0 }) : "—";
+                        const netVal = Math.abs(stats.foreignNetValue) > 0
+                          ? `${netSign}${stats.foreignNetValue.toLocaleString("vi-VN", { maximumFractionDigits: 0 })} tỷ`
+                          : "—";
+                        return (
+                          <div className="index-stat-bar">
+                            <div className="index-stat-item">
+                              <span className="index-stat-label">💰 {lang === "vi" ? `Thanh khoản ${exchangeLabel}` : `${exchangeLabel} Liquidity`}</span>
+                              <span className="index-stat-value">{totalVal} {stats.totalValue > 0 ? "tỷ" : ""}</span>
+                            </div>
+                            <div className="index-stat-item">
+                              <span className="index-stat-label">📊 {lang === "vi" ? "Độ rộng sàn" : "Market Breadth"}</span>
+                              <span className="index-stat-value">
+                                <span style={{ color: "var(--success-green)" }}>▲{stats.advance}</span>
+                                {" / "}
+                                <span style={{ color: "var(--danger-red)" }}>▼{stats.decline}</span>
+                                {stats.noChange > 0 && <span style={{ color: "var(--text-muted)" }}>{" / ="}{stats.noChange}</span>}
+                              </span>
+                            </div>
+                            <div className="index-stat-item">
+                              <span className="index-stat-label">🌐 {lang === "vi" ? "Khối ngoại" : "Foreign Net"}</span>
+                              <span className="index-stat-value" style={{ color: netColor, fontWeight: "700" }}>{netVal}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* Expert Analysis & Forecast */}
                       <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed var(--border-classic)", fontSize: "0.8rem", display: "flex", flexDirection: "column", gap: "10px" }}>
                         <div>
@@ -1911,6 +1977,64 @@ export default function Home() {
                               <span className="stock-detail-value">{item.volume}</span>
                             </div>
                           </div>
+
+                          {/* CafeF Financial Metrics Grid */}
+                          {(item.pe || item.pb || item.eps || item.marketCapVnd) && (
+                            <div className="stock-financial-section">
+                              <div className="stock-financial-label">📊 {lang === "vi" ? "Chỉ số định giá" : "Valuation Metrics"}</div>
+                              <div className="stock-financial-grid">
+                                {item.pe && (
+                                  <div className="stock-financial-item">
+                                    <span className="stock-fin-label">P/E</span>
+                                    <span className="stock-fin-value">{item.pe}</span>
+                                  </div>
+                                )}
+                                {item.pb && (
+                                  <div className="stock-financial-item">
+                                    <span className="stock-fin-label">P/B</span>
+                                    <span className="stock-fin-value">{item.pb}</span>
+                                  </div>
+                                )}
+                                {item.eps && (
+                                  <div className="stock-financial-item">
+                                    <span className="stock-fin-label">EPS</span>
+                                    <span className="stock-fin-value">{item.eps}</span>
+                                  </div>
+                                )}
+                                {item.marketCapVnd && (
+                                  <div className="stock-financial-item">
+                                    <span className="stock-fin-label">{lang === "vi" ? "Vốn hóa" : "Mkt Cap"}</span>
+                                    <span className="stock-fin-value">{item.marketCapVnd}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Company Description */}
+                          {item.description && (
+                            <div className="stock-description-block">
+                              <div className="stock-financial-label">ℹ️ {lang === "vi" ? "Về doanh nghiệp" : "About"}</div>
+                              <p className="stock-description-text">{item.description}</p>
+                            </div>
+                          )}
+
+                          {/* Related News */}
+                          {item.relatedNews && item.relatedNews.length > 0 && (
+                            <div className="stock-related-news">
+                              <div className="stock-financial-label">📰 {lang === "vi" ? "Tin tức mới nhất" : "Latest News"}</div>
+                              <ul className="stock-news-list">
+                                {item.relatedNews.map((news, ni) => (
+                                  <li key={ni} className="stock-news-item">
+                                    <a href={news.link} target="_blank" rel="noopener noreferrer" className="stock-news-title">
+                                      {news.title}
+                                    </a>
+                                    {news.time && <span className="stock-news-time">{news.time}</span>}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
