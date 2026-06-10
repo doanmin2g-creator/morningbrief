@@ -177,9 +177,11 @@ body {
 }
 
 .reload-btn-container.mobile-only .reload-icon {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     object-fit: contain;
+    object-position: center;
+    transform: translate(2px, 2px);
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -193,7 +195,7 @@ body {
 }
 
 .reload-btn-container.mobile-only:active .reload-icon {
-    transform: scale(0.95);
+    transform: translate(2px, 2px) scale(0.95);
 }
 
 /* --- APPLE STYLE LANGUAGE SWITCHER SEGMENTED CONTROL --- */
@@ -3745,4 +3747,3 @@ body {
         display: none !important;
     }
 }
-
