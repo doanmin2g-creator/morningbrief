@@ -1175,12 +1175,29 @@ export default function Home() {
       <header className="masthead">
         <div className="masthead-top">
           <div className="date-badge">{dateText || (lang === "vi" ? "Đang tải ngày..." : "Loading date...")}</div>
-          <div className="logo" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div className="reload-btn-container animate-pulse-hover" onClick={fetchStocks} title={trans[lang].refresh} style={{ cursor: "pointer", display: "flex", alignItems: "center" }}>
-              <img src="/icon/piggy-bank-icon.png" style={{ width: '22px', height: '22px', objectFit: 'contain' }} alt="Reload" />
-            </div>
+          
+          {/* Mobile Only Reload button on the left (absolute position to ensure title centers perfectly) */}
+          <div 
+            className="reload-btn-container mobile-only" 
+            onClick={fetchStocks} 
+            title={trans[lang].refresh} 
+            style={{ 
+              position: "absolute", 
+              left: "12px", 
+              top: "50%", 
+              transform: "translateY(-50%)", 
+              cursor: "pointer", 
+              display: "flex", 
+              alignItems: "center" 
+            }}
+          >
+            <img src="/icon/piggy-bank-icon.png" style={{ width: '22px', height: '22px', objectFit: 'contain' }} alt="Reload" />
+          </div>
+
+          <div className="logo">
             <h1>THE MORNING BRIEF</h1>
           </div>
+          
           <div className="user-profile" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             {/* Apple style Language Switcher Segmented Capsule */}
             <div className="lang-switcher">
@@ -1230,6 +1247,11 @@ export default function Home() {
                 )}
               </span>
             </button>
+
+            {/* Desktop Only Reload button on the right (keeps circle-crown-icon and old position) */}
+            <div className="avatar hidden-mobile" onClick={fetchStocks} title={trans[lang].refresh}>
+              <img src="/icon/circle-crown-icon.png" style={{ width: '22px', height: '22px', cursor: 'pointer', objectFit: 'contain' }} alt="Reload" />
+            </div>
           </div>
         </div>
 
