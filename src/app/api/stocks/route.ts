@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-// Cache structure in memory to avoid Yahoo Finance rate limits
+// Cache structure in memory to avoid hammering Entrade & CafeF APIs
 let cachedData: any = null;
 let lastCacheTime = 0;
 const CACHE_TTL_MS = 30 * 1000; // Cache for 30 seconds
 
-// Major Vietnamese tickers with explicit exchanges
+// Major Vietnamese tickers with explicit exchanges (used for the watchlist fallback/ticker marquee)
 const TICKERS = [
   { symbol: "^VNINDEX.VN", displayName: "VN-Index", sector: "Chỉ số", exchange: "INDEX" },
   { symbol: "VCB.VN", displayName: "VCB (Vietcombank)", sector: "Ngân hàng", exchange: "HOSE" },
@@ -44,19 +44,24 @@ async function fetchSymbolsChunk(chunk: typeof TICKERS) {
   const symbolsStr = chunk.map(t => encodeURIComponent(t.symbol)).join(",");
   const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${symbolsStr}&range=1d&interval=1d`;
   
-  const response = await fetch(url, {
-    next: { revalidate: 15 },
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  try {
+    const response = await fetch(url, {
+      next: { revalidate: 15 },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Yahoo Finance Spark API error: HTTP ${response.status}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(`Yahoo Finance Spark API error: HTTP ${response.status}`);
+    const data = await response.json();
+    return data?.spark?.result || [];
+  } catch (error) {
+    console.error("Error fetching Yahoo Finance chunks:", error);
+    return [];
   }
-
-  const data = await response.json();
-  return data?.spark?.result || [];
 }
 
 async function fetchEntradeIndex(symbol: string, displayName: string) {
@@ -100,6 +105,46 @@ async function fetchEntradeIndex(symbol: string, displayName: string) {
   return null;
 }
 
+// Scrape Top Stock highlights from CafeF
+async function fetchCafeFHighlight(exchange: string, type: "UP" | "DOWN" | "VOLUME"): Promise<any[]> {
+  const url = `https://cafef.vn/du-lieu/Ajax/Mobile/Smart/AjaxTop10CP.ashx?centerID=${exchange}&type=${type}`;
+  try {
+    const response = await fetch(url, {
+      next: { revalidate: 30 },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const list = data?.Data || [];
+    
+    return list.map((item: any) => {
+      const pctChange = item.ChangePricePercent || 0;
+      const changeStr = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
+      return {
+        symbol: item.Symbol,
+        ticker: item.Symbol,
+        price: item.CurrentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        change: changeStr,
+        isPositive: pctChange >= 0,
+        pctChange: pctChange,
+        volume: item.Volume || 0,
+        volumeStr: (item.Volume || 0).toLocaleString("en-US"),
+        sector: item.CompanyName || "Cổ phiếu Việt Nam",
+        exchange: exchange === "UPCOM" ? "UPCoM" : exchange
+      };
+    });
+  } catch (err) {
+    console.error(`Error scraping CafeF Top Stocks (${exchange} - ${type}):`, err);
+    return [];
+  }
+}
+
 export async function GET() {
   const now = Date.now();
   
@@ -111,30 +156,48 @@ export async function GET() {
   }
 
   try {
-    // Yahoo Finance has a limit of 20 symbols max per spark query.
-    // We split our 29 tickers into two chunks (15 and 14) and fetch them concurrently along with Entrade indexes.
+    // 1. Fetch Entrade indices and Yahoo watchlist chunks concurrently
     const chunk1 = TICKERS.slice(0, 15);
     const chunk2 = TICKERS.slice(15);
 
-    const [result1, result2, vnIndexEntrade, hnxIndex, upcomIndex] = await Promise.all([
+    const [
+      result1, 
+      result2, 
+      vnIndexEntrade, 
+      hnxIndex, 
+      upcomIndex,
+      // CafeF highlights (3 exchanges x 3 categories)
+      hoseUp, hoseDown, hoseVol,
+      hnxUp, hnxDown, hnxVol,
+      upcomUp, upcomDown, upcomVol
+    ] = await Promise.all([
       fetchSymbolsChunk(chunk1),
       fetchSymbolsChunk(chunk2),
       fetchEntradeIndex("VNINDEX", "VN-Index"),
       fetchEntradeIndex("HNX", "HNX-Index"),
-      fetchEntradeIndex("UPCOM", "UPCoM-Index")
+      fetchEntradeIndex("UPCOM", "UPCoM-Index"),
+      // Scrape CafeF gainers, losers, active stocks
+      fetchCafeFHighlight("HOSE", "UP"),
+      fetchCafeFHighlight("HOSE", "DOWN"),
+      fetchCafeFHighlight("HOSE", "VOLUME"),
+      fetchCafeFHighlight("HNX", "UP"),
+      fetchCafeFHighlight("HNX", "DOWN"),
+      fetchCafeFHighlight("HNX", "VOLUME"),
+      fetchCafeFHighlight("UPCOM", "UP"),
+      fetchCafeFHighlight("UPCOM", "DOWN"),
+      fetchCafeFHighlight("UPCOM", "VOLUME")
     ]);
 
-    const resultList = [...result1, ...result2];
+    const resultList = [...(result1 || []), ...(result2 || [])];
 
-    // Map the returned batch result list back to our TICKERS array
-    const parsedData = TICKERS.map(t => {
+    // 2. Map standard Watchlist/Banner tickers
+    const watchlistTickers = TICKERS.map(t => {
       const tickerResult = resultList.find((r: any) => r.symbol === t.symbol);
       const meta = tickerResult?.response?.[0]?.meta;
 
       let price = "N/A";
       let change = "0.00%";
       let isPositive = true;
-      let history: number[] = [];
 
       if (meta) {
         const currentPrice = meta.regularMarketPrice;
@@ -154,11 +217,6 @@ export async function GET() {
         }
       }
 
-      // Merge history from Entrade for VN-Index
-      if (t.symbol === "^VNINDEX.VN" && vnIndexEntrade) {
-        history = vnIndexEntrade.history || [];
-      }
-
       return {
         symbol: t.displayName,
         ticker: t.symbol,
@@ -166,18 +224,38 @@ export async function GET() {
         change,
         isPositive,
         sector: t.sector,
-        exchange: t.exchange,
-        ...(history.length > 0 ? { history } : {})
+        exchange: t.exchange
       };
     });
 
-    // Append extra indexes
-    if (hnxIndex) {
-      parsedData.push(hnxIndex);
-    }
-    if (upcomIndex) {
-      parsedData.push(upcomIndex);
-    }
+    // Merge Entrade index history if available
+    const indices: any[] = [];
+    if (vnIndexEntrade) indices.push(vnIndexEntrade);
+    if (hnxIndex) indices.push(hnxIndex);
+    if (upcomIndex) indices.push(upcomIndex);
+
+    // 3. Process CafeF highlights
+    const gainers = [...hoseUp, ...hnxUp, ...upcomUp]
+      .sort((a, b) => b.pctChange - a.pctChange)
+      .slice(0, 10);
+
+    const losers = [...hoseDown, ...hnxDown, ...upcomDown]
+      .sort((a, b) => a.pctChange - b.pctChange)
+      .slice(0, 10);
+
+    const volume = [...hoseVol, ...hnxVol, ...upcomVol]
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, 10);
+
+    const parsedData = {
+      indices,
+      watchlistTickers,
+      highlights: {
+        gainers,
+        losers,
+        volume
+      }
+    };
 
     cachedData = parsedData;
     lastCacheTime = now;
@@ -186,7 +264,7 @@ export async function GET() {
       headers: { "x-cache": "MISS" }
     });
   } catch (error: any) {
-    console.error("Error fetching chunked stock data:", error);
+    console.error("Error compiling stock data:", error);
     
     // Return cached data as fallback if available, otherwise return error
     if (cachedData) {
