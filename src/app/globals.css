@@ -2897,9 +2897,18 @@ body {
     animation: fadeInOverlay 0.25s ease;
 }
 
+.podcast-modal-overlay.closing {
+    animation: fadeOutOverlay 0.28s ease both;
+}
+
 @keyframes fadeInOverlay {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+@keyframes fadeOutOverlay {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 .podcast-modal-content {
@@ -2908,6 +2917,7 @@ body {
     border-radius: 20px;
     box-shadow: 0 32px 80px rgba(0,0,0,0.28), 0 4px 16px rgba(0,0,0,0.12);
     width: min(900px, 95vw);
+    height: 640px;
     max-height: 88vh;
     display: flex;
     flex-direction: column;
@@ -2915,9 +2925,18 @@ body {
     animation: slideUpModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.podcast-modal-content.closing {
+    animation: slideDownModal 0.28s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 @keyframes slideUpModal {
     from { transform: translateY(30px) scale(0.97); opacity: 0; }
     to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes slideDownModal {
+    from { transform: translateY(0) scale(1); opacity: 1; }
+    to { transform: translateY(35px) scale(0.97); opacity: 0; }
 }
 
 .podcast-modal-header {
@@ -4588,3 +4607,272 @@ body {
         display: none !important;
     }
 }
+
+/* =========================================================================
+   APPLE MUSIC DESKTOP SPLIT LAYOUT & EXTRA TRANSITIONS
+   ========================================================================= */
+
+/* --- Split Layout Modal Body --- */
+.podcast-modal-now-playing-panel {
+    width: 320px;
+    padding: 28px 24px;
+    border-right: 1px solid var(--border-classic);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-paper) 100%);
+    flex-shrink: 0;
+}
+
+.podcast-modal-now-playing-cover-wrap {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+    will-change: transform;
+    animation: artPopIn 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.podcast-modal-now-playing-cover-wrap.playing {
+    animation: artPopIn 0.62s cubic-bezier(0.16, 1, 0.3, 1) both, artBreath 4.6s ease-in-out infinite 0.8s;
+}
+
+.podcast-modal-now-playing-cover {
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    object-fit: cover;
+    box-shadow: 0 16px 36px rgba(0,0,0,0.18);
+    position: relative;
+    z-index: 1;
+}
+
+.podcast-modal-now-playing-glow {
+    position: absolute;
+    inset: 8%;
+    border-radius: 20px;
+    background: var(--accent-blue);
+    filter: blur(28px);
+    opacity: 0.16;
+    transform: translateY(16px) scale(0.92);
+    z-index: 0;
+    animation: glowPulse 4.8s ease-in-out infinite;
+}
+
+.podcast-modal-now-playing-details {
+    text-align: center;
+    width: 100%;
+    max-width: 280px;
+}
+
+.podcast-modal-now-playing-kicker {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.podcast-modal-now-playing-title {
+    font-family: var(--font-sans);
+    font-size: 1.15rem;
+    font-weight: 850;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.podcast-modal-now-playing-desc {
+    font-size: 0.76rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.podcast-modal-main-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--bg-card);
+}
+
+.podcast-modal-channels-bar {
+    display: flex;
+    gap: 8px;
+    padding: 18px 24px 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+}
+
+.podcast-modal-channels-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.podcast-modal-channel-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border-classic);
+    background: var(--bg-paper);
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-family: var(--font-sans);
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.podcast-modal-channel-pill img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    border-radius: 3px;
+}
+
+.podcast-modal-channel-pill:hover,
+.podcast-modal-channel-pill.active {
+    border-color: var(--channel-color, var(--accent-blue));
+    background: rgba(0, 130, 138, 0.05);
+    color: var(--channel-color, var(--accent-blue));
+}
+
+.podcast-modal-channel-pill.active {
+    background: var(--channel-color, var(--accent-blue));
+    color: #fff;
+}
+
+.podcast-modal-channel-pill.active img {
+    filter: brightness(10);
+}
+
+.podcast-modal-main-top-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 24px 12px;
+    border-bottom: 1px solid var(--border-classic);
+    flex-shrink: 0;
+}
+
+/* --- Mobile Podcast section background blur --- */
+.mobile-podcast-app-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.mobile-podcast-app-bg-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(80px) saturate(220%) brightness(0.95);
+    transform: scale(1.4);
+    opacity: 0.18;
+    transition: src 0.8s ease-in-out, opacity 0.5s ease;
+}
+
+.mobile-podcast-app-bg-overlay {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.05), var(--bg-paper) 80%);
+}
+
+/* --- Reader modal grabber & dragging transitions --- */
+.reader-modal-grabber {
+    width: 36px;
+    height: 4.5px;
+    background: rgba(134, 121, 110, 0.28);
+    border-radius: 99px;
+    margin: -4px auto 10px;
+}
+
+.reader-modal-content {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reader-modal-header {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.reader-modal-header:active {
+    cursor: grabbing;
+}
+
+/* --- Mobile mini player dock and reveal tab translations --- */
+.mobile-mini-player {
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease, box-shadow 0.28s ease !important;
+}
+
+.mobile-mini-player.hidden {
+    transform: translateX(110%) scale(0.95) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.mobile-mini-reveal-tab {
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease !important;
+}
+
+.mobile-mini-reveal-tab.hidden {
+    transform: translateX(100%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* --- Tab Transition animation --- */
+@keyframes mobileTabFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mobile-tab-animate {
+    animation: mobileTabFadeIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* --- Channel pills track row fade in --- */
+@keyframes trackFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.podcast-modal-track-row {
+    animation: trackFadeIn 0.28s ease both;
+}
+

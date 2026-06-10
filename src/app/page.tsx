@@ -517,6 +517,10 @@ export default function Home() {
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const [volume, setVolume] = useState<number>(1.0);
   const [isPodcastExpanded, setIsPodcastExpanded] = useState<boolean>(false);
+  const [isPodcastClosing, setIsPodcastClosing] = useState<boolean>(false);
+  const [readerSwipeOffset, setReaderSwipeOffset] = useState<number>(0);
+  const [isDraggingReader, setIsDraggingReader] = useState<boolean>(false);
+  const readerSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const [isMobilePlaylistOpen, setIsMobilePlaylistOpen] = useState<boolean>(false);
   const [isMobileMiniHidden, setIsMobileMiniHidden] = useState(false);
   const [isMobilePlayerOpen, setIsMobilePlayerOpen] = useState(false);
@@ -602,12 +606,7 @@ export default function Home() {
   }, [volume]);
 
   useEffect(() => {
-    if (!isPlaying) {
-      setIsMobileMiniHidden(false);
-      closeMobilePlayer();
-      return;
-    }
-    setIsMobileMiniHidden(false);
+    // Dock is shown/hidden via swipe gestures and tab switching, no automatic close on pause
   }, [isPlaying]);
 
   useEffect(() => {
@@ -666,12 +665,34 @@ export default function Home() {
     if (!isMobilePlayerOpen || isMobilePlayerClosing) return;
     setIsMobilePlayerClosing(true);
     setIsAudioInfoOpen(false);
+
+    // If on the dedicated podcast tab, pause the track and hide mini player dock
+    if (activeMobileTab === "podcast") {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setIsPlaying(false);
+      setIsMobileMiniHidden(true);
+    } else {
+      // Otherwise keep dock visible
+      setIsMobileMiniHidden(false);
+    }
+
     if (mobilePlayerCloseTimerRef.current) clearTimeout(mobilePlayerCloseTimerRef.current);
     mobilePlayerCloseTimerRef.current = setTimeout(() => {
       setIsMobilePlayerOpen(false);
       setIsMobilePlayerClosing(false);
     }, 420);
   }
+
+  const closePodcastExpanded = () => {
+    if (isPodcastClosing) return;
+    setIsPodcastClosing(true);
+    setTimeout(() => {
+      setIsPodcastExpanded(false);
+      setIsPodcastClosing(false);
+    }, 280);
+  };
 
   // Format Date in traditional FT format
   useEffect(() => {
@@ -1068,9 +1089,11 @@ export default function Home() {
     if (isHorizontalSwipe && deltaX > 0) {
       miniPlayerSwipeHandledRef.current = true;
       setIsMobileMiniHidden(true);
-      if (!isPlaying) {
-        setIsMobilePlayerOpen(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
       }
+      setIsPlaying(false);
+      setIsMobilePlayerOpen(false);
     }
   };
 
@@ -1129,6 +1152,32 @@ export default function Home() {
       handleNextTrack();
     } else {
       handlePrevTrack();
+    }
+  };
+
+  const startReaderSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    const touch = event.touches[0];
+    readerSwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+    setIsDraggingReader(true);
+  };
+
+  const moveReaderSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    if (!readerSwipeStartRef.current) return;
+    const touch = event.touches[0];
+    const deltaY = touch.clientY - readerSwipeStartRef.current.y;
+    const deltaX = touch.clientX - readerSwipeStartRef.current.x;
+    if (deltaY > 0 && deltaY > Math.abs(deltaX)) {
+      setReaderSwipeOffset(deltaY);
+    }
+  };
+
+  const endReaderSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    setIsDraggingReader(false);
+    const offset = readerSwipeOffset;
+    setReaderSwipeOffset(0);
+    readerSwipeStartRef.current = null;
+    if (offset > 120) {
+      closeArticle();
     }
   };
 
@@ -1476,8 +1525,8 @@ export default function Home() {
   // Seamless scrolling marquee requires duplicated list
   const duplicatedTickers = [...tickerList, ...tickerList];
   const mobilePlayerProgress = duration > 0 ? `${Math.min(100, (currentTime / duration) * 100)}%` : "0%";
-  const shouldShowFloatingMiniPlayer = Boolean(currentTrack && isPlaying && !isMobileMiniHidden && activeMobileTab !== "podcast");
-  const shouldShowMiniRevealTab = Boolean(currentTrack && isPlaying && isMobileMiniHidden && activeMobileTab !== "podcast");
+  const shouldShowFloatingMiniPlayer = Boolean(currentTrack && !isMobileMiniHidden && activeMobileTab !== "podcast");
+  const shouldShowMiniRevealTab = Boolean(currentTrack && isMobileMiniHidden && activeMobileTab !== "podcast");
 
   return (
     <div className="app-container">
@@ -1631,7 +1680,7 @@ export default function Home() {
         <div className="broadsheet-grid">
           
           {/* Left Column: Lead Stories (News Feed) */}
-          <section className={`news-section ${activeMobileTab === "home" ? "" : "hidden-mobile"}`}>
+          <section className={`news-section ${activeMobileTab === "home" ? "mobile-tab-animate" : "hidden-mobile"}`}>
             <div className="column-header">
               <h2>
                 <img src="/icon/calendar-icon.png" className="header-3d-icon" alt="" />
@@ -1905,7 +1954,7 @@ export default function Home() {
             </div>
 
             {/* Dynamic AI Analysis Panel (VN Broad Market Perspective) */}
-            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`} style={{ borderLeft: "4px solid var(--accent-red)", background: "rgba(0,0,0,0.01)" }}>
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "mobile-tab-animate" : "hidden-mobile"}`} style={{ borderLeft: "4px solid var(--accent-red)", background: "rgba(0,0,0,0.01)" }}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
                 <h3 style={{ textTransform: "uppercase", fontSize: "0.78rem", letterSpacing: "1.5px", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
                   <img src="/icon/notebook-icon.png" className="header-3d-icon" style={{ width: '16px', height: '16px', marginRight: '6px' }} alt="" />
@@ -1918,7 +1967,7 @@ export default function Home() {
             </div>
 
             {/* Market Trend Chart Panel */}
-            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "mobile-tab-animate" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
                 <h3>
                   <img src="/icon/chart-icon.png" className="header-3d-icon" alt="" />
@@ -2258,7 +2307,7 @@ export default function Home() {
 
 
             {/* Watchlist Panel with integrated Desktop Stock Lookup */}
-            <div className={`widget-panel ${activeMobileTab === "portfolio" ? "" : "hidden-mobile"}`}>
+            <div className={`widget-panel ${activeMobileTab === "portfolio" ? "mobile-tab-animate" : "hidden-mobile"}`}>
               <div className="widget-header">
                 <h3>
                   <img src="/icon/wallet-icon.png" className="header-3d-icon" alt="" />
@@ -2485,7 +2534,7 @@ export default function Home() {
             )}
 
             {/* Top VN Stocks List (Điểm nhấn Thị trường) */}
-            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "mobile-tab-animate" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingBottom: "0.75rem" }}>
                 <h3 style={{ margin: 0, fontSize: "0.85rem", letterSpacing: "1.5px" }}>
                   <img src="/icon/stock-tickers-icon.png" className="header-3d-icon" style={{ width: '16px', height: '16px', marginRight: '6px' }} alt="" />
@@ -2603,7 +2652,7 @@ export default function Home() {
 
 
             {/* Macro Economics Panel */}
-            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
+            <div className={`widget-panel ${activeMobileTab === "markets" ? "mobile-tab-animate" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
                 <h3>
                   <img src="/icon/landmark-icon.png" className="header-3d-icon" alt="" />
@@ -2669,8 +2718,11 @@ export default function Home() {
           </aside>
 
           {/* Mobile Podcast App Section */}
-          {activeMobileTab === "podcast" && (
-            <section className="mobile-podcast-app-section mobile-only">
+          <section className={`mobile-podcast-app-section mobile-only ${activeMobileTab === "podcast" ? "mobile-tab-animate" : "hidden-mobile"}`}>
+            <div className="mobile-podcast-app-bg">
+              <img src={currentTrack?.coverUrl} alt="" className="mobile-podcast-app-bg-image" />
+              <div className="mobile-podcast-app-bg-overlay"></div>
+            </div>
               <div className="mobile-podcast-app-header">
                 <h2>
                   <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
@@ -2826,7 +2878,6 @@ export default function Home() {
                 )}
               </div>
             </section>
-          )}
 
         </div>
       </main>
@@ -2839,8 +2890,18 @@ export default function Home() {
       {/* Reader Mode Modal */}
       {activeArticle && (
         <div className={`reader-modal-overlay ${isReaderClosing ? "closing" : ""}`} onClick={closeArticle}>
-          <div className="reader-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="reader-modal-header">
+          <div 
+            className="reader-modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={isDraggingReader ? { transform: `translateY(${readerSwipeOffset}px)`, transition: 'none' } : { transform: `translateY(${readerSwipeOffset}px)` }}
+          >
+            <div 
+              className="reader-modal-header"
+              onTouchStart={startReaderSwipe}
+              onTouchMove={moveReaderSwipe}
+              onTouchEnd={endReaderSwipe}
+            >
+              <div className="reader-modal-grabber"></div>
               <span className="reader-modal-source">{activeArticle.source}</span>
               <button className="reader-modal-close" onClick={closeArticle} title={lang === "vi" ? "Đóng" : "Close"}>
                 ×
@@ -2979,54 +3040,71 @@ export default function Home() {
           DESKTOP PODCAST APP MODAL OVERLAY
           ═══════════════════════════════════════════════════════ */}
       {isPodcastExpanded && (
-        <div className="podcast-modal-overlay" onClick={() => setIsPodcastExpanded(false)}>
-          <div className="podcast-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className={`podcast-modal-overlay ${isPodcastClosing ? "closing" : ""}`} onClick={closePodcastExpanded}>
+          <div className={`podcast-modal-content ${isPodcastClosing ? "closing" : ""}`} onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="podcast-modal-header">
               <h2>
                 <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
                 {trans[lang].audioNews}
               </h2>
-              <button className="podcast-modal-close-btn" onClick={() => setIsPodcastExpanded(false)} title="Đóng | Close">
+              <button className="podcast-modal-close-btn" onClick={closePodcastExpanded} title="Đóng | Close">
                 <CloseIcon size={16} />
               </button>
             </div>
             {/* Modal Body */}
             <div className="podcast-modal-body">
-              {/* Sidebar Channels */}
-              <div className="podcast-modal-sidebar">
-                {channelsList.map((ch) => (
-                  <button
-                    key={ch.id}
-                    onClick={() => { setSelectedChannel(ch.id); setSelectedSubChannel("All"); setCurrentTrackIndex(0); }}
-                    className={`podcast-modal-sidebar-btn ${selectedChannel === ch.id ? "active" : ""}`}
-                    style={{ '--channel-color': ch.color } as React.CSSProperties}
-                  >
-                    <img src={ch.logo} alt={ch.name} />
-                    {ch.name}
-                  </button>
-                ))}
+              {/* Left Column: Now Playing (Apple Music style) */}
+              <div className="podcast-modal-now-playing-panel">
+                <div className={`podcast-modal-now-playing-cover-wrap ${isPlaying ? "playing" : ""}`}>
+                  <img src={currentTrack?.coverUrl} alt="" className="podcast-modal-now-playing-cover" />
+                  <span className="podcast-modal-now-playing-glow"></span>
+                </div>
+                <div className="podcast-modal-now-playing-details">
+                  <span className="podcast-modal-now-playing-kicker">{currentTrack?.sourceName} • {currentTrack?.artist}</span>
+                  <h3 className="podcast-modal-now-playing-title">{getTrackTitle(currentTrack)}</h3>
+                  <p className="podcast-modal-now-playing-desc">{getTrackDesc(currentTrack)}</p>
+                </div>
               </div>
-              {/* Main Panel */}
-              <div className="podcast-modal-main">
-                <div className="podcast-modal-main-top">
-                  <div className="podcast-modal-channel-banner">
-                    {(() => { const ch = channelsList.find(c => c.id === selectedChannel); return ch ? (<><img src={ch.logo} alt={ch.name} /><div className="podcast-modal-channel-info"><h3>{ch.name}</h3><p>{ch.desc}</p></div></>) : null; })()}
-                  </div>
-                  <div className="podcast-modal-search-row">
-                    <input type="text" placeholder={lang === "vi" ? "Tìm tập podcast..." : "Search episodes..."} value={podcastSearchQuery} onChange={(e) => setPodcastSearchQuery(e.target.value)} className="podcast-modal-search-input" />
-                  </div>
+
+              {/* Right Column: Library & Queue */}
+              <div className="podcast-modal-main-panel">
+                {/* Channels pill bar at top */}
+                <div className="podcast-modal-channels-bar">
+                  {channelsList.map((ch) => (
+                    <button
+                      key={ch.id}
+                      onClick={() => { setSelectedChannel(ch.id); setSelectedSubChannel("All"); setCurrentTrackIndex(0); }}
+                      className={`podcast-modal-channel-pill ${selectedChannel === ch.id ? "active" : ""}`}
+                      style={{ '--channel-color': ch.color } as React.CSSProperties}
+                    >
+                      <img src={ch.logo} alt={ch.name} />
+                      <span>{ch.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="podcast-modal-main-top-row">
+                  <input 
+                    type="text" 
+                    placeholder={lang === "vi" ? "Tìm tập podcast..." : "Search episodes..."} 
+                    value={podcastSearchQuery} 
+                    onChange={(e) => setPodcastSearchQuery(e.target.value)} 
+                    className="podcast-modal-search-input" 
+                  />
                   {subChannelsList.length > 1 && (
                     <div className="podcast-modal-subchannel-pills">
                       {subChannelsList.map((sc) => (
                         <button key={sc} onClick={() => { setSelectedSubChannel(sc); setCurrentTrackIndex(0); }} className={`podcast-modal-subchannel-pill ${selectedSubChannel === sc ? "active" : ""}`}>
-                          {sc === "All" ? (lang === "vi" ? "Tất cả" : "All") : sc}
+                          {sc === "All" ? (lang === "vi" ? "Tất cả chuyên mục" : "All") : sc}
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="podcast-modal-tracks-list">
+
+                {/* Tracks list */}
+                <div key={selectedChannel} className="podcast-modal-tracks-list">
                   {filteredPlaylist.length === 0 ? (
                     <div style={{ padding: "30px", textAlign: "center", color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.85rem" }}>
                       {lang === "vi" ? "Không tìm thấy tập podcast." : "No episodes found."}
@@ -3085,45 +3163,45 @@ export default function Home() {
       )}
 
       {/* MOBILE FLOATING MINI PLAYER — shown on all tabs except podcast tab */}
-      {shouldShowFloatingMiniPlayer && (
-        <div
-          className="mobile-mini-player"
-          onClick={openMobilePlayer}
-          onTouchStart={startMiniPlayerSwipe}
-          onTouchEnd={endMiniPlayerSwipe}
-        >
-          <img src={currentTrack.coverUrl} alt="" className={`mobile-mini-player-cover ${isPlaying ? "spinning" : ""}`} />
-          <div className="mobile-mini-player-info">
-            <div className="mobile-mini-player-title">{getTrackTitle(currentTrack)}</div>
-            <div className="mobile-mini-player-artist">
-              <span>{currentTrack.artist}</span>
-              {isPlaying && (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>)}
+      {currentTrack && activeMobileTab !== "podcast" && (
+        <>
+          <div
+            className={`mobile-mini-player ${isMobileMiniHidden ? "hidden" : ""}`}
+            onClick={openMobilePlayer}
+            onTouchStart={startMiniPlayerSwipe}
+            onTouchEnd={endMiniPlayerSwipe}
+          >
+            <img src={currentTrack.coverUrl} alt="" className={`mobile-mini-player-cover ${isPlaying ? "spinning" : ""}`} />
+            <div className="mobile-mini-player-info">
+              <div className="mobile-mini-player-title">{getTrackTitle(currentTrack)}</div>
+              <div className="mobile-mini-player-artist">
+                <span>{currentTrack.artist}</span>
+                {isPlaying && (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>)}
+              </div>
+            </div>
+            <div className="mobile-mini-player-controls">
+              <button className="mobile-mini-ctrl-btn" onClick={(e) => { e.stopPropagation(); handlePrevTrack(); }}><SkipPreviousIcon size={16} /></button>
+              <button className="mobile-mini-ctrl-btn play-btn" onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}>
+                {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+              </button>
+              <button className="mobile-mini-ctrl-btn" onClick={(e) => { e.stopPropagation(); handleNextTrack(); }}><SkipNextIcon size={16} /></button>
+            </div>
+            <div className="mobile-mini-player-progress">
+              <div className="mobile-mini-player-progress-fill" style={{ width: mobilePlayerProgress }} />
             </div>
           </div>
-          <div className="mobile-mini-player-controls">
-            <button className="mobile-mini-ctrl-btn" onClick={(e) => { e.stopPropagation(); handlePrevTrack(); }}><SkipPreviousIcon size={16} /></button>
-            <button className="mobile-mini-ctrl-btn play-btn" onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}>
-              {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
-            </button>
-            <button className="mobile-mini-ctrl-btn" onClick={(e) => { e.stopPropagation(); handleNextTrack(); }}><SkipNextIcon size={16} /></button>
-          </div>
-          <div className="mobile-mini-player-progress">
-            <div className="mobile-mini-player-progress-fill" style={{ width: mobilePlayerProgress }} />
-          </div>
-        </div>
-      )}
 
-      {shouldShowMiniRevealTab && (
-        <button
-          className="mobile-mini-reveal-tab"
-          onClick={() => setIsMobileMiniHidden(false)}
-          onTouchStart={startRevealTabSwipe}
-          onTouchEnd={endRevealTabSwipe}
-          title={lang === "vi" ? "Kéo sang trái để mở trình phát" : "Swipe left to reveal player"}
-        >
-          <span className="mobile-mini-reveal-arrow">‹</span>
-          <img src={currentTrack.coverUrl} alt="" />
-        </button>
+          <button
+            className={`mobile-mini-reveal-tab ${!isMobileMiniHidden ? "hidden" : ""}`}
+            onClick={() => setIsMobileMiniHidden(false)}
+            onTouchStart={startRevealTabSwipe}
+            onTouchEnd={endRevealTabSwipe}
+            title={lang === "vi" ? "Kéo sang trái để mở trình phát" : "Swipe left to reveal player"}
+          >
+            <span className="mobile-mini-reveal-arrow">‹</span>
+            <img src={currentTrack.coverUrl} alt="" />
+          </button>
+        </>
       )}
 
       {isMobilePlayerOpen && currentTrack && (
