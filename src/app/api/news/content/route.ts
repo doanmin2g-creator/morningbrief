@@ -316,19 +316,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 3. Extract paragraphs and images in chronological order
+    // 3. Extract paragraphs, headers, lists and images in chronological order
     const paragraphs: string[] = [];
-    const fullContent: Array<{ type: "paragraph" | "image"; text?: string; url?: string }> = [];
+    const fullContent: Array<{ type: "paragraph" | "header" | "list-item" | "image"; text?: string; url?: string; level?: number }> = [];
     
-    const elementRegex = /<p[^>]*>([\s\S]*?)<\/p>|<img\b[^>]*>/gi;
+    // Scan for p, h2, h3, h4, li elements or img tags
+    const elementRegex = /<(p|h2|h3|h4|li)[^>]*>([\s\S]*?)<\/\1>|<img\b[^>]*>/gi;
     let match;
     
     while ((match = elementRegex.exec(bodyHtml)) !== null) {
       const matchedTag = match[0];
+      const tagName = match[1]?.toLowerCase();
       
-      if (matchedTag.toLowerCase().startsWith("<p")) {
-        const pText = match[1]
-          .replace(/<[^>]*>/g, "") // Strip HTML tags
+      if (tagName === "p" || tagName === "h2" || tagName === "h3" || tagName === "h4" || tagName === "li") {
+        const rawText = match[2];
+        const cleanText = rawText
+          .replace(/<(?!br\b|\/?strong\b|\/?b\b|\/?i\b|\/?em\b|\/?u\b)[^>]*>/gi, "") // Keep only inline formatting tags
           .replace(/&nbsp;/g, " ")
           .replace(/&amp;/g, "&")
           .replace(/&lt;/g, "<")
@@ -337,9 +340,19 @@ export async function GET(request: NextRequest) {
           .replace(/&#39;/g, "'")
           .trim();
           
-        if (isCleanParagraph(pText)) {
-          paragraphs.push(pText);
-          fullContent.push({ type: "paragraph", text: pText });
+        if (cleanText.length > 5) {
+          if (tagName === "p") {
+            const textStripped = cleanText.replace(/<[^>]*>/g, ""); // Strip for checking boilerplate
+            if (isCleanParagraph(textStripped)) {
+              paragraphs.push(textStripped);
+              fullContent.push({ type: "paragraph", text: cleanText });
+            }
+          } else if (tagName === "li") {
+            fullContent.push({ type: "list-item", text: cleanText });
+          } else {
+            const level = parseInt(tagName.substring(1)) || 3;
+            fullContent.push({ type: "header", text: cleanText, level });
+          }
         }
       } else if (matchedTag.toLowerCase().startsWith("<img")) {
         // Extract image URL from lazy attributes or src

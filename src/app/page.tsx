@@ -408,7 +408,7 @@ export default function Home() {
   const [loadingMacro, setLoadingMacro] = useState(true);
   const [activeArticle, setActiveArticle] = useState<NewsItem | null>(null);
   const [scrapedParagraphs, setScrapedParagraphs] = useState<string[]>([]);
-  const [fullContent, setFullContent] = useState<Array<{ type: "paragraph" | "image"; text?: string; url?: string }>>([]);
+  const [fullContent, setFullContent] = useState<Array<{ type: "paragraph" | "header" | "list-item" | "image"; text?: string; url?: string; level?: number }>>([]);
   const [readerTab, setReaderTab] = useState<"summary" | "full">("summary");
   const [loadingContent, setLoadingContent] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -1986,14 +1986,37 @@ export default function Home() {
                   ))
                 )}
 
-                {/* 3. TAB B: Full Article (Paragraphs + Inline Images) */}
+                {/* 3. TAB B: Full Article (Paragraphs, Headers, List Items, Inline Images) */}
                 {!loadingContent && readerTab === "full" && fullContent.length > 0 && (
                   fullContent.map((el, i) => {
                     if (el.type === "paragraph" && el.text) {
                       return (
-                        <p key={i} className={i === 0 ? "reader-body-lead" : "reader-body-para"} style={{ marginTop: i > 0 ? "12px" : "0" }}>
-                          {el.text}
-                        </p>
+                        <p 
+                          key={i} 
+                          className={i === 0 ? "reader-body-lead" : "reader-body-para"} 
+                          style={{ marginTop: i > 0 ? "12px" : "0" }}
+                          dangerouslySetInnerHTML={{ __html: el.text }}
+                        />
+                      );
+                    } else if (el.type === "header" && el.text) {
+                      const HeadingTag = el.level === 2 ? "h3" : "h4";
+                      return (
+                        <HeadingTag 
+                          key={i} 
+                          className="reader-body-heading" 
+                          style={{ marginTop: "24px", marginBottom: "8px", fontWeight: "700", fontFamily: "var(--font-serif)", color: "var(--text-primary)" }}
+                          dangerouslySetInnerHTML={{ __html: el.text }}
+                        />
+                      );
+                    } else if (el.type === "list-item" && el.text) {
+                      return (
+                        <ul key={i} style={{ margin: "6px 0 6px 20px", listStyleType: "disc" }}>
+                          <li 
+                            className="reader-body-para" 
+                            style={{ margin: 0 }}
+                            dangerouslySetInnerHTML={{ __html: el.text }}
+                          />
+                        </ul>
                       );
                     } else if (el.type === "image" && el.url) {
                       return (
