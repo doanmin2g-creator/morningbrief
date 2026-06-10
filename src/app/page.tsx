@@ -1180,18 +1180,9 @@ export default function Home() {
           <div 
             className="reload-btn-container mobile-only" 
             onClick={fetchStocks} 
-            title={trans[lang].refresh} 
-            style={{ 
-              position: "absolute", 
-              left: "12px", 
-              top: "50%", 
-              transform: "translateY(-50%)", 
-              cursor: "pointer", 
-              display: "flex", 
-              alignItems: "center" 
-            }}
+            title={trans[lang].refresh}
           >
-            <img src="/icon/piggy-bank-icon.png" style={{ width: '22px', height: '22px', objectFit: 'contain' }} alt="Reload" />
+            <img src="/icon/piggy-bank-icon.png" className="reload-icon" alt="Reload" />
           </div>
 
           <div className="logo">
@@ -1248,9 +1239,9 @@ export default function Home() {
               </span>
             </button>
 
-            {/* Desktop Only Reload button on the right (keeps circle-crown-icon and old position) */}
+            {/* Desktop Only Reload button on the right (uses piggy-bank-icon and aligned beautifully) */}
             <div className="avatar hidden-mobile" onClick={fetchStocks} title={trans[lang].refresh}>
-              <img src="/icon/circle-crown-icon.png" style={{ width: '22px', height: '22px', cursor: 'pointer', objectFit: 'contain' }} alt="Reload" />
+              <img src="/icon/piggy-bank-icon.png" alt="Reload" />
             </div>
           </div>
         </div>

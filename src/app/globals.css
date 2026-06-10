@@ -123,24 +123,77 @@ body {
 }
 
 .avatar {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     background: var(--bg-card);
     border: 1px solid var(--border-classic);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.95rem;
-    color: var(--text-primary);
     cursor: pointer;
     box-shadow: var(--shadow-soft);
-    transition: var(--transition-spring);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.avatar img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    display: block;
 }
 .avatar:hover {
-    background: var(--text-primary);
-    color: white;
-    transform: scale(1.1) rotate(90deg);
+    background: rgba(134, 121, 110, 0.05);
+    border-color: var(--accent-blue);
+    transform: scale(1.08);
+}
+.avatar:active {
+    transform: scale(0.95);
+}
+
+/* Liquid glass reload button for mobile */
+.reload-btn-container.mobile-only {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.1) 100%);
+    backdrop-filter: blur(14px) saturate(180%);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    border: 1.5px solid rgba(255, 255, 255, 0.65);
+    box-shadow: 
+        0 4px 10px rgba(134, 121, 110, 0.12),
+        0 1px 3px rgba(0, 0, 0, 0.02),
+        inset 0 2px 3px rgba(255, 255, 255, 0.8),
+        inset 0 -2px 3px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 10;
+}
+
+.reload-btn-container.mobile-only .reload-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reload-btn-container.mobile-only:active {
+    transform: translateY(-50%) scale(0.92);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.35) 50%, rgba(255, 255, 255, 0.15) 100%);
+    box-shadow: 
+        0 2px 6px rgba(134, 121, 110, 0.08),
+        inset 0 1px 2px rgba(255, 255, 255, 0.6),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.reload-btn-container.mobile-only:active .reload-icon {
+    transform: scale(0.95);
 }
 
 /* --- APPLE STYLE LANGUAGE SWITCHER SEGMENTED CONTROL --- */
@@ -1626,6 +1679,7 @@ body {
         font-size: 1.2rem !important;
         letter-spacing: -0.5px !important;
         padding: 4px 8px !important;
+        margin: 0 !important;
     }
     
     .masthead {
@@ -1640,10 +1694,13 @@ body {
     .date-badge, .avatar, .see-more-btn {
         display: none !important;
     }
+    .reload-btn-container.mobile-only {
+        display: flex !important;
+    }
     .user-profile {
         display: flex !important;
         position: absolute;
-        right: 0;
+        right: 12px;
         top: 50%;
         transform: translateY(-50%);
         gap: 0 !important;
