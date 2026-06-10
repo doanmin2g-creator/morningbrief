@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 
 // Types
 interface TickerItem {
@@ -383,6 +383,62 @@ const initialBrokerOutlooks: BrokerOutlook[] = [
   }
 ];
 
+// Premium SVG icon components for the audio player
+const PlayIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 5.14a1 1 0 011.5-.86l10 6.86a1 1 0 010 1.72l-10 6.86a1 1 0 01-1.5-.86V5.14z" fill={color} />
+  </svg>
+);
+
+const PauseIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="6" y="5" width="4" height="14" rx="1.5" fill={color} />
+    <rect x="14" y="5" width="4" height="14" rx="1.5" fill={color} />
+  </svg>
+);
+
+const SkipNextIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill={color} />
+  </svg>
+);
+
+const SkipPreviousIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6 6v12h2V6H6zM18 6l-8.5 6 8.5 6V6z" fill={color} />
+  </svg>
+);
+
+const PlaylistIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 6h16M4 12h16M4 18h10" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const CloseIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M18 6L6 18M6 6l12 12" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const SpeedIcon = ({ size = 18, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm1-13h-2v6l5.25 3.15.75-1.23-4-2.37V7z" fill={color} />
+  </svg>
+);
+
+const MaximizeIcon = ({ size = 18, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const VolumeIcon = ({ size = 18, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill={color} />
+  </svg>
+);
+
 export default function Home() {
   const [lang, setLang] = useState<"vi" | "en">("vi");
   const [dateText, setDateText] = useState("");
@@ -448,6 +504,87 @@ export default function Home() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showPlaylist, setShowPlaylist] = useState(false);
+
+  // New Podcast Channel & Option States
+  const [selectedChannel, setSelectedChannel] = useState<string>("All");
+  const [selectedSubChannel, setSelectedSubChannel] = useState<string>("All");
+  const [podcastSearchQuery, setPodcastSearchQuery] = useState<string>("");
+  const [playbackRate, setPlaybackRate] = useState<number>(1.0);
+  const [volume, setVolume] = useState<number>(1.0);
+  const [isPodcastExpanded, setIsPodcastExpanded] = useState<boolean>(false);
+  const [isMobilePlaylistOpen, setIsMobilePlaylistOpen] = useState<boolean>(false);
+
+  // Curated Channels List with custom styling details
+  const channelsList = useMemo(() => {
+    return [
+      { id: "All", name: lang === "vi" ? "Tất cả" : "All", logo: "/icon/headphone-icon.png", color: "var(--accent-blue)", desc: lang === "vi" ? "Tất cả các nguồn tin phát thanh tổng hợp sáng nay." : "All curated audio feeds for this morning." },
+      { id: "VOV", name: "VOV", logo: "/icon/microphone-icon.png", color: "#A30000", desc: lang === "vi" ? "Đài Tiếng nói Việt Nam VOV - Tin thời sự & kinh tế vĩ mô nóng hổi." : "Voice of Vietnam news and macroeconomic updates." },
+      { id: "Tuổi Trẻ", name: "Tuổi Trẻ", logo: "/icon/closed-book-icon.png", color: "#005ea5", desc: lang === "vi" ? "Báo Tuổi Trẻ - Tin tức đời sống & tài chính tiêu dùng." : "Tuoi Tre news, social updates & consumer finance." },
+      { id: "Vietcetera", name: "Vietcetera", logo: "/icon/coffee-cup-icon.png", color: "#ff3e00", desc: lang === "vi" ? "Podcast đối thoại kinh doanh, đổi mới & lối sống." : "Vietcetera conversations on business, career & lifestyle." },
+      { id: "BBC", name: "BBC", logo: "/icon/globes-icon.png", color: "#b00000", desc: lang === "vi" ? "BBC World Service - Tin tức toàn cầu & Tiếng Anh." : "BBC global perspective and English learning." }
+    ];
+  }, [lang]);
+
+  const filteredPlaylist = useMemo(() => {
+    let list = podcastPlaylist;
+    if (selectedChannel !== "All") {
+      list = list.filter(track => track.sourceName === selectedChannel);
+    }
+    if (selectedSubChannel !== "All") {
+      list = list.filter(track => track.artist === selectedSubChannel);
+    }
+    if (podcastSearchQuery.trim() !== "") {
+      const q = podcastSearchQuery.toLowerCase();
+      list = list.filter(track => 
+        track.title.toLowerCase().includes(q) || 
+        (track.description && track.description.toLowerCase().includes(q)) ||
+        (track.artist && track.artist.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [podcastPlaylist, selectedChannel, selectedSubChannel, podcastSearchQuery]);
+
+  const subChannelsList = useMemo(() => {
+    if (selectedChannel === "All") return ["All"];
+    const artists = new Set<string>();
+    podcastPlaylist.forEach(track => {
+      if (track.sourceName === selectedChannel && track.artist) {
+        artists.add(track.artist);
+      }
+    });
+    return ["All", ...Array.from(artists)];
+  }, [podcastPlaylist, selectedChannel]);
+
+  const currentTrack = useMemo(() => {
+    if (filteredPlaylist.length > 0) {
+      if (currentTrackIndex < filteredPlaylist.length) {
+        return filteredPlaylist[currentTrackIndex];
+      }
+      return filteredPlaylist[0];
+    }
+    return podcastPlaylist[currentTrackIndex] || podcastPlaylist[0] || fallbackPlaylist[0];
+  }, [filteredPlaylist, currentTrackIndex, podcastPlaylist]);
+
+  // Safely bound currentTrackIndex when the filtered playlist changes
+  useEffect(() => {
+    if (currentTrackIndex >= filteredPlaylist.length) {
+      setCurrentTrackIndex(0);
+    }
+  }, [filteredPlaylist, currentTrackIndex]);
+
+  // Synchronize playback speed
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate, currentTrack, currentTrackIndex]);
+
+  // Synchronize volume
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
   
   // Stock list highlight filter
   const [stockFilterTab, setStockFilterTab] = useState<"all" | "gainers" | "losers" | "volume">("all");
@@ -789,11 +926,13 @@ export default function Home() {
   };
 
   const handleNextTrack = () => {
-    setCurrentTrackIndex((prev) => (prev + 1) % podcastPlaylist.length);
+    if (filteredPlaylist.length === 0) return;
+    setCurrentTrackIndex((prev) => (prev + 1) % filteredPlaylist.length);
   };
 
   const handlePrevTrack = () => {
-    setCurrentTrackIndex((prev) => (prev - 1 + podcastPlaylist.length) % podcastPlaylist.length);
+    if (filteredPlaylist.length === 0) return;
+    setCurrentTrackIndex((prev) => (prev - 1 + filteredPlaylist.length) % filteredPlaylist.length);
   };
 
   const togglePlayPause = () => {
@@ -928,7 +1067,7 @@ export default function Home() {
         audioRef.current.play().catch(err => console.log("Audio auto-play failed:", err));
       }
     }
-  }, [currentTrackIndex]);
+  }, [currentTrack]);
 
   const toggleSpeech = () => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -1437,33 +1576,57 @@ export default function Home() {
             {/* Audio tag for podcast streaming */}
             <audio
               ref={audioRef}
-              src={podcastPlaylist[currentTrackIndex].audioUrl}
+              src={currentTrack?.audioUrl}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onEnded={handleTrackEnded}
             />
 
             {/* Spotify-style Podcast Player */}
-            <div className={`widget-panel podcast-player-card ${activeMobileTab === "podcast" ? "" : "hidden-mobile"}`}>
-              <div className="widget-header podcast-header">
+            <div className="widget-panel podcast-player-card hidden-mobile">
+              <div className="widget-header podcast-header" onClick={() => setIsPodcastExpanded(true)} style={{ cursor: "pointer" }}>
                 <h3 className="podcast-header-title">
                   <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
                   {trans[lang].audioNews}
                 </h3>
-                <div className="podcast-header-status">
+                <div className="podcast-header-status" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                   {loadingPodcast && <span className="podcast-live-dot"></span>}
-                  <span className="podcast-source-tag">
-                    {podcastPlaylist[currentTrackIndex]?.sourceName || (podcastSource === "Offline" ? trans[lang].offline : podcastSource)}
-                  </span>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsPodcastExpanded(true); }} 
+                    className="podcast-expand-btn"
+                    title="Mở rộng | Expand"
+                    style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
+                  >
+                    <MaximizeIcon size={16} />
+                  </button>
                 </div>
+              </div>
+
+              {/* Channels Selector Outside */}
+              <div className="podcast-channels-bar-mini">
+                {channelsList.map((ch) => (
+                  <button
+                    key={ch.id}
+                    onClick={() => {
+                      setSelectedChannel(ch.id);
+                      setSelectedSubChannel("All");
+                      setCurrentTrackIndex(0);
+                    }}
+                    className={`podcast-channel-mini-pill ${selectedChannel === ch.id ? "active" : ""}`}
+                    style={{ '--channel-color': ch.color } as React.CSSProperties}
+                  >
+                    <img src={ch.logo} alt={ch.name} className="channel-mini-logo" />
+                    <span>{ch.name}</span>
+                  </button>
+                ))}
               </div>
               
               <div className="podcast-player-body">
-                <div className="podcast-cover-section">
+                <div className="podcast-cover-section" onClick={() => setIsPodcastExpanded(true)} style={{ cursor: "pointer" }}>
                   <div className={`podcast-cover-wrap ${isPlaying ? "spinning" : ""}`}>
                     <img 
-                      src={podcastPlaylist[currentTrackIndex].coverUrl} 
-                      alt={getTrackTitle(podcastPlaylist[currentTrackIndex])} 
+                      src={currentTrack?.coverUrl} 
+                      alt={getTrackTitle(currentTrack)} 
                       className="podcast-cover-image"
                     />
                     <div className="podcast-cover-center"></div>
@@ -1471,17 +1634,25 @@ export default function Home() {
                   <div className="podcast-track-details">
                     <div className="podcast-track-title-container">
                       <div className={`podcast-track-title ${isPlaying ? "marquee-text" : ""}`}>
-                        {getTrackTitle(podcastPlaylist[currentTrackIndex])}
+                        {getTrackTitle(currentTrack)}
                       </div>
                     </div>
-                    <div className="podcast-track-artist">
-                      {podcastPlaylist[currentTrackIndex].artist}
+                    <div className="podcast-track-artist" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>{currentTrack?.artist}</span>
+                      {isPlaying && (
+                        <span className="equalizer-wave">
+                          <span className="equalizer-bar"></span>
+                          <span className="equalizer-bar"></span>
+                          <span className="equalizer-bar"></span>
+                          <span className="equalizer-bar"></span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 <p className="podcast-track-desc">
-                  {getTrackDesc(podcastPlaylist[currentTrackIndex])}
+                  {getTrackDesc(currentTrack)}
                 </p>
 
                 {/* Seekbar Slider */}
@@ -1501,20 +1672,20 @@ export default function Home() {
                 {/* Player Controls */}
                 <div className="podcast-controls-section">
                   <button onClick={handlePrevTrack} className="podcast-control-btn" title={trans[lang].prevTrack}>
-                    ⏮
+                    <SkipPreviousIcon size={20} />
                   </button>
                   <button onClick={togglePlayPause} className="podcast-control-btn play-btn" title={isPlaying ? trans[lang].pause : trans[lang].play}>
-                    {isPlaying ? "⏸" : "▶"}
+                    {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
                   </button>
                   <button onClick={handleNextTrack} className="podcast-control-btn" title={trans[lang].nextTrack}>
-                    ⏭
+                    <SkipNextIcon size={20} />
                   </button>
                   <button 
                     onClick={() => setShowPlaylist(!showPlaylist)} 
                     className={`podcast-control-btn list-btn ${showPlaylist ? "active" : ""}`}
                     title={trans[lang].listBtn}
                   >
-                    ☰
+                    <PlaylistIcon size={20} />
                   </button>
                 </div>
 
@@ -1530,17 +1701,25 @@ export default function Home() {
                       className="playlist-drawer-close"
                       title="Đóng | Close"
                     >
-                      ✕
+                      <CloseIcon size={16} />
                     </button>
                   </div>
                   <div className="playlist-drawer-items">
-                    {podcastPlaylist.map((track, index) => (
+                    {filteredPlaylist.map((track, index) => (
                       <div 
                         key={track.id} 
                         onClick={() => selectTrack(index)} 
-                        className={`playlist-item ${currentTrackIndex === index ? "active" : ""}`}
+                        className={`playlist-item ${currentTrack?.id === track.id ? "active" : ""}`}
                       >
-                        <div className="playlist-item-index">{index + 1}</div>
+                        <div className="playlist-item-index">
+                          {currentTrack?.id === track.id && isPlaying ? (
+                            <span className="equalizer-wave">
+                              <span className="equalizer-bar"></span>
+                              <span className="equalizer-bar"></span>
+                              <span className="equalizer-bar"></span>
+                            </span>
+                          ) : index + 1}
+                        </div>
                         <div className="playlist-item-details">
                           <div className="playlist-item-title">{getTrackTitle(track)}</div>
                           <div className="playlist-item-meta">{track.sourceName} • {track.artist}</div>
@@ -2316,6 +2495,134 @@ export default function Home() {
 
           </aside>
 
+          {/* Mobile Podcast App Section */}
+          {activeMobileTab === "podcast" && (
+            <section className="mobile-podcast-app-section mobile-only">
+              <div className="mobile-podcast-app-header">
+                <h2>
+                  <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
+                  {lang === "vi" ? "Podcast Tin Tức" : "Audio Briefing"}
+                </h2>
+                {loadingPodcast && <span className="podcast-live-dot"></span>}
+              </div>
+
+              {/* Instagram-style circular channels */}
+              <div className="mobile-podcast-channels-carousel">
+                {channelsList.map((ch) => (
+                  <button
+                    key={ch.id}
+                    onClick={() => {
+                      setSelectedChannel(ch.id);
+                      setSelectedSubChannel("All");
+                      setCurrentTrackIndex(0);
+                    }}
+                    className={`mobile-channel-bubble-btn ${selectedChannel === ch.id ? "active" : ""}`}
+                    style={{ '--channel-color': ch.color } as React.CSSProperties}
+                  >
+                    <div className="mobile-channel-bubble-avatar-wrap">
+                      <img src={ch.logo} alt={ch.name} className="mobile-channel-bubble-avatar" />
+                    </div>
+                    <span className="mobile-channel-bubble-name">{ch.name}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Subchannels & search options container */}
+              <div className="mobile-podcast-filters-row">
+                <input
+                  type="text"
+                  placeholder={lang === "vi" ? "Tìm tập podcast..." : "Search episodes..."}
+                  value={podcastSearchQuery}
+                  onChange={(e) => setPodcastSearchQuery(e.target.value)}
+                  className="mobile-podcast-search-input"
+                />
+              </div>
+
+              {/* Subchannels horizontal capsule scrolling */}
+              {subChannelsList.length > 1 && (
+                <div className="mobile-podcast-subchannels-pills">
+                  {subChannelsList.map((sc) => (
+                    <button
+                      key={sc}
+                      onClick={() => {
+                        setSelectedSubChannel(sc);
+                        setCurrentTrackIndex(0);
+                      }}
+                      className={`mobile-subchannel-pill ${selectedSubChannel === sc ? "active" : ""}`}
+                    >
+                      {sc === "All" ? (lang === "vi" ? "Tất cả chuyên mục" : "All Shows") : sc}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Active Channel Intro Banner */}
+              {selectedChannel !== "All" && (
+                <div className="mobile-channel-intro-banner" style={{ borderLeft: `3px solid ${channelsList.find(c => c.id === selectedChannel)?.color || 'var(--accent-blue)'}` }}>
+                  <h4>{selectedChannel}</h4>
+                  <p>{channelsList.find(c => c.id === selectedChannel)?.desc}</p>
+                </div>
+              )}
+
+              {/* Episode Feed List */}
+              <div className="mobile-podcast-episodes-feed">
+                {filteredPlaylist.length === 0 ? (
+                  <div className="mobile-podcast-empty-state">
+                    {lang === "vi" ? "Không tìm thấy tập podcast phù hợp." : "No episodes found."}
+                  </div>
+                ) : (
+                  filteredPlaylist.map((track, index) => {
+                    const isCurrent = currentTrack?.id === track.id;
+                    return (
+                      <div 
+                        key={track.id}
+                        className={`mobile-episode-feed-card ${isCurrent ? "active" : ""}`}
+                        onClick={() => selectTrack(index)}
+                      >
+                        <div className="mobile-episode-card-cover-wrap">
+                          <img src={track.coverUrl} alt="" className="mobile-episode-card-cover" />
+                          {isCurrent && isPlaying && (
+                            <div className="mobile-episode-card-cover-overlay">
+                              <span className="equalizer-wave">
+                                <span className="equalizer-bar"></span>
+                                <span className="equalizer-bar"></span>
+                                <span className="equalizer-bar"></span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="mobile-episode-card-details">
+                          <span className="mobile-episode-card-source" style={{ color: channelsList.find(c => c.id === track.sourceName)?.color || 'var(--accent-blue)' }}>
+                            {track.sourceName} • {track.artist}
+                          </span>
+                          <h4 className="mobile-episode-card-title">{getTrackTitle(track)}</h4>
+                          {track.description && (
+                            <p className="mobile-episode-card-desc">{track.description}</p>
+                          )}
+                        </div>
+                        <div className="mobile-episode-card-action">
+                          <button 
+                            className="mobile-episode-play-circle-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isCurrent) {
+                                togglePlayPause();
+                              } else {
+                                selectTrack(index);
+                              }
+                            }}
+                          >
+                            {isCurrent && isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </section>
+          )}
+
         </div>
       </main>
 
@@ -2463,6 +2770,139 @@ export default function Home() {
       )}
 
       {/* Floating Bottom Tab Bar for Mobile Devices (Apple Style) */}
+      {/* ═══════════════════════════════════════════════════════
+          DESKTOP PODCAST APP MODAL OVERLAY
+          ═══════════════════════════════════════════════════════ */}
+      {isPodcastExpanded && (
+        <div className="podcast-modal-overlay" onClick={() => setIsPodcastExpanded(false)}>
+          <div className="podcast-modal-content" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="podcast-modal-header">
+              <h2>
+                <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
+                {trans[lang].audioNews}
+              </h2>
+              <button className="podcast-modal-close-btn" onClick={() => setIsPodcastExpanded(false)} title="Đóng | Close">
+                <CloseIcon size={16} />
+              </button>
+            </div>
+            {/* Modal Body */}
+            <div className="podcast-modal-body">
+              {/* Sidebar Channels */}
+              <div className="podcast-modal-sidebar">
+                {channelsList.map((ch) => (
+                  <button
+                    key={ch.id}
+                    onClick={() => { setSelectedChannel(ch.id); setSelectedSubChannel("All"); setCurrentTrackIndex(0); }}
+                    className={`podcast-modal-sidebar-btn ${selectedChannel === ch.id ? "active" : ""}`}
+                    style={{ '--channel-color': ch.color } as React.CSSProperties}
+                  >
+                    <img src={ch.logo} alt={ch.name} />
+                    {ch.name}
+                  </button>
+                ))}
+              </div>
+              {/* Main Panel */}
+              <div className="podcast-modal-main">
+                <div className="podcast-modal-main-top">
+                  <div className="podcast-modal-channel-banner">
+                    {(() => { const ch = channelsList.find(c => c.id === selectedChannel); return ch ? (<><img src={ch.logo} alt={ch.name} /><div className="podcast-modal-channel-info"><h3>{ch.name}</h3><p>{ch.desc}</p></div></>) : null; })()}
+                  </div>
+                  <div className="podcast-modal-search-row">
+                    <input type="text" placeholder={lang === "vi" ? "Tìm tập podcast..." : "Search episodes..."} value={podcastSearchQuery} onChange={(e) => setPodcastSearchQuery(e.target.value)} className="podcast-modal-search-input" />
+                  </div>
+                  {subChannelsList.length > 1 && (
+                    <div className="podcast-modal-subchannel-pills">
+                      {subChannelsList.map((sc) => (
+                        <button key={sc} onClick={() => { setSelectedSubChannel(sc); setCurrentTrackIndex(0); }} className={`podcast-modal-subchannel-pill ${selectedSubChannel === sc ? "active" : ""}`}>
+                          {sc === "All" ? (lang === "vi" ? "Tất cả" : "All") : sc}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="podcast-modal-tracks-list">
+                  {filteredPlaylist.length === 0 ? (
+                    <div style={{ padding: "30px", textAlign: "center", color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.85rem" }}>
+                      {lang === "vi" ? "Không tìm thấy tập podcast." : "No episodes found."}
+                    </div>
+                  ) : filteredPlaylist.map((track, index) => {
+                    const isCurrent = currentTrack?.id === track.id;
+                    return (
+                      <div key={track.id} className={`podcast-modal-track-row ${isCurrent ? "active" : ""}`} onClick={() => selectTrack(index)}>
+                        <div className="podcast-modal-track-num">
+                          {isCurrent && isPlaying ? (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>) : index + 1}
+                        </div>
+                        <img src={track.coverUrl} alt="" className="podcast-modal-track-cover" />
+                        <div className="podcast-modal-track-info">
+                          <div className="podcast-modal-track-title">{getTrackTitle(track)}</div>
+                          <div className="podcast-modal-track-meta">{track.sourceName} • {track.artist}</div>
+                        </div>
+                        <button className="podcast-modal-track-play-btn" onClick={(e) => { e.stopPropagation(); selectTrack(index); }}>
+                          {isCurrent && isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            {/* Control Bar */}
+            <div className="podcast-modal-control-bar">
+              <div className={`podcast-modal-now-playing-disc ${isPlaying ? "spinning" : ""}`}>
+                <img src={currentTrack?.coverUrl} alt="" />
+              </div>
+              <div className="podcast-modal-now-playing-info">
+                <div className="podcast-modal-now-title">{getTrackTitle(currentTrack)}</div>
+                <div className="podcast-modal-now-artist">
+                  <span>{currentTrack?.artist}</span>
+                  {isPlaying && (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>)}
+                </div>
+              </div>
+              <div className="podcast-modal-timeline-section">
+                <span className="time-label">{formatTime(currentTime)}</span>
+                <input type="range" min="0" max={duration || 100} value={currentTime} onChange={handleSeekChange} className="podcast-timeline-slider" style={{ flex: 1 }} />
+                <span className="time-label">{formatTime(duration)}</span>
+              </div>
+              <div className="podcast-modal-controls">
+                <button onClick={handlePrevTrack} className="podcast-modal-ctrl-btn" title={trans[lang].prevTrack}><SkipPreviousIcon size={18} /></button>
+                <button onClick={togglePlayPause} className="podcast-modal-ctrl-btn play-btn">{isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}</button>
+                <button onClick={handleNextTrack} className="podcast-modal-ctrl-btn" title={trans[lang].nextTrack}><SkipNextIcon size={18} /></button>
+                <button onClick={() => setPlaybackRate(prev => { const speeds = [0.75, 1.0, 1.25, 1.5, 2.0]; return speeds[(speeds.indexOf(prev) + 1) % speeds.length]; })} className="podcast-modal-speed-btn">{playbackRate}×</button>
+              </div>
+              <div className="podcast-modal-volume-section">
+                <VolumeIcon size={16} />
+                <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE FLOATING MINI PLAYER — shown on all tabs except podcast tab */}
+      {currentTrack && activeMobileTab !== "podcast" && (
+        <div className="mobile-mini-player" onClick={() => setActiveMobileTab("podcast")}>
+          <img src={currentTrack.coverUrl} alt="" className={`mobile-mini-player-cover ${isPlaying ? "spinning" : ""}`} />
+          <div className="mobile-mini-player-info">
+            <div className="mobile-mini-player-title">{getTrackTitle(currentTrack)}</div>
+            <div className="mobile-mini-player-artist">
+              <span>{currentTrack.artist}</span>
+              {isPlaying && (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>)}
+            </div>
+          </div>
+          <div className="mobile-mini-player-controls">
+            <button className="mobile-mini-ctrl-btn" onClick={(e) => { e.stopPropagation(); handlePrevTrack(); }}><SkipPreviousIcon size={16} /></button>
+            <button className="mobile-mini-ctrl-btn play-btn" onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}>
+              {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+            </button>
+            <button className="mobile-mini-ctrl-btn" onClick={(e) => { e.stopPropagation(); handleNextTrack(); }}><SkipNextIcon size={16} /></button>
+          </div>
+          <div className="mobile-mini-player-progress">
+            <div className="mobile-mini-player-progress-fill" style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : "0%" }} />
+          </div>
+        </div>
+      )}
+
       <nav className="mobile-tab-bar">
         <button 
           className={`mobile-tab-item ${activeMobileTab === "home" ? "active" : ""}`}
