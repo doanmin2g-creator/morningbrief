@@ -474,6 +474,7 @@ export default function Home() {
   const [loadingStocks, setLoadingStocks] = useState(true);
   const [newsList, setNewsList] = useState<NewsItem[]>([]);
   const [tickerList, setTickerList] = useState<TickerItem[]>([]);
+  const hasLoadedStocksRef = useRef(false);
   const [brokerOutlooks, setBrokerOutlooks] = useState<BrokerOutlook[]>(initialBrokerOutlooks);
   const [errorMsg, setErrorMsg] = useState("");
   const [visibleNewsCount, setVisibleNewsCount] = useState(8);
@@ -682,7 +683,10 @@ export default function Home() {
 
   // Fetch Vietnamese Stocks
   const fetchStocks = async () => {
-    setLoadingStocks(true);
+    const shouldShowInitialLoader = !hasLoadedStocksRef.current && tickerList.length === 0;
+    if (shouldShowInitialLoader) {
+      setLoadingStocks(true);
+    }
     try {
       // Load watchlist from localStorage directly to get the latest updated values
       const saved = localStorage.getItem("morningbrief_watchlist");
@@ -704,6 +708,7 @@ export default function Home() {
       const combined = [...(data.indices || []), ...(data.watchlistTickers || [])];
       setTickerList(combined);
       setHighlights(data.highlights || null);
+      hasLoadedStocksRef.current = true;
       // Extract index overview stats from each index entry
       const statsMap: Record<string, IndexOverview> = {};
       (data.indices || []).forEach((idx: any) => {
@@ -716,7 +721,9 @@ export default function Home() {
       console.error(error);
       setErrorMsg("Unable to retrieve stock data");
     } finally {
-      setLoadingStocks(false);
+      if (shouldShowInitialLoader) {
+        setLoadingStocks(false);
+      }
     }
   };
 
