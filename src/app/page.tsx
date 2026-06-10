@@ -71,18 +71,18 @@ interface PodcastTrack {
 
 const trans = {
   vi: {
-    market: "📊 THỊ TRƯỜNG",
-    highlights: "🌸 TIÊU ĐIỂM",
+    market: "THỊ TRƯỜNG",
+    highlights: "TIÊU ĐIỂM",
     tabFocus: "TIÊU ĐIỂM",
     tabBiz: "KINH DOANH",
     tabTech: "SỐ HÓA",
     audioNews: "BẢN TIN AUDIO",
-    expertBrief: "✨ TÓM TẮT BRIEF",
-    indexTrends: "📈 XU HƯỚNG",
-    economicCalendar: "🍓 SỰ KIỆN CALENDAR",
-    watchlist: "⭐ DANH MỤC WATCHLIST",
-    marketHighlights: "📊 ĐIỂM NHẤN MARKET",
-    goldForex: "💰 TỶ GIÁ FOREX",
+    expertBrief: "TÓM TẮT BRIEF",
+    indexTrends: "XU HƯỚNG",
+    economicCalendar: "SỰ KIỆN CALENDAR",
+    watchlist: "DANH MỤC WATCHLIST",
+    marketHighlights: "ĐIỂM NHẤN MARKET",
+    goldForex: "TỶ GIÁ FOREX",
     loadMore: "Xem thêm tin cũ hơn",
     listen: "Nghe Podcast",
     stop: "Dừng nghe",
@@ -101,8 +101,8 @@ const trans = {
     loserTab: "GIẢM",
     allTab: "TẤT CẢ",
     volumeTab: "GD NHIỀU",
-    portfolio: "💼 DANH MỤC",
-    outlookTitle: "🔮 ĐỒNG THUẬN CHUYÊN GIA",
+    portfolio: "DANH MỤC",
+    outlookTitle: "ĐỒNG THUẬN CHUYÊN GIA",
     advancing: "Tăng",
     declining: "Giảm",
     unchanged: "Không đổi",
@@ -129,18 +129,18 @@ const trans = {
     havesipTitle: "Podcaster The Tri Way: Lúc cảm thấy đã hiểu mình lại là lúc không hiểu gì - Have A Sip #256",
   },
   en: {
-    market: "📊 VN MARKET",
-    highlights: "🌸 HIGHLIGHTS",
+    market: "VN MARKET",
+    highlights: "HIGHLIGHTS",
     tabFocus: "FOCUS",
     tabBiz: "BIZ",
     tabTech: "TECH",
     audioNews: "AUDIO NEWS",
-    expertBrief: "✨ EXPERT BRIEF",
-    indexTrends: "📈 INDEX TRENDS",
-    economicCalendar: "🍓 ECONOMIC CALENDAR",
-    watchlist: "⭐ MY WATCHLIST",
-    marketHighlights: "📊 MARKET HIGHLIGHTS",
-    goldForex: "💰 GOLD & FOREX",
+    expertBrief: "EXPERT BRIEF",
+    indexTrends: "INDEX TRENDS",
+    economicCalendar: "ECONOMIC CALENDAR",
+    watchlist: "MY WATCHLIST",
+    marketHighlights: "MARKET HIGHLIGHTS",
+    goldForex: "GOLD & FOREX",
     loadMore: "Load more news",
     listen: "Listen Podcast",
     stop: "Stop",
@@ -159,8 +159,8 @@ const trans = {
     loserTab: "LOSERS",
     allTab: "ALL",
     volumeTab: "VOLUME",
-    portfolio: "💼 PORTFOLIO",
-    outlookTitle: "🔮 EXPERT CONSENSUS",
+    portfolio: "PORTFOLIO",
+    outlookTitle: "EXPERT CONSENSUS",
     advancing: "Gainers",
     declining: "Losers",
     unchanged: "Unchanged",
@@ -1216,15 +1216,29 @@ export default function Home() {
               }}
               title={isPlaying ? (lang === "vi" ? "Dừng nghe" : "Stop") : (lang === "vi" ? "Nghe Bản tin" : "Listen")}
             >
-              <span>{isPlaying ? (lang === "vi" ? "■ Dừng nghe" : "■ Stop") : (lang === "vi" ? "🎧 Nghe Bản tin" : "🎧 Listen")}</span>
+              <span>
+                {isPlaying ? (
+                  lang === "vi" ? "■ Dừng nghe" : "■ Stop"
+                ) : (
+                  <>
+                    <img src="/icon/headphone-icon.png" style={{ width: '14px', height: '14px', marginRight: '4px', verticalAlign: 'middle', objectFit: 'contain', display: 'inline-block' }} alt="" />
+                    {lang === "vi" ? "Nghe Bản tin" : "Listen"}
+                  </>
+                )}
+              </span>
             </button>
-            <div className="avatar" onClick={fetchStocks} title={trans[lang].refresh}>🎀</div>
+            <div className="avatar" onClick={fetchStocks} title={trans[lang].refresh}>
+              <img src="/icon/circle-crown-icon.png" style={{ width: '22px', height: '22px', cursor: 'pointer', objectFit: 'contain' }} alt="Avatar" />
+            </div>
           </div>
         </div>
 
         {/* Animated Market Ticker Banner */}
         <div className="ticker-wrap">
-          <div className="ticker-label">{trans[lang].market}</div>
+          <div className="ticker-label">
+            <img src="/icon/chart-icon.png" style={{ width: '13px', height: '13px', marginRight: '4px', verticalAlign: 'middle', display: 'inline-block', objectFit: 'contain' }} alt="" />
+            {trans[lang].market}
+          </div>
           <div className={`ticker-scroll ${loadingStocks ? "loading" : ""}`}>
             {loadingStocks ? (
               <div className="ticker-item-placeholder">{trans[lang].loadingMarket}</div>
@@ -1246,7 +1260,9 @@ export default function Home() {
       {/* Mobile Top Search Bar */}
       <div className="mobile-search-bar-top-container mobile-only">
         <div className="stock-search-input-wrap">
-          <span className="stock-search-icon">🔍</span>
+          <span className="stock-search-icon">
+            <img src="/icon/globes-icon.png" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle' }} alt="" />
+          </span>
           <input
             type="text"
             className="stock-search-input"
@@ -1292,7 +1308,10 @@ export default function Home() {
           {/* Left Column: Lead Stories (News Feed) */}
           <section className={`news-section ${activeMobileTab === "home" ? "" : "hidden-mobile"}`}>
             <div className="column-header">
-              <h2>{trans[lang].highlights}</h2>
+              <h2>
+                <img src="/icon/calendar-icon.png" className="header-3d-icon" alt="" />
+                {trans[lang].highlights}
+              </h2>
               <div className="tabs">
                 <button
                   className={`tab ${activeTab === "general" ? "active" : ""}`}
@@ -1358,7 +1377,10 @@ export default function Home() {
             {/* Economic Calendar Panel (Interactive click-to-read) */}
             <div className="widget-panel" style={{ marginTop: "2rem" }}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>{trans[lang].economicCalendar}</h3>
+                <h3>
+                  <img src="/icon/calendar-icon.png" className="header-3d-icon" alt="" />
+                  {trans[lang].economicCalendar}
+                </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
                 {calendarEvents.map((item, idx) => (
@@ -1412,7 +1434,8 @@ export default function Home() {
             <div className={`widget-panel podcast-player-card ${activeMobileTab === "podcast" ? "" : "hidden-mobile"}`}>
               <div className="widget-header podcast-header">
                 <h3 className="podcast-header-title">
-                  <span className="podcast-header-icon">🎧</span>{trans[lang].audioNews}
+                  <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
+                  {trans[lang].audioNews}
                 </h3>
                 <div className="podcast-header-status">
                   {loadingPodcast && <span className="podcast-live-dot"></span>}
@@ -1520,6 +1543,7 @@ export default function Home() {
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`} style={{ borderLeft: "4px solid var(--accent-red)", background: "rgba(0,0,0,0.01)" }}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
                 <h3 style={{ textTransform: "uppercase", fontSize: "0.78rem", letterSpacing: "1.5px", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
+                  <img src="/icon/notebook-icon.png" className="header-3d-icon" style={{ width: '16px', height: '16px', marginRight: '6px' }} alt="" />
                   {trans[lang].expertBrief}
                 </h3>
               </div>
@@ -1531,7 +1555,10 @@ export default function Home() {
             {/* Market Trend Chart Panel */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>{trans[lang].indexTrends}</h3>
+                <h3>
+                  <img src="/icon/chart-icon.png" className="header-3d-icon" alt="" />
+                  {trans[lang].indexTrends}
+                </h3>
               </div>
               
               <div className="chart-widget-panel">
@@ -1902,7 +1929,10 @@ export default function Home() {
             {/* Broker Stance Panel: Stated bullish/bearish/neutral from securities firms */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
-                <h3>{trans[lang].outlookTitle}</h3>
+                <h3>
+                  <img src="/icon/handshake-icon.png" className="header-3d-icon" alt="" />
+                  {trans[lang].outlookTitle}
+                </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {brokerOutlooks.map((broker, idx) => (
@@ -1931,7 +1961,10 @@ export default function Home() {
             {/* Watchlist Panel */}
             <div className={`widget-panel ${activeMobileTab === "portfolio" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
-                <h3>{trans[lang].watchlist}</h3>
+                <h3>
+                  <img src="/icon/wallet-icon.png" className="header-3d-icon" alt="" />
+                  {trans[lang].watchlist}
+                </h3>
               </div>
               <div className="crypto-list" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {watchlist.length === 0 ? (
@@ -1974,7 +2007,10 @@ export default function Home() {
             {watchlist.length > 0 && (
               <div className="widget-panel hidden-mobile" style={{ marginTop: "15px" }}>
                 <div className="widget-header">
-                  <h3>{lang === "vi" ? "📰 TIN TỨC HỆ SINH THÁI WATCHLIST" : "📰 WATCHLIST ECOSYSTEM NEWS"}</h3>
+                  <h3>
+                    <img src="/icon/calendar-icon.png" className="header-3d-icon" alt="" />
+                    {lang === "vi" ? "TIN TỨC HỆ SINH THÁI WATCHLIST" : "WATCHLIST ECOSYSTEM NEWS"}
+                  </h3>
                 </div>
                 
                 {loadingWatchlistNews ? (
@@ -2035,7 +2071,10 @@ export default function Home() {
             {watchlist.length > 0 && activeMobileTab === "portfolio" && (
               <div className="widget-panel mobile-only" style={{ marginTop: "15px" }}>
                 <div className="widget-header" style={{ marginBottom: "1rem" }}>
-                  <h3>{lang === "vi" ? "📰 TIN TỨC HỆ SINH THÁI WATCHLIST" : "📰 WATCHLIST ECOSYSTEM NEWS"}</h3>
+                  <h3>
+                    <img src="/icon/calendar-icon.png" className="header-3d-icon" alt="" />
+                    {lang === "vi" ? "TIN TỨC HỆ SINH THÁI WATCHLIST" : "WATCHLIST ECOSYSTEM NEWS"}
+                  </h3>
                 </div>
                 
                 {loadingWatchlistNews ? (
@@ -2099,7 +2138,10 @@ export default function Home() {
             {/* Top VN Stocks List (Điểm nhấn Thị trường) */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingBottom: "0.75rem" }}>
-                <h3 style={{ margin: 0, fontSize: "0.85rem", letterSpacing: "1.5px" }}>{trans[lang].marketHighlights}</h3>
+                <h3 style={{ margin: 0, fontSize: "0.85rem", letterSpacing: "1.5px" }}>
+                  <img src="/icon/stock-tickers-icon.png" className="header-3d-icon" style={{ width: '16px', height: '16px', marginRight: '6px' }} alt="" />
+                  {trans[lang].marketHighlights}
+                </h3>
                 
                 {/* Sub-tabs for Market Highlights */}
                 <div className="tabs" style={{ padding: "2px", borderRadius: "20px" }}>
@@ -2212,11 +2254,16 @@ export default function Home() {
             {/* === STOCK SEARCH BOX PANEL (DESKTOP ONLY) === */}
             <div className="widget-panel hidden-mobile">
               <div className="widget-header">
-                <h3>{lang === "vi" ? "🔍 TRA CỨU CỔ PHIẾU" : "🔍 STOCK LOOKUP"}</h3>
+                <h3>
+                  <img src="/icon/globes-icon.png" className="header-3d-icon" alt="" />
+                  {lang === "vi" ? "TRA CỨU CỔ PHIẾU" : "STOCK LOOKUP"}
+                </h3>
               </div>
               <div className="stock-search-box" style={{ marginTop: "10px" }}>
                 <div className="stock-search-input-wrap">
-                  <span className="stock-search-icon">🔍</span>
+                  <span className="stock-search-icon">
+                    <img src="/icon/globes-icon.png" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle' }} alt="" />
+                  </span>
                   <input
                     type="text"
                     className="stock-search-input"
@@ -2262,7 +2309,10 @@ export default function Home() {
                 {/* Empty state hint */}
                 {!searchLoading && searchResults.length === 0 && !searchError && !searchQuery && (
                   <div className="stock-search-hint">
-                    <p>{lang === "vi" ? "💡 Tra cứu bất kỳ mã chứng khoán Việt Nam nào" : "💡 Search any Vietnamese stock symbol"}</p>
+                    <p>
+                      <img src="/icon/globes-icon.png" className="header-3d-icon" style={{ width: '16px', height: '16px', marginRight: '6px' }} alt="" />
+                      {lang === "vi" ? "Tra cứu bất kỳ mã chứng khoán Việt Nam nào" : "Search any Vietnamese stock symbol"}
+                    </p>
                     <div className="stock-search-hint-tags">
                       {["VCB", "FPT", "VNM", "HPG", "MWG", "NVL"].map(tag => (
                         <button
@@ -2290,7 +2340,10 @@ export default function Home() {
             {/* Macro Economics Panel */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>{trans[lang].goldForex}</h3>
+                <h3>
+                  <img src="/icon/landmark-icon.png" className="header-3d-icon" alt="" />
+                  {trans[lang].goldForex}
+                </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
                 {loadingMacro ? (
