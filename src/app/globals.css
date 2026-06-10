@@ -136,10 +136,12 @@ body {
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .avatar img {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     object-fit: contain;
+    object-position: center;
     display: block;
+    transform: translate(2px, 2px);
 }
 .avatar:hover {
     background: rgba(134, 121, 110, 0.05);
