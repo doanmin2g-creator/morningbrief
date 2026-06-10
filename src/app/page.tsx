@@ -1905,39 +1905,7 @@ export default function Home() {
             </div>
 
 
-            {/* Broker Stance Panel: Stated bullish/bearish/neutral from securities firms */}
-            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
-              <div className="widget-header">
-                <h3>
-                  <img src="/icon/handshake-icon.png" className="header-3d-icon" alt="" />
-                  {trans[lang].outlookTitle}
-                </h3>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {brokerOutlooks.map((broker, idx) => (
-                  <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "4px", paddingBottom: "10px", borderBottom: idx < brokerOutlooks.length - 1 ? "1px dashed var(--border-classic)" : "none" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <strong style={{ fontSize: "0.88rem", color: "var(--text-primary)" }}>{broker.name}</strong>
-                      <span className={`ticker-change ${broker.class}`} style={{ fontSize: "0.72rem", padding: "1px 6px", borderRadius: "4px", fontWeight: "700" }}>
-                        {broker.stance === "BULLISH" 
-                          ? (lang === "vi" ? "TÍCH CỰC" : "BULLISH") 
-                          : broker.stance === "BEARISH" 
-                          ? (lang === "vi" ? "THẬN TRỌNG" : "BEARISH") 
-                          : (lang === "vi" ? "TRUNG LẬP" : "NEUTRAL")}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "600" }}>
-                      {lang === "vi" ? "Vùng điểm kỳ vọng" : "Expected range"}: {broker.targetRange}
-                    </div>
-                    <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontStyle: "italic", lineHeight: "1.4" }}>
-                      "{broker.quote}"
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Watchlist Panel */}
+            {/* Watchlist Panel with integrated Desktop Stock Lookup */}
             <div className={`widget-panel ${activeMobileTab === "portfolio" ? "" : "hidden-mobile"}`}>
               <div className="widget-header">
                 <h3>
@@ -1945,6 +1913,56 @@ export default function Home() {
                   {trans[lang].watchlist}
                 </h3>
               </div>
+
+              {/* Integrated Stock Search Box (Desktop Only) */}
+              <div className="stock-search-box hidden-mobile" style={{ marginTop: "10px", marginBottom: "15px" }}>
+                <div className="stock-search-input-wrap">
+                  <span className="stock-search-icon">
+                    <img src="/icon/globes-icon.png" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle' }} alt="" />
+                  </span>
+                  <input
+                    type="text"
+                    className="stock-search-input"
+                    placeholder={lang === "vi" ? "Nhập mã CK hoặc tên công ty..." : "Search Symbol or Company..."}
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                  />
+                  {searchQuery && (
+                    <button
+                      className="stock-search-clear"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSearchResults([]);
+                        setSearchError("");
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Search Loading */}
+                {searchLoading && (
+                  <div className="stock-search-status">
+                    <span className="podcast-live-dot"></span> {lang === "vi" ? "Đang tra cứu..." : "Searching..."}
+                  </div>
+                )}
+
+                {/* Search Error */}
+                {searchError && !searchLoading && (
+                  <div className="stock-search-status" style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+                    {searchError}
+                  </div>
+                )}
+
+                {/* Search Results */}
+                {!searchLoading && searchResults.length > 0 && (
+                  <div className="stock-search-results" style={{ marginBottom: "10px" }}>
+                    {searchResults.map((item, idx) => renderSearchResultCard(item, idx))}
+                  </div>
+                )}
+              </div>
+
               <div className="crypto-list" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {watchlist.length === 0 ? (
                   <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "10px" }}>
@@ -2230,91 +2248,7 @@ export default function Home() {
               )}
             </div>
 
-            {/* === STOCK SEARCH BOX PANEL (DESKTOP ONLY) === */}
-            <div className="widget-panel hidden-mobile">
-              <div className="widget-header">
-                <h3>
-                  <img src="/icon/globes-icon.png" className="header-3d-icon" alt="" />
-                  {lang === "vi" ? "TRA CỨU CỔ PHIẾU" : "STOCK LOOKUP"}
-                </h3>
-              </div>
-              <div className="stock-search-box" style={{ marginTop: "10px" }}>
-                <div className="stock-search-input-wrap">
-                  <span className="stock-search-icon">
-                    <img src="/icon/globes-icon.png" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle' }} alt="" />
-                  </span>
-                  <input
-                    type="text"
-                    className="stock-search-input"
-                    placeholder={lang === "vi" ? "Nhập mã CK hoặc tên công ty..." : "Search Symbol or Company..."}
-                    value={searchQuery}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                  />
-                  {searchQuery && (
-                    <button
-                      className="stock-search-clear"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setSearchResults([]);
-                        setSearchError("");
-                      }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
 
-                {/* Search Loading */}
-                {searchLoading && (
-                  <div className="stock-search-status">
-                    <span className="podcast-live-dot"></span> {lang === "vi" ? "Đang tra cứu..." : "Searching..."}
-                  </div>
-                )}
-
-                {/* Search Error */}
-                {searchError && !searchLoading && (
-                  <div className="stock-search-status" style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
-                    {searchError}
-                  </div>
-                )}
-
-                {/* Search Results */}
-                {!searchLoading && searchResults.length > 0 && (
-                  <div className="stock-search-results">
-                    {searchResults.map((item, idx) => renderSearchResultCard(item, idx))}
-                  </div>
-                )}
-
-                {/* Empty state hint */}
-                {!searchLoading && searchResults.length === 0 && !searchError && !searchQuery && (
-                  <div className="stock-search-hint">
-                    <p>
-                      <img src="/icon/globes-icon.png" className="header-3d-icon" style={{ width: '16px', height: '16px', marginRight: '6px' }} alt="" />
-                      {lang === "vi" ? "Tra cứu bất kỳ mã chứng khoán Việt Nam nào" : "Search any Vietnamese stock symbol"}
-                    </p>
-                    <div className="stock-search-hint-tags">
-                      {["VCB", "FPT", "VNM", "HPG", "MWG", "NVL"].map(tag => (
-                        <button
-                          key={tag}
-                          className="stock-search-hint-tag"
-                          onClick={() => {
-                            setSearchQuery(tag);
-                            setSearchLoading(true);
-                            fetch(`/api/stock-search?q=${tag}`)
-                              .then(r => r.json())
-                              .then(d => { setSearchResults(Array.isArray(d) ? d : []); })
-                              .catch(() => setSearchError(lang === "vi" ? "Lỗi kết nối." : "Connection error."))
-                              .finally(() => setSearchLoading(false));
-                          }}
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
 
             {/* Macro Economics Panel */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
