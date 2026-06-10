@@ -15,6 +15,8 @@ interface RelatedNews {
   title: string;
   link: string;
   time: string;
+  image?: string;
+  description?: string;
 }
 
 interface SearchResult {
@@ -195,7 +197,9 @@ async function fetchCafeFStockNews(symbol: string): Promise<RelatedNews[]> {
       return {
         title: item.Title || "",
         link: absoluteLink || `https://cafef.vn/search/${symbol}`,
-        time: timeStr
+        time: timeStr,
+        image: item.Image || "https://cafef1.mediacdn.vn/Images/Icons/News_image_default.png",
+        description: item.SubTitle || ""
       };
     }).filter((n: RelatedNews) => n.title);
 

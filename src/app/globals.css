@@ -2503,3 +2503,152 @@ body {
 .stock-search-result-card {
     animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ==========================================================================
+   WATCHLIST NEWS RESPONSIVE & SLIDER STYLING
+   ========================================================================== */
+
+/* Show on mobile, hide on desktop */
+@media (min-width: 769px) {
+    .mobile-only {
+        display: none !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobile-only {
+        display: block !important;
+    }
+}
+
+/* Mobile search bar layout at the very top */
+.mobile-search-bar-top-container {
+    background: var(--bg-paper);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-classic);
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-search-bar-top-container .stock-search-input-wrap {
+    margin: 0 !important;
+    width: 100%;
+}
+
+.mobile-search-bar-top-container .stock-search-results {
+    margin-top: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+    width: 100%;
+}
+
+/* Desktop Watchlist News Horizontal Slider */
+@media (min-width: 769px) {
+    .watchlist-news-list.desktop-slider {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        scroll-snap-type: x mandatory !important;
+        gap: 16px !important;
+        padding: 8px 4px 16px 4px !important;
+        list-style: none !important;
+        margin: 10px 0 0 0 !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .watchlist-news-list.desktop-slider::-webkit-scrollbar {
+        height: 6px !important;
+    }
+    
+    .watchlist-news-list.desktop-slider::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.03) !important;
+        border-radius: 100px !important;
+    }
+    
+    .watchlist-news-list.desktop-slider::-webkit-scrollbar-thumb {
+        background: var(--border-classic) !important;
+        border-radius: 100px !important;
+    }
+    
+    .watchlist-news-list.desktop-slider .news-card {
+        flex: 0 0 280px !important;
+        scroll-snap-align: start !important;
+        margin-bottom: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 12px !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-classic) !important;
+        border-radius: var(--radius-sm) !important;
+        box-shadow: var(--shadow-soft) !important;
+        height: auto !important;
+        box-sizing: border-box !important;
+        grid-template-columns: none !important;
+    }
+    
+    .watchlist-news-list.desktop-slider .news-card:hover {
+        transform: translateY(-4px) !important;
+        border-color: var(--accent-blue) !important;
+        box-shadow: var(--shadow-hover) !important;
+    }
+    
+    .watchlist-news-list.desktop-slider .news-card .news-content {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+        flex: 1 !important;
+        order: 1 !important;
+        justify-content: flex-start !important;
+    }
+    
+    .watchlist-news-list.desktop-slider .news-card .news-image-wrap {
+        width: 100% !important;
+        height: 130px !important;
+        border-radius: 4px !important;
+        overflow: hidden !important;
+        order: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .watchlist-news-list.desktop-slider .news-card .news-image {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        transition: transform 0.3s ease !important;
+    }
+    
+    .watchlist-news-list.desktop-slider .news-card:hover .news-image {
+        transform: scale(1.04) !important;
+    }
+    
+    .watchlist-news-list.desktop-slider .news-card .news-title {
+        font-family: var(--font-sans) !important;
+        font-size: 0.88rem !important;
+        font-weight: 700 !important;
+        line-height: 1.35 !important;
+        color: var(--text-primary) !important;
+        margin: 0 !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+    }
+    
+    .watchlist-news-list.desktop-slider .news-card .news-meta {
+        font-size: 0.72rem !important;
+        color: var(--text-muted) !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        line-height: 1.4 !important;
+        margin: 0 !important;
+    }
+}
+

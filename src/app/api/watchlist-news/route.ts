@@ -15,6 +15,8 @@ interface NewsItem {
   time: string;
   timestamp: number;
   relatedSymbol: string; // The symbol that this news belongs to (e.g. FPT, FRT)
+  image?: string;
+  description?: string;
 }
 
 // In-memory cache for news per symbol (5 minutes TTL)
@@ -126,7 +128,9 @@ async function fetchSingleSymbolNews(symbol: string): Promise<NewsItem[]> {
         link: absoluteLink || `https://cafef.vn/search/${cleanSym}`,
         time: timeStr,
         timestamp,
-        relatedSymbol: cleanSym
+        relatedSymbol: cleanSym,
+        image: item.Image || "https://cafef1.mediacdn.vn/Images/Icons/News_image_default.png",
+        description: item.SubTitle || ""
       };
     }).filter((n: NewsItem) => n.title);
 

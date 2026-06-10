@@ -427,6 +427,7 @@ export default function Home() {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [watchlistNews, setWatchlistNews] = useState<any[]>([]);
   const [loadingWatchlistNews, setLoadingWatchlistNews] = useState(false);
+  const [visibleWatchlistNewsCount, setVisibleWatchlistNewsCount] = useState(8);
   const [macroData, setMacroData] = useState<any>(null);
   const [loadingMacro, setLoadingMacro] = useState(true);
   // Index overview stats (liquidity, breadth, foreign trading) from CafeF
@@ -624,6 +625,150 @@ export default function Home() {
     setTimeout(() => {
       fetchStocks();
     }, 50);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    setSearchError("");
+
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (val.trim().length < 1) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/stock-search?q=${encodeURIComponent(val.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(Array.isArray(data) ? data : []);
+          if (Array.isArray(data) && data.length === 0) {
+            setSearchError(lang === "vi" ? "Không tìm thấy mã chứng khoán phù hợp." : "No matching stock symbol found.");
+          }
+        } else {
+          setSearchError(lang === "vi" ? "Lỗi khi tra cứu." : "Search error.");
+        }
+      } catch {
+        setSearchError(lang === "vi" ? "Không thể kết nối máy chủ." : "Could not connect to server.");
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 500);
+  };
+
+  const renderSearchResultCard = (item: StockSearchResult, idx: number) => {
+    const pct = parseFloat(item.change.replace("%", ""));
+    let colorClass = item.isPositive ? "positive" : "negative";
+    const ex = item.exchange || "HOSE";
+    if (ex === "HOSE" && Math.abs(pct) >= 6.85) colorClass = pct > 0 ? "ceiling" : "floor";
+    else if (ex === "HNX" && Math.abs(pct) >= 9.85) colorClass = pct > 0 ? "ceiling" : "floor";
+    else if (ex === "UPCoM" && Math.abs(pct) >= 14.85) colorClass = pct > 0 ? "ceiling" : "floor";
+
+    const isStarred = watchlist.includes(item.symbol);
+
+    return (
+      <div key={idx} className="stock-search-result-card animate-fade-in-up" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: "both" }}>
+        <div className="stock-search-result-header">
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span
+              onClick={() => toggleWatchlist(item.symbol)}
+              style={{ color: isStarred ? "var(--accent-red)" : "var(--text-muted)", cursor: "pointer", fontSize: "1rem" }}
+            >
+              {isStarred ? "⭐" : "☆"}
+            </span>
+            <div>
+              <span className="stock-search-symbol">{item.symbol}</span>
+              <span className="stock-search-exchange">{item.exchange}</span>
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "1.05rem", fontWeight: "700" }}>{item.price}</div>
+            <span className={`ticker-change ${colorClass}`} style={{ fontSize: "0.78rem" }}>
+              {item.change}
+            </span>
+          </div>
+        </div>
+        <div className="stock-search-result-name">{item.displayName}</div>
+        <div className="stock-search-details-grid">
+          <div className="stock-search-detail">
+            <span className="stock-detail-label">{lang === "vi" ? "TC hôm trước" : "Prev Close"}</span>
+            <span className="stock-detail-value">{item.prevClose}</span>
+          </div>
+          <div className="stock-search-detail">
+            <span className="stock-detail-label">{lang === "vi" ? "Cao nhất" : "Day High"}</span>
+            <span className="stock-detail-value">{item.dayHigh}</span>
+          </div>
+          <div className="stock-search-detail">
+            <span className="stock-detail-label">{lang === "vi" ? "Thấp nhất" : "Day Low"}</span>
+            <span className="stock-detail-value">{item.dayLow}</span>
+          </div>
+          <div className="stock-search-detail">
+            <span className="stock-detail-label">{lang === "vi" ? "Khối lượng" : "Volume"}</span>
+            <span className="stock-detail-value">{item.volume}</span>
+          </div>
+        </div>
+
+        {/* CafeF Financial Metrics Grid */}
+        {(item.pe || item.pb || item.eps || item.marketCapVnd) && (
+          <div className="stock-financial-section">
+            <div className="stock-financial-label">📊 {lang === "vi" ? "Chỉ số định giá" : "Valuation Metrics"}</div>
+            <div className="stock-financial-grid">
+              {item.pe && (
+                <div className="stock-financial-item">
+                  <span className="stock-fin-label">P/E</span>
+                  <span className="stock-fin-value">{item.pe}</span>
+                </div>
+              )}
+              {item.pb && (
+                <div className="stock-financial-item">
+                  <span className="stock-fin-label">P/B</span>
+                  <span className="stock-fin-value">{item.pb}</span>
+                </div>
+              )}
+              {item.eps && (
+                <div className="stock-financial-item">
+                  <span className="stock-fin-label">EPS</span>
+                  <span className="stock-fin-value">{item.eps}</span>
+                </div>
+              )}
+              {item.marketCapVnd && (
+                <div className="stock-financial-item">
+                  <span className="stock-fin-label">{lang === "vi" ? "Vốn hóa" : "Mkt Cap"}</span>
+                  <span className="stock-fin-value">{item.marketCapVnd}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Company Description */}
+        {item.description && (
+          <div className="stock-description-block">
+            <div className="stock-financial-label">ℹ️ {lang === "vi" ? "Về doanh nghiệp" : "About"}</div>
+            <p className="stock-description-text">{item.description}</p>
+          </div>
+        )}
+
+        {/* Related News */}
+        {item.relatedNews && item.relatedNews.length > 0 && (
+          <div className="stock-related-news hidden-mobile">
+            <div className="stock-financial-label">📰 {lang === "vi" ? "Tin tức mới nhất" : "Latest News"}</div>
+            <ul className="stock-news-list">
+              {item.relatedNews.map((news, ni) => (
+                <li key={ni} className="stock-news-item">
+                  <a href={news.link} target="_blank" rel="noopener noreferrer" className="stock-news-title">
+                    {news.title}
+                  </a>
+                  {news.time && <span className="stock-news-time">{news.time}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
   };
 
   // Podcast Helper functions
@@ -1098,6 +1243,48 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Mobile Top Search Bar */}
+      <div className="mobile-search-bar-top-container mobile-only">
+        <div className="stock-search-input-wrap">
+          <span className="stock-search-icon">🔍</span>
+          <input
+            type="text"
+            className="stock-search-input"
+            placeholder={lang === "vi" ? "Nhập mã CK hoặc tên công ty..." : "Search Symbol or Company..."}
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              className="stock-search-clear"
+              onClick={() => {
+                setSearchQuery("");
+                setSearchResults([]);
+                setSearchError("");
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {/* Render search results inline on mobile */}
+        {searchLoading && (
+          <div className="stock-search-status">
+            <span className="podcast-live-dot"></span> {lang === "vi" ? "Đang tra cứu..." : "Searching..."}
+          </div>
+        )}
+        {searchError && !searchLoading && (
+          <div className="stock-search-status" style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+            {searchError}
+          </div>
+        )}
+        {!searchLoading && searchResults.length > 0 && (
+          <div className="stock-search-results">
+            {searchResults.map((item, idx) => renderSearchResultCard(item, idx))}
+          </div>
+        )}
+      </div>
+
       {/* Main Content Area */}
       <main className="main-content">
         <div className="broadsheet-grid">
@@ -1205,6 +1392,71 @@ export default function Home() {
                 ))}
               </div>
             </div>
+
+            {/* Watchlist Ecosystem News Panel (Mobile Only - Pushed to Bottom of Home screen) */}
+            {watchlist.length > 0 && activeMobileTab === "home" && (
+              <div className="widget-panel mobile-only" style={{ marginTop: "2rem" }}>
+                <div className="widget-header" style={{ marginBottom: "1rem" }}>
+                  <h3>{lang === "vi" ? "📰 TIN TỨC HỆ SINH THÁI WATCHLIST" : "📰 WATCHLIST ECOSYSTEM NEWS"}</h3>
+                </div>
+                
+                {loadingWatchlistNews ? (
+                  <div className="news-feed" style={{ borderTop: "none", paddingTop: 0 }}>
+                    {[1, 2].map(i => (
+                      <div key={i} className="skeleton-card" style={{ height: "120px" }}></div>
+                    ))}
+                  </div>
+                ) : watchlistNews.length === 0 ? (
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "15px" }}>
+                    {lang === "vi" 
+                      ? "Chưa có tin tức mới cho các mã trong watchlist." 
+                      : "No new news for symbols in your watchlist."}
+                  </div>
+                ) : (
+                  <>
+                    <div className="news-feed" style={{ borderTop: "none", paddingTop: 0 }}>
+                      {watchlistNews.slice(0, visibleWatchlistNewsCount).map((news, ni) => {
+                        const newsItem = {
+                          ...news,
+                          source: news.relatedSymbol ? `${news.relatedSymbol} • CafeF` : "CafeF"
+                        };
+                        return (
+                          <div 
+                            key={ni} 
+                            onClick={() => setActiveArticle(newsItem)} 
+                            className="news-card" 
+                            style={{ cursor: "pointer" }}
+                          >
+                            <div className="news-content">
+                              <span className="news-source">{newsItem.source}</span>
+                              <h3 className="news-title">{newsItem.title}</h3>
+                              {newsItem.description && (
+                                <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                                  {newsItem.description}
+                                </p>
+                              )}
+                              <span className="news-meta">{newsItem.time}</span>
+                            </div>
+                            <div className="news-image-wrap">
+                              <img src={newsItem.image} alt={newsItem.title} className="news-image" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {watchlistNews.length > visibleWatchlistNewsCount && (
+                      <button 
+                        className="load-more-news-btn"
+                        onClick={() => setVisibleWatchlistNewsCount(prev => prev + 8)}
+                        style={{ marginTop: "1rem", width: "100%" }}
+                      >
+                        {lang === "vi" ? "Xem thêm tin hệ sinh thái" : "Load more ecosystem news"}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Right Column: Market Intelligence & Institutional Consensus */}
@@ -1781,20 +2033,20 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Watchlist Ecosystem News Panel */}
+            {/* Watchlist Ecosystem News Panel (Desktop Only) */}
             {watchlist.length > 0 && (
-              <div className={`widget-panel ${activeMobileTab === "portfolio" ? "" : "hidden-mobile"}`} style={{ marginTop: "15px" }}>
+              <div className="widget-panel hidden-mobile" style={{ marginTop: "15px" }}>
                 <div className="widget-header">
                   <h3>{lang === "vi" ? "📰 TIN TỨC HỆ SINH THÁI WATCHLIST" : "📰 WATCHLIST ECOSYSTEM NEWS"}</h3>
                 </div>
                 
                 {loadingWatchlistNews ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "10px" }}>
+                  <div style={{ display: "flex", gap: "15px", overflowX: "hidden", padding: "10px 0" }}>
                     {[1, 2, 3].map(i => (
-                      <div key={i} className="news-skeleton-item" style={{ paddingBottom: "10px", borderBottom: "1px dashed var(--border-classic)" }}>
+                      <div key={i} className="news-skeleton-item" style={{ flex: "0 0 280px", padding: "12px", border: "1px solid var(--border-classic)", borderRadius: "var(--radius-sm)", background: "var(--bg-card)" }}>
+                        <div className="skeleton-line" style={{ width: "100%", height: "130px", marginBottom: "8px" }}></div>
                         <div style={{ display: "flex", gap: "6px", marginBottom: "6px" }}>
                           <span className="skeleton-pill" style={{ width: "45px", height: "14px", borderRadius: "3px" }}></span>
-                          <span className="skeleton-pill" style={{ width: "60px", height: "14px", borderRadius: "3px" }}></span>
                         </div>
                         <div className="skeleton-line" style={{ width: "90%", height: "14px", marginBottom: "4px" }}></div>
                         <div className="skeleton-line" style={{ width: "70%", height: "14px" }}></div>
@@ -1808,50 +2060,36 @@ export default function Home() {
                       : "No new news for symbols in your watchlist."}
                   </div>
                 ) : (
-                  <ul className="watchlist-news-list" style={{ listStyle: "none", padding: 0, margin: "10px 0 0 0", display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {watchlistNews.map((news, ni) => (
-                      <li 
-                        key={ni} 
-                        className="watchlist-news-item animate-fade-in-up" 
-                        style={{ 
-                          borderBottom: "1px dashed var(--border-classic)", 
-                          paddingBottom: "10px",
-                          animationDelay: `${ni * 0.08}s`,
-                          animationFillMode: "both"
-                        }}
-                      >
-                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-                          {news.relatedSymbol && (
-                            <span className="watchlist-news-tag" style={{ 
-                              background: "rgba(22, 119, 255, 0.1)", 
-                              color: "var(--accent-blue)", 
-                              padding: "1px 5px", 
-                              borderRadius: "3px", 
-                              fontSize: "0.65rem", 
-                              fontWeight: "bold",
-                              letterSpacing: "0.5px"
-                            }}>
-                              {news.relatedSymbol}
-                            </span>
-                          )}
-                          {news.time && <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{news.time}</span>}
+                  <div className="watchlist-news-list desktop-slider">
+                    {watchlistNews.map((news, ni) => {
+                      const newsItem = {
+                        ...news,
+                        source: news.relatedSymbol ? `${news.relatedSymbol} • CafeF` : "CafeF"
+                      };
+                      return (
+                        <div 
+                          key={ni} 
+                          onClick={() => setActiveArticle(newsItem)} 
+                          className="news-card" 
+                          style={{ cursor: "pointer" }}
+                        >
+                          <div className="news-content">
+                            <span className="news-source">{newsItem.source}</span>
+                            <h3 className="news-title">{newsItem.title}</h3>
+                            {newsItem.description && (
+                              <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                                {newsItem.description}
+                              </p>
+                            )}
+                            <span className="news-meta">{newsItem.time}</span>
+                          </div>
+                          <div className="news-image-wrap">
+                            <img src={newsItem.image} alt={newsItem.title} className="news-image" />
+                          </div>
                         </div>
-                        <a href={news.link} target="_blank" rel="noopener noreferrer" className="watchlist-news-title" style={{ 
-                          fontSize: "0.82rem", 
-                          fontWeight: "600", 
-                          lineHeight: "1.3",
-                          color: "var(--text-main)",
-                          textDecoration: "none",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden"
-                        }}>
-                          {news.title}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             )}
@@ -1969,8 +2207,8 @@ export default function Home() {
               )}
             </div>
 
-            {/* === STOCK SEARCH BOX PANEL === */}
-            <div className={`widget-panel ${(activeMobileTab === "markets" || activeMobileTab === "portfolio") ? "" : "hidden-mobile"}`}>
+            {/* === STOCK SEARCH BOX PANEL (DESKTOP ONLY) === */}
+            <div className="widget-panel hidden-mobile">
               <div className="widget-header">
                 <h3>{lang === "vi" ? "🔍 TRA CỨU CỔ PHIẾU" : "🔍 STOCK LOOKUP"}</h3>
               </div>
@@ -1982,38 +2220,7 @@ export default function Home() {
                     className="stock-search-input"
                     placeholder={lang === "vi" ? "Nhập mã CK hoặc tên công ty..." : "Search Symbol or Company..."}
                     value={searchQuery}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSearchQuery(val);
-                      setSearchError("");
-
-                      // Debounced search
-                      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-                      if (val.trim().length < 1) {
-                        setSearchResults([]);
-                        setSearchLoading(false);
-                        return;
-                      }
-                      setSearchLoading(true);
-                      searchTimerRef.current = setTimeout(async () => {
-                        try {
-                          const res = await fetch(`/api/stock-search?q=${encodeURIComponent(val.trim())}`);
-                          if (res.ok) {
-                            const data = await res.json();
-                            setSearchResults(Array.isArray(data) ? data : []);
-                            if (Array.isArray(data) && data.length === 0) {
-                              setSearchError(lang === "vi" ? "Không tìm thấy mã chứng khoán phù hợp." : "No matching stock symbol found.");
-                            }
-                          } else {
-                            setSearchError(lang === "vi" ? "Lỗi khi tra cứu." : "Search error.");
-                          }
-                        } catch {
-                          setSearchError(lang === "vi" ? "Không thể kết nối máy chủ." : "Could not connect to server.");
-                        } finally {
-                          setSearchLoading(false);
-                        }
-                      }, 500);
-                    }}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                   />
                   {searchQuery && (
                     <button
@@ -2046,118 +2253,7 @@ export default function Home() {
                 {/* Search Results */}
                 {!searchLoading && searchResults.length > 0 && (
                   <div className="stock-search-results">
-                    {searchResults.map((item, idx) => {
-                      const pct = parseFloat(item.change.replace("%", ""));
-                      let colorClass = item.isPositive ? "positive" : "negative";
-                      const ex = item.exchange || "HOSE";
-                      if (ex === "HOSE" && Math.abs(pct) >= 6.85) colorClass = pct > 0 ? "ceiling" : "floor";
-                      else if (ex === "HNX" && Math.abs(pct) >= 9.85) colorClass = pct > 0 ? "ceiling" : "floor";
-                      else if (ex === "UPCoM" && Math.abs(pct) >= 14.85) colorClass = pct > 0 ? "ceiling" : "floor";
-
-                      const isStarred = watchlist.includes(item.symbol);
-
-                      return (
-                        <div key={idx} className="stock-search-result-card">
-                          <div className="stock-search-result-header">
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <span
-                                onClick={() => toggleWatchlist(item.symbol)}
-                                style={{ color: isStarred ? "var(--accent-red)" : "var(--text-muted)", cursor: "pointer", fontSize: "1rem" }}
-                              >
-                                {isStarred ? "⭐" : "☆"}
-                              </span>
-                              <div>
-                                <span className="stock-search-symbol">{item.symbol}</span>
-                                <span className="stock-search-exchange">{item.exchange}</span>
-                              </div>
-                            </div>
-                            <div style={{ textAlign: "right" }}>
-                              <div style={{ fontSize: "1.05rem", fontWeight: "700" }}>{item.price}</div>
-                              <span className={`ticker-change ${colorClass}`} style={{ fontSize: "0.78rem" }}>
-                                {item.change}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="stock-search-result-name">{item.displayName}</div>
-                          <div className="stock-search-details-grid">
-                            <div className="stock-search-detail">
-                              <span className="stock-detail-label">{lang === "vi" ? "TC hôm trước" : "Prev Close"}</span>
-                              <span className="stock-detail-value">{item.prevClose}</span>
-                            </div>
-                            <div className="stock-search-detail">
-                              <span className="stock-detail-label">{lang === "vi" ? "Cao nhất" : "Day High"}</span>
-                              <span className="stock-detail-value">{item.dayHigh}</span>
-                            </div>
-                            <div className="stock-search-detail">
-                              <span className="stock-detail-label">{lang === "vi" ? "Thấp nhất" : "Day Low"}</span>
-                              <span className="stock-detail-value">{item.dayLow}</span>
-                            </div>
-                            <div className="stock-search-detail">
-                              <span className="stock-detail-label">{lang === "vi" ? "Khối lượng" : "Volume"}</span>
-                              <span className="stock-detail-value">{item.volume}</span>
-                            </div>
-                          </div>
-
-                          {/* CafeF Financial Metrics Grid */}
-                          {(item.pe || item.pb || item.eps || item.marketCapVnd) && (
-                            <div className="stock-financial-section">
-                              <div className="stock-financial-label">📊 {lang === "vi" ? "Chỉ số định giá" : "Valuation Metrics"}</div>
-                              <div className="stock-financial-grid">
-                                {item.pe && (
-                                  <div className="stock-financial-item">
-                                    <span className="stock-fin-label">P/E</span>
-                                    <span className="stock-fin-value">{item.pe}</span>
-                                  </div>
-                                )}
-                                {item.pb && (
-                                  <div className="stock-financial-item">
-                                    <span className="stock-fin-label">P/B</span>
-                                    <span className="stock-fin-value">{item.pb}</span>
-                                  </div>
-                                )}
-                                {item.eps && (
-                                  <div className="stock-financial-item">
-                                    <span className="stock-fin-label">EPS</span>
-                                    <span className="stock-fin-value">{item.eps}</span>
-                                  </div>
-                                )}
-                                {item.marketCapVnd && (
-                                  <div className="stock-financial-item">
-                                    <span className="stock-fin-label">{lang === "vi" ? "Vốn hóa" : "Mkt Cap"}</span>
-                                    <span className="stock-fin-value">{item.marketCapVnd}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Company Description */}
-                          {item.description && (
-                            <div className="stock-description-block">
-                              <div className="stock-financial-label">ℹ️ {lang === "vi" ? "Về doanh nghiệp" : "About"}</div>
-                              <p className="stock-description-text">{item.description}</p>
-                            </div>
-                          )}
-
-                          {/* Related News */}
-                          {item.relatedNews && item.relatedNews.length > 0 && (
-                            <div className="stock-related-news hidden-mobile">
-                              <div className="stock-financial-label">📰 {lang === "vi" ? "Tin tức mới nhất" : "Latest News"}</div>
-                              <ul className="stock-news-list">
-                                {item.relatedNews.map((news, ni) => (
-                                  <li key={ni} className="stock-news-item">
-                                    <a href={news.link} target="_blank" rel="noopener noreferrer" className="stock-news-title">
-                                      {news.title}
-                                    </a>
-                                    {news.time && <span className="stock-news-time">{news.time}</span>}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {searchResults.map((item, idx) => renderSearchResultCard(item, idx))}
                   </div>
                 )}
 
