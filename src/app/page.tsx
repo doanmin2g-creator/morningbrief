@@ -1393,70 +1393,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Watchlist Ecosystem News Panel (Mobile Only - Pushed to Bottom of Home screen) */}
-            {watchlist.length > 0 && activeMobileTab === "home" && (
-              <div className="widget-panel mobile-only" style={{ marginTop: "2rem" }}>
-                <div className="widget-header" style={{ marginBottom: "1rem" }}>
-                  <h3>{lang === "vi" ? "📰 TIN TỨC HỆ SINH THÁI WATCHLIST" : "📰 WATCHLIST ECOSYSTEM NEWS"}</h3>
-                </div>
-                
-                {loadingWatchlistNews ? (
-                  <div className="news-feed" style={{ borderTop: "none", paddingTop: 0 }}>
-                    {[1, 2].map(i => (
-                      <div key={i} className="skeleton-card" style={{ height: "120px" }}></div>
-                    ))}
-                  </div>
-                ) : watchlistNews.length === 0 ? (
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "15px" }}>
-                    {lang === "vi" 
-                      ? "Chưa có tin tức mới cho các mã trong watchlist." 
-                      : "No new news for symbols in your watchlist."}
-                  </div>
-                ) : (
-                  <>
-                    <div className="news-feed" style={{ borderTop: "none", paddingTop: 0 }}>
-                      {watchlistNews.slice(0, visibleWatchlistNewsCount).map((news, ni) => {
-                        const newsItem = {
-                          ...news,
-                          source: news.relatedSymbol ? `${news.relatedSymbol} • CafeF` : "CafeF"
-                        };
-                        return (
-                          <div 
-                            key={ni} 
-                            onClick={() => setActiveArticle(newsItem)} 
-                            className="news-card" 
-                            style={{ cursor: "pointer" }}
-                          >
-                            <div className="news-content">
-                              <span className="news-source">{newsItem.source}</span>
-                              <h3 className="news-title">{newsItem.title}</h3>
-                              {newsItem.description && (
-                                <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
-                                  {newsItem.description}
-                                </p>
-                              )}
-                              <span className="news-meta">{newsItem.time}</span>
-                            </div>
-                            <div className="news-image-wrap">
-                              <img src={newsItem.image} alt={newsItem.title} className="news-image" />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {watchlistNews.length > visibleWatchlistNewsCount && (
-                      <button 
-                        className="load-more-news-btn"
-                        onClick={() => setVisibleWatchlistNewsCount(prev => prev + 8)}
-                        style={{ marginTop: "1rem", width: "100%" }}
-                      >
-                        {lang === "vi" ? "Xem thêm tin hệ sinh thái" : "Load more ecosystem news"}
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
+
           </section>
 
           {/* Right Column: Market Intelligence & Institutional Consensus */}
@@ -2090,6 +2027,71 @@ export default function Home() {
                       );
                     })}
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Watchlist Ecosystem News Panel (Mobile Only - Pushed to Bottom of Portfolio screen) */}
+            {watchlist.length > 0 && activeMobileTab === "portfolio" && (
+              <div className="widget-panel mobile-only" style={{ marginTop: "15px" }}>
+                <div className="widget-header" style={{ marginBottom: "1rem" }}>
+                  <h3>{lang === "vi" ? "📰 TIN TỨC HỆ SINH THÁI WATCHLIST" : "📰 WATCHLIST ECOSYSTEM NEWS"}</h3>
+                </div>
+                
+                {loadingWatchlistNews ? (
+                  <div className="news-feed" style={{ borderTop: "none", paddingTop: 0 }}>
+                    {[1, 2].map(i => (
+                      <div key={i} className="skeleton-card" style={{ height: "120px" }}></div>
+                    ))}
+                  </div>
+                ) : watchlistNews.length === 0 ? (
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "15px" }}>
+                    {lang === "vi" 
+                      ? "Chưa có tin tức mới cho các mã trong watchlist." 
+                      : "No new news for symbols in your watchlist."}
+                  </div>
+                ) : (
+                  <>
+                    <div className="news-feed" style={{ borderTop: "none", paddingTop: 0 }}>
+                      {watchlistNews.slice(0, visibleWatchlistNewsCount).map((news, ni) => {
+                        const newsItem = {
+                          ...news,
+                          source: news.relatedSymbol ? `${news.relatedSymbol} • CafeF` : "CafeF"
+                        };
+                        return (
+                          <div 
+                            key={ni} 
+                            onClick={() => setActiveArticle(newsItem)} 
+                            className="news-card" 
+                            style={{ cursor: "pointer" }}
+                          >
+                            <div className="news-content">
+                              <span className="news-source">{newsItem.source}</span>
+                              <h3 className="news-title">{newsItem.title}</h3>
+                              {newsItem.description && (
+                                <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                                  {newsItem.description}
+                                </p>
+                              )}
+                              <span className="news-meta">{newsItem.time}</span>
+                            </div>
+                            <div className="news-image-wrap">
+                              <img src={newsItem.image} alt={newsItem.title} className="news-image" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {watchlistNews.length > visibleWatchlistNewsCount && (
+                      <button 
+                        className="load-more-news-btn"
+                        onClick={() => setVisibleWatchlistNewsCount(prev => prev + 8)}
+                        style={{ marginTop: "1rem", width: "100%" }}
+                      >
+                        {lang === "vi" ? "Xem thêm tin hệ sinh thái" : "Load more ecosystem news"}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
