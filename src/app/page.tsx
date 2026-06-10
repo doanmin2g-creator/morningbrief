@@ -453,21 +453,23 @@ export default function Home() {
 
   const getTrackTitle = (track: PodcastTrack) => {
     if (!track) return "";
-    if (track.id === 1) return lang === "vi" ? trans.vi.vovTitle : trans.en.vovTitle;
-    if (track.id === 2) return lang === "vi" ? trans.vi.tuoitreTitle : trans.en.tuoitreTitle;
-    if (track.id === 3) return lang === "vi" ? trans.vi.vietceteraTitle : trans.en.vietceteraTitle;
-    if (track.id === 4) return lang === "vi" ? trans.vi.bbcTitle : trans.en.bbcTitle;
-    if (track.id === 5) return lang === "vi" ? trans.vi.havesipTitle : trans.en.havesipTitle;
+    const fallbackMatch = fallbackPlaylist.find((fallback) => fallback.audioUrl === track.audioUrl);
+    if (fallbackMatch?.id === 1) return lang === "vi" ? trans.vi.vovTitle : trans.en.vovTitle;
+    if (fallbackMatch?.id === 2) return lang === "vi" ? trans.vi.tuoitreTitle : trans.en.tuoitreTitle;
+    if (fallbackMatch?.id === 3) return lang === "vi" ? trans.vi.vietceteraTitle : trans.en.vietceteraTitle;
+    if (fallbackMatch?.id === 4) return lang === "vi" ? trans.vi.bbcTitle : trans.en.bbcTitle;
+    if (fallbackMatch?.id === 5) return lang === "vi" ? trans.vi.havesipTitle : trans.en.havesipTitle;
     return track.title;
   };
 
   const getTrackDesc = (track: PodcastTrack) => {
     if (!track) return "";
-    if (track.id === 1) return lang === "vi" ? trans.vi.vovDesc : trans.en.vovDesc;
-    if (track.id === 2) return lang === "vi" ? trans.vi.tuoitreDesc : trans.en.tuoitreDesc;
-    if (track.id === 3) return lang === "vi" ? trans.vi.vietceteraDesc : trans.en.vietceteraDesc;
-    if (track.id === 4) return lang === "vi" ? trans.vi.bbcDesc : trans.en.bbcDesc;
-    if (track.id === 5) return lang === "vi" ? trans.vi.havesipDesc : trans.en.havesipDesc;
+    const fallbackMatch = fallbackPlaylist.find((fallback) => fallback.audioUrl === track.audioUrl);
+    if (fallbackMatch?.id === 1) return lang === "vi" ? trans.vi.vovDesc : trans.en.vovDesc;
+    if (fallbackMatch?.id === 2) return lang === "vi" ? trans.vi.tuoitreDesc : trans.en.tuoitreDesc;
+    if (fallbackMatch?.id === 3) return lang === "vi" ? trans.vi.vietceteraDesc : trans.en.vietceteraDesc;
+    if (fallbackMatch?.id === 4) return lang === "vi" ? trans.vi.bbcDesc : trans.en.bbcDesc;
+    if (fallbackMatch?.id === 5) return lang === "vi" ? trans.vi.havesipDesc : trans.en.havesipDesc;
     return track.description;
   };
   const [loadingNews, setLoadingNews] = useState(true);
@@ -490,6 +492,7 @@ export default function Home() {
   // Index overview stats (liquidity, breadth, foreign trading) from CafeF
   const [indexStats, setIndexStats] = useState<Record<string, IndexOverview>>({});
   const [activeArticle, setActiveArticle] = useState<NewsItem | null>(null);
+  const [isReaderClosing, setIsReaderClosing] = useState(false);
   const [scrapedParagraphs, setScrapedParagraphs] = useState<string[]>([]);
   const [fullContent, setFullContent] = useState<Array<{ type: "paragraph" | "header" | "list-item" | "image"; text?: string; url?: string; level?: number }>>([]);
   const [readerTab, setReaderTab] = useState<"summary" | "full">("summary");
@@ -501,6 +504,7 @@ export default function Home() {
   const [loadingPodcast, setLoadingPodcast] = useState(true);
   const [podcastSource, setPodcastSource] = useState<string>("Offline");
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [currentTrackId, setCurrentTrackId] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -516,6 +520,9 @@ export default function Home() {
   const [isMobilePlaylistOpen, setIsMobilePlaylistOpen] = useState<boolean>(false);
   const [isMobileMiniHidden, setIsMobileMiniHidden] = useState(false);
   const [isMobilePlayerOpen, setIsMobilePlayerOpen] = useState(false);
+  const [isMobilePlayerClosing, setIsMobilePlayerClosing] = useState(false);
+  const [isAudioInfoOpen, setIsAudioInfoOpen] = useState(false);
+  const [artSwipeMotion, setArtSwipeMotion] = useState<"next" | "prev" | null>(null);
 
   // Curated Channels List with custom styling details
   const channelsList = useMemo(() => {
@@ -559,14 +566,13 @@ export default function Home() {
   }, [podcastPlaylist, selectedChannel]);
 
   const currentTrack = useMemo(() => {
-    if (filteredPlaylist.length > 0) {
-      if (currentTrackIndex < filteredPlaylist.length) {
-        return filteredPlaylist[currentTrackIndex];
-      }
-      return filteredPlaylist[0];
+    const allTracks = podcastPlaylist.length > 0 ? podcastPlaylist : fallbackPlaylist;
+    if (currentTrackId !== null) {
+      const match = allTracks.find((track) => track.id === currentTrackId);
+      if (match) return match;
     }
-    return podcastPlaylist[currentTrackIndex] || podcastPlaylist[0] || fallbackPlaylist[0];
-  }, [filteredPlaylist, currentTrackIndex, podcastPlaylist]);
+    return allTracks[currentTrackIndex] || allTracks[0] || fallbackPlaylist[0];
+  }, [currentTrackId, currentTrackIndex, podcastPlaylist]);
 
   // Safely bound currentTrackIndex when the filtered playlist changes
   useEffect(() => {
@@ -574,6 +580,12 @@ export default function Home() {
       setCurrentTrackIndex(0);
     }
   }, [filteredPlaylist, currentTrackIndex]);
+
+  useEffect(() => {
+    if (currentTrackId === null && podcastPlaylist.length > 0) {
+      setCurrentTrackId(podcastPlaylist[0].id);
+    }
+  }, [currentTrackId, podcastPlaylist]);
 
   // Synchronize playback speed
   useEffect(() => {
@@ -592,11 +604,19 @@ export default function Home() {
   useEffect(() => {
     if (!isPlaying) {
       setIsMobileMiniHidden(false);
-      setIsMobilePlayerOpen(false);
+      closeMobilePlayer();
       return;
     }
     setIsMobileMiniHidden(false);
   }, [isPlaying]);
+
+  useEffect(() => {
+    return () => {
+      if (mobilePlayerCloseTimerRef.current) clearTimeout(mobilePlayerCloseTimerRef.current);
+      if (readerCloseTimerRef.current) clearTimeout(readerCloseTimerRef.current);
+      if (artSwipeTimerRef.current) clearTimeout(artSwipeTimerRef.current);
+    };
+  }, []);
   
   // Stock list highlight filter
   const [stockFilterTab, setStockFilterTab] = useState<"all" | "gainers" | "losers" | "volume">("all");
@@ -620,7 +640,38 @@ export default function Home() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const miniPlayerSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const revealTabSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const artSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const miniPlayerSwipeHandledRef = useRef(false);
+  const mobilePlayerCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const readerCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const artSwipeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  function openArticle(article: NewsItem) {
+    if (readerCloseTimerRef.current) clearTimeout(readerCloseTimerRef.current);
+    setIsReaderClosing(false);
+    setActiveArticle(article);
+  }
+
+  function closeArticle() {
+    if (!activeArticle || isReaderClosing) return;
+    setIsReaderClosing(true);
+    if (readerCloseTimerRef.current) clearTimeout(readerCloseTimerRef.current);
+    readerCloseTimerRef.current = setTimeout(() => {
+      setActiveArticle(null);
+      setIsReaderClosing(false);
+    }, 360);
+  }
+
+  function closeMobilePlayer() {
+    if (!isMobilePlayerOpen || isMobilePlayerClosing) return;
+    setIsMobilePlayerClosing(true);
+    setIsAudioInfoOpen(false);
+    if (mobilePlayerCloseTimerRef.current) clearTimeout(mobilePlayerCloseTimerRef.current);
+    mobilePlayerCloseTimerRef.current = setTimeout(() => {
+      setIsMobilePlayerOpen(false);
+      setIsMobilePlayerClosing(false);
+    }, 420);
+  }
 
   // Format Date in traditional FT format
   useEffect(() => {
@@ -947,13 +998,21 @@ export default function Home() {
   };
 
   const handleNextTrack = () => {
-    if (filteredPlaylist.length === 0) return;
-    setCurrentTrackIndex((prev) => (prev + 1) % filteredPlaylist.length);
+    const list = filteredPlaylist.length > 0 ? filteredPlaylist : podcastPlaylist;
+    if (list.length === 0) return;
+    const currentIndex = currentTrack ? list.findIndex((track) => track.id === currentTrack.id) : -1;
+    const nextIndex = ((currentIndex >= 0 ? currentIndex : currentTrackIndex) + 1) % list.length;
+    setCurrentTrackIndex(nextIndex);
+    setCurrentTrackId(list[nextIndex].id);
   };
 
   const handlePrevTrack = () => {
-    if (filteredPlaylist.length === 0) return;
-    setCurrentTrackIndex((prev) => (prev - 1 + filteredPlaylist.length) % filteredPlaylist.length);
+    const list = filteredPlaylist.length > 0 ? filteredPlaylist : podcastPlaylist;
+    if (list.length === 0) return;
+    const currentIndex = currentTrack ? list.findIndex((track) => track.id === currentTrack.id) : -1;
+    const prevIndex = ((currentIndex >= 0 ? currentIndex : currentTrackIndex) - 1 + list.length) % list.length;
+    setCurrentTrackIndex(prevIndex);
+    setCurrentTrackId(list[prevIndex].id);
   };
 
   const togglePlayPause = () => {
@@ -976,7 +1035,10 @@ export default function Home() {
   };
 
   const selectTrack = (index: number) => {
+    const track = filteredPlaylist[index] || podcastPlaylist[index] || fallbackPlaylist[index];
+    if (!track) return;
     setCurrentTrackIndex(index);
+    setCurrentTrackId(track.id);
     setIsPlaying(true);
   };
 
@@ -1036,7 +1098,38 @@ export default function Home() {
       miniPlayerSwipeHandledRef.current = false;
       return;
     }
+    if (mobilePlayerCloseTimerRef.current) clearTimeout(mobilePlayerCloseTimerRef.current);
+    setIsMobilePlayerClosing(false);
+    setIsAudioInfoOpen(false);
     setIsMobilePlayerOpen(true);
+  };
+
+  const startArtworkSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    const touch = event.touches[0];
+    artSwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const endArtworkSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    const start = artSwipeStartRef.current;
+    const touch = event.changedTouches[0];
+    artSwipeStartRef.current = null;
+    if (!start || !touch) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    const isHorizontalSwipe = Math.abs(deltaX) > 44 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2;
+    if (!isHorizontalSwipe) return;
+
+    const direction = deltaX > 0 ? "next" : "prev";
+    setArtSwipeMotion(direction);
+    if (artSwipeTimerRef.current) clearTimeout(artSwipeTimerRef.current);
+    artSwipeTimerRef.current = setTimeout(() => setArtSwipeMotion(null), 360);
+
+    if (direction === "next") {
+      handleNextTrack();
+    } else {
+      handlePrevTrack();
+    }
   };
 
   // Stock Market Limit Pricing Color Code Helper (Ceiling/Floor)
@@ -1129,7 +1222,7 @@ export default function Home() {
         `Nguồn tin chi tiết và chính thống được cung cấp trực tiếp bởi các cơ quan quản lý nhà nước có thẩm quyền hoặc từ các tổ chức nghiên cứu kinh tế hàng đầu.`
       ]
     };
-    setActiveArticle(mockArticle);
+    openArticle(mockArticle);
   };
 
   // Synchronize track change and playing state
@@ -1140,6 +1233,8 @@ export default function Home() {
         audioRef.current.play().catch(err => console.log("Audio auto-play failed:", err));
       }
     }
+    setIsAudioInfoOpen(false);
+    setArtSwipeMotion(null);
   }, [currentTrack]);
 
   const toggleSpeech = () => {
@@ -1575,7 +1670,7 @@ export default function Home() {
                   {newsList.slice(0, visibleNewsCount).map((item, idx) => (
                     <div 
                       key={idx} 
-                      onClick={() => setActiveArticle(item)} 
+                      onClick={() => openArticle(item)} 
                       className="news-card" 
                       style={{ cursor: "pointer" }}
                     >
@@ -2296,7 +2391,7 @@ export default function Home() {
                       return (
                         <div 
                           key={ni} 
-                          onClick={() => setActiveArticle(newsItem)} 
+                          onClick={() => openArticle(newsItem)} 
                           className="news-card" 
                           style={{ cursor: "pointer" }}
                         >
@@ -2354,7 +2449,7 @@ export default function Home() {
                         return (
                           <div 
                             key={ni} 
-                            onClick={() => setActiveArticle(newsItem)} 
+                            onClick={() => openArticle(newsItem)} 
                             className="news-card" 
                             style={{ cursor: "pointer" }}
                           >
@@ -2743,12 +2838,12 @@ export default function Home() {
 
       {/* Reader Mode Modal */}
       {activeArticle && (
-        <div className="reader-modal-overlay" onClick={() => setActiveArticle(null)}>
+        <div className={`reader-modal-overlay ${isReaderClosing ? "closing" : ""}`} onClick={closeArticle}>
           <div className="reader-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="reader-modal-header">
               <span className="reader-modal-source">{activeArticle.source}</span>
-              <button className="reader-modal-close" onClick={() => setActiveArticle(null)}>
-                {lang === "vi" ? "ĐÓNG [✕]" : "CLOSE [✕]"}
+              <button className="reader-modal-close" onClick={closeArticle} title={lang === "vi" ? "Đóng" : "Close"}>
+                ×
               </button>
             </div>
             <div className="reader-modal-body">
@@ -3032,11 +3127,16 @@ export default function Home() {
       )}
 
       {isMobilePlayerOpen && currentTrack && (
-        <div className="mobile-player-sheet-overlay mobile-only" onClick={() => setIsMobilePlayerOpen(false)}>
+        <div className={`mobile-player-sheet-overlay mobile-only ${isMobilePlayerClosing ? "closing" : ""}`} onClick={closeMobilePlayer}>
           <div className="mobile-player-sheet" onClick={(e) => e.stopPropagation()}>
-            <button className="mobile-player-sheet-close" onClick={() => setIsMobilePlayerOpen(false)}>×</button>
+            <button className="mobile-player-sheet-close" onClick={closeMobilePlayer} title={lang === "vi" ? "Đóng" : "Close"}>×</button>
             <div className="mobile-player-grabber"></div>
-            <div className={`mobile-player-art-stage ${isPlaying ? "playing" : ""}`}>
+            <div 
+              className={`mobile-player-art-stage ${isPlaying ? "playing" : ""} ${artSwipeMotion ? `swipe-${artSwipeMotion}` : ""}`}
+              onTouchStart={startArtworkSwipe}
+              onTouchEnd={endArtworkSwipe}
+              title={lang === "vi" ? "Vuốt phải để chuyển tập tiếp, vuốt trái để lùi tập" : "Swipe right for next, left for previous"}
+            >
               <img src={currentTrack.coverUrl} alt="" className="mobile-player-art" />
               <span className="mobile-player-art-glow"></span>
             </div>
@@ -3045,8 +3145,21 @@ export default function Home() {
                 <span className="mobile-player-kicker">{currentTrack.sourceName} • {currentTrack.artist}</span>
                 <h3>{getTrackTitle(currentTrack)}</h3>
               </div>
-              <button className="mobile-player-more-btn">•••</button>
+              <button className={`mobile-player-info-btn ${isAudioInfoOpen ? "active" : ""}`} onClick={() => setIsAudioInfoOpen((open) => !open)}>
+                i
+              </button>
             </div>
+            {isAudioInfoOpen && (
+              <div className="mobile-player-info-panel">
+                <strong>{lang === "vi" ? "Thông tin audio" : "Audio Info"}</strong>
+                <p>{getTrackDesc(currentTrack) || currentTrack.description || (lang === "vi" ? "Chưa có mô tả cho tập này." : "No description available for this episode.")}</p>
+                <div>
+                  <span>{currentTrack.sourceName}</span>
+                  <span>{currentTrack.duration || formatTime(duration)}</span>
+                  {currentTrack.pubDate && <span>{new Date(currentTrack.pubDate).toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US")}</span>}
+                </div>
+              </div>
+            )}
             <div className="mobile-player-progress-wrap">
               <input
                 type="range"
