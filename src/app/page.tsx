@@ -1913,40 +1913,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Market Indexes Panel */}
-            <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
-              <div className="widget-header">
-                <h3>{lang === "vi" ? "💸 CHỈ SỐ" : "💸 INDEX"}</h3>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {loadingStocks ? (
-                  <>
-                    <div className="skeleton-item" style={{ height: "40px" }}></div>
-                    <div className="skeleton-item" style={{ height: "40px" }}></div>
-                    <div className="skeleton-item" style={{ height: "40px" }}></div>
-                  </>
-                ) : (
-                  tickerList.filter(item => item.sector === "Chỉ số").map((item, idx) => (
-                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "10px", borderBottom: idx < tickerList.filter(i => i.sector === "Chỉ số").length - 1 ? "1px dashed var(--border-classic)" : "none" }}>
-                      <div className="crypto-info">
-                        <h4 style={{ fontSize: "0.88rem", fontWeight: "600" }}>{item.symbol}</h4>
-                        <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: "500" }}>
-                          {item.ticker.startsWith("^") 
-                            ? (lang === "vi" ? "Dữ liệu Yahoo Finance" : "Yahoo Finance Data") 
-                            : (lang === "vi" ? "Dữ liệu Entrade API" : "Entrade API Data")}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <h4 style={{ fontSize: "0.88rem", fontWeight: "700" }}>{item.price}</h4>
-                        <span className={`ticker-change ${getStockColorClass(item)}`} style={{ fontSize: "0.78rem" }}>
-                          {item.change}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
 
             {/* Broker Stance Panel: Stated bullish/bearish/neutral from securities firms */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
