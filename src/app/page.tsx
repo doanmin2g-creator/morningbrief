@@ -1175,7 +1175,10 @@ export default function Home() {
       <header className="masthead">
         <div className="masthead-top">
           <div className="date-badge">{dateText || (lang === "vi" ? "Đang tải ngày..." : "Loading date...")}</div>
-          <div className="logo">
+          <div className="logo" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="reload-btn-container animate-pulse-hover" onClick={fetchStocks} title={trans[lang].refresh} style={{ cursor: "pointer", display: "flex", alignItems: "center" }}>
+              <img src="/icon/piggy-bank-icon.png" style={{ width: '22px', height: '22px', objectFit: 'contain' }} alt="Reload" />
+            </div>
             <h1>THE MORNING BRIEF</h1>
           </div>
           <div className="user-profile" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
@@ -1227,9 +1230,6 @@ export default function Home() {
                 )}
               </span>
             </button>
-            <div className="avatar" onClick={fetchStocks} title={trans[lang].refresh}>
-              <img src="/icon/circle-crown-icon.png" style={{ width: '22px', height: '22px', cursor: 'pointer', objectFit: 'contain' }} alt="Avatar" />
-            </div>
           </div>
         </div>
 
