@@ -514,6 +514,8 @@ export default function Home() {
   const [volume, setVolume] = useState<number>(1.0);
   const [isPodcastExpanded, setIsPodcastExpanded] = useState<boolean>(false);
   const [isMobilePlaylistOpen, setIsMobilePlaylistOpen] = useState<boolean>(false);
+  const [isMobileMiniHidden, setIsMobileMiniHidden] = useState(false);
+  const [isMobilePlayerOpen, setIsMobilePlayerOpen] = useState(false);
 
   // Curated Channels List with custom styling details
   const channelsList = useMemo(() => {
@@ -586,6 +588,15 @@ export default function Home() {
       audioRef.current.volume = volume;
     }
   }, [volume]);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      setIsMobileMiniHidden(false);
+      setIsMobilePlayerOpen(false);
+      return;
+    }
+    setIsMobileMiniHidden(false);
+  }, [isPlaying]);
   
   // Stock list highlight filter
   const [stockFilterTab, setStockFilterTab] = useState<"all" | "gainers" | "losers" | "volume">("all");
@@ -607,6 +618,9 @@ export default function Home() {
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const miniPlayerSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const revealTabSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const miniPlayerSwipeHandledRef = useRef(false);
 
   // Format Date in traditional FT format
   useEffect(() => {
@@ -973,6 +987,58 @@ export default function Home() {
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
+  const startMiniPlayerSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    const touch = event.touches[0];
+    miniPlayerSwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+    miniPlayerSwipeHandledRef.current = false;
+  };
+
+  const endMiniPlayerSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    const start = miniPlayerSwipeStartRef.current;
+    const touch = event.changedTouches[0];
+    miniPlayerSwipeStartRef.current = null;
+    if (!start || !touch) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    const isHorizontalSwipe = Math.abs(deltaX) > 48 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25;
+
+    if (isHorizontalSwipe && deltaX > 0) {
+      miniPlayerSwipeHandledRef.current = true;
+      setIsMobileMiniHidden(true);
+      if (!isPlaying) {
+        setIsMobilePlayerOpen(false);
+      }
+    }
+  };
+
+  const startRevealTabSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    const touch = event.touches[0];
+    revealTabSwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const endRevealTabSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    const start = revealTabSwipeStartRef.current;
+    const touch = event.changedTouches[0];
+    revealTabSwipeStartRef.current = null;
+    if (!start || !touch) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    const isLeftSwipe = deltaX < -34 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15;
+    if (isLeftSwipe) {
+      setIsMobileMiniHidden(false);
+    }
+  };
+
+  const openMobilePlayer = () => {
+    if (miniPlayerSwipeHandledRef.current) {
+      miniPlayerSwipeHandledRef.current = false;
+      return;
+    }
+    setIsMobilePlayerOpen(true);
+  };
+
   // Stock Market Limit Pricing Color Code Helper (Ceiling/Floor)
   const getStockColorClass = (item: TickerItem) => {
     if (item.sector === "Chỉ số") {
@@ -1314,6 +1380,9 @@ export default function Home() {
 
   // Seamless scrolling marquee requires duplicated list
   const duplicatedTickers = [...tickerList, ...tickerList];
+  const mobilePlayerProgress = duration > 0 ? `${Math.min(100, (currentTime / duration) * 100)}%` : "0%";
+  const shouldShowFloatingMiniPlayer = Boolean(currentTrack && isPlaying && !isMobileMiniHidden && activeMobileTab !== "podcast");
+  const shouldShowMiniRevealTab = Boolean(currentTrack && isPlaying && isMobileMiniHidden && activeMobileTab !== "podcast");
 
   return (
     <div className="app-container">
@@ -1417,6 +1486,7 @@ export default function Home() {
       </header>
 
       {/* Mobile Top Search Bar */}
+      {activeMobileTab !== "podcast" && (
       <div className="mobile-search-bar-top-container mobile-only">
         <div className="stock-search-input-wrap">
           <span className="stock-search-icon">
@@ -1459,6 +1529,7 @@ export default function Home() {
           </div>
         )}
       </div>
+      )}
 
       {/* Main Content Area */}
       <main className="main-content">
@@ -2513,6 +2584,38 @@ export default function Home() {
                 {loadingPodcast && <span className="podcast-live-dot"></span>}
               </div>
 
+              {currentTrack && (
+                <div className={`mobile-podcast-now-card ${isPlaying ? "playing" : ""}`} onClick={() => setIsMobilePlayerOpen(true)}>
+                  <div className="mobile-podcast-now-art-wrap">
+                    <img src={currentTrack.coverUrl} alt="" className="mobile-podcast-now-art" />
+                    {isPlaying && (
+                      <span className="mobile-podcast-now-equalizer equalizer-wave">
+                        <span className="equalizer-bar"></span>
+                        <span className="equalizer-bar"></span>
+                        <span className="equalizer-bar"></span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="mobile-podcast-now-copy">
+                    <span className="mobile-podcast-now-kicker">{isPlaying ? (lang === "vi" ? "Đang phát" : "Now Playing") : (lang === "vi" ? "Sẵn sàng nghe" : "Ready to Play")}</span>
+                    <strong>{getTrackTitle(currentTrack)}</strong>
+                    <span>{currentTrack.artist}</span>
+                  </div>
+                  <button
+                    className="mobile-podcast-now-play"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      togglePlayPause();
+                    }}
+                  >
+                    {isPlaying ? <PauseIcon size={17} /> : <PlayIcon size={17} />}
+                  </button>
+                  <div className="mobile-podcast-now-progress">
+                    <span style={{ width: mobilePlayerProgress }} />
+                  </div>
+                </div>
+              )}
+
               {/* Instagram-style circular channels */}
               <div className="mobile-podcast-channels-carousel">
                 {channelsList.map((ch) => (
@@ -2887,8 +2990,13 @@ export default function Home() {
       )}
 
       {/* MOBILE FLOATING MINI PLAYER — shown on all tabs except podcast tab */}
-      {currentTrack && activeMobileTab !== "podcast" && (
-        <div className="mobile-mini-player" onClick={() => setActiveMobileTab("podcast")}>
+      {shouldShowFloatingMiniPlayer && (
+        <div
+          className="mobile-mini-player"
+          onClick={openMobilePlayer}
+          onTouchStart={startMiniPlayerSwipe}
+          onTouchEnd={endMiniPlayerSwipe}
+        >
           <img src={currentTrack.coverUrl} alt="" className={`mobile-mini-player-cover ${isPlaying ? "spinning" : ""}`} />
           <div className="mobile-mini-player-info">
             <div className="mobile-mini-player-title">{getTrackTitle(currentTrack)}</div>
@@ -2905,7 +3013,77 @@ export default function Home() {
             <button className="mobile-mini-ctrl-btn" onClick={(e) => { e.stopPropagation(); handleNextTrack(); }}><SkipNextIcon size={16} /></button>
           </div>
           <div className="mobile-mini-player-progress">
-            <div className="mobile-mini-player-progress-fill" style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : "0%" }} />
+            <div className="mobile-mini-player-progress-fill" style={{ width: mobilePlayerProgress }} />
+          </div>
+        </div>
+      )}
+
+      {shouldShowMiniRevealTab && (
+        <button
+          className="mobile-mini-reveal-tab"
+          onClick={() => setIsMobileMiniHidden(false)}
+          onTouchStart={startRevealTabSwipe}
+          onTouchEnd={endRevealTabSwipe}
+          title={lang === "vi" ? "Kéo sang trái để mở trình phát" : "Swipe left to reveal player"}
+        >
+          <span className="mobile-mini-reveal-arrow">‹</span>
+          <img src={currentTrack.coverUrl} alt="" />
+        </button>
+      )}
+
+      {isMobilePlayerOpen && currentTrack && (
+        <div className="mobile-player-sheet-overlay mobile-only" onClick={() => setIsMobilePlayerOpen(false)}>
+          <div className="mobile-player-sheet" onClick={(e) => e.stopPropagation()}>
+            <button className="mobile-player-sheet-close" onClick={() => setIsMobilePlayerOpen(false)}>×</button>
+            <div className="mobile-player-grabber"></div>
+            <div className={`mobile-player-art-stage ${isPlaying ? "playing" : ""}`}>
+              <img src={currentTrack.coverUrl} alt="" className="mobile-player-art" />
+              <span className="mobile-player-art-glow"></span>
+            </div>
+            <div className="mobile-player-track-row">
+              <div>
+                <span className="mobile-player-kicker">{currentTrack.sourceName} • {currentTrack.artist}</span>
+                <h3>{getTrackTitle(currentTrack)}</h3>
+              </div>
+              <button className="mobile-player-more-btn">•••</button>
+            </div>
+            <div className="mobile-player-progress-wrap">
+              <input
+                type="range"
+                min="0"
+                max={duration || 100}
+                value={currentTime}
+                onChange={handleSeekChange}
+                className="mobile-player-progress-slider"
+              />
+              <div className="mobile-player-time-row">
+                <span>{formatTime(currentTime)}</span>
+                <span>-{formatTime(Math.max((duration || 0) - currentTime, 0))}</span>
+              </div>
+            </div>
+            <div className="mobile-player-main-controls">
+              <button onClick={handlePrevTrack} className="mobile-player-control-btn side-btn">
+                <SkipPreviousIcon size={34} />
+              </button>
+              <button onClick={togglePlayPause} className="mobile-player-control-btn center-btn">
+                {isPlaying ? <PauseIcon size={40} /> : <PlayIcon size={40} />}
+              </button>
+              <button onClick={handleNextTrack} className="mobile-player-control-btn side-btn">
+                <SkipNextIcon size={34} />
+              </button>
+            </div>
+            <div className="mobile-player-volume-row">
+              <VolumeIcon size={16} />
+              <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} />
+              <VolumeIcon size={20} />
+            </div>
+            <div className="mobile-player-actions-row">
+              <button>ⓘ</button>
+              <button>AirPlay</button>
+              <button onClick={() => setActiveMobileTab("podcast")}>
+                <PlaylistIcon size={17} />
+              </button>
+            </div>
           </div>
         </div>
       )}
