@@ -425,6 +425,8 @@ export default function Home() {
   const [hoveredPoint, setHoveredPoint] = useState<{ value: number; index: number; x: number; y: number } | null>(null);
   const [isChartTransitioning, setIsChartTransitioning] = useState(false);
   const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [watchlistNews, setWatchlistNews] = useState<any[]>([]);
+  const [loadingWatchlistNews, setLoadingWatchlistNews] = useState(false);
   const [macroData, setMacroData] = useState<any>(null);
   const [loadingMacro, setLoadingMacro] = useState(true);
   // Index overview stats (liquidity, breadth, foreign trading) from CafeF
@@ -851,6 +853,32 @@ export default function Home() {
     setVisibleNewsCount(8);
     fetchNews(activeTab);
   }, [activeTab]);
+
+  // Fetch watchlist ecosystem news
+  useEffect(() => {
+    if (watchlist.length === 0) {
+      setWatchlistNews([]);
+      return;
+    }
+
+    const fetchWatchlistNews = async () => {
+      setLoadingWatchlistNews(true);
+      try {
+        const symbolsParam = watchlist.join(",");
+        const res = await fetch(`/api/watchlist-news?symbols=${encodeURIComponent(symbolsParam)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setWatchlistNews(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error("Error fetching watchlist news:", err);
+      } finally {
+        setLoadingWatchlistNews(false);
+      }
+    };
+
+    fetchWatchlistNews();
+  }, [watchlist]);
 
   // Extract dynamically what real-time broker articles might be in the news list
   useEffect(() => {
@@ -1736,6 +1764,66 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Watchlist Ecosystem News Panel */}
+            {watchlist.length > 0 && (
+              <div className={`widget-panel ${activeMobileTab === "portfolio" ? "" : "hidden-mobile"}`} style={{ marginTop: "15px" }}>
+                <div className="widget-header">
+                  <h3>{lang === "vi" ? "📰 TIN TỨC HỆ SINH THÁI WATCHLIST" : "📰 WATCHLIST ECOSYSTEM NEWS"}</h3>
+                </div>
+                
+                {loadingWatchlistNews ? (
+                  <div className="stock-search-status" style={{ padding: "15px 0", textAlign: "center" }}>
+                    <span className="podcast-live-dot" style={{ display: "inline-block", marginRight: "8px" }}></span>
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      {lang === "vi" ? "Đang tải tin tức..." : "Loading ecosystem news..."}
+                    </span>
+                  </div>
+                ) : watchlistNews.length === 0 ? (
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", padding: "15px" }}>
+                    {lang === "vi" 
+                      ? "Chưa có tin tức mới cho các mã trong watchlist." 
+                      : "No new news for symbols in your watchlist."}
+                  </div>
+                ) : (
+                  <ul className="watchlist-news-list" style={{ listStyle: "none", padding: 0, margin: "10px 0 0 0", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {watchlistNews.map((news, ni) => (
+                      <li key={ni} className="watchlist-news-item" style={{ borderBottom: "1px dashed var(--border-classic)", paddingBottom: "10px" }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                          {news.relatedSymbol && (
+                            <span className="watchlist-news-tag" style={{ 
+                              background: "rgba(22, 119, 255, 0.1)", 
+                              color: "var(--accent-blue)", 
+                              padding: "1px 5px", 
+                              borderRadius: "3px", 
+                              fontSize: "0.65rem", 
+                              fontWeight: "bold",
+                              letterSpacing: "0.5px"
+                            }}>
+                              {news.relatedSymbol}
+                            </span>
+                          )}
+                          {news.time && <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{news.time}</span>}
+                        </div>
+                        <a href={news.link} target="_blank" rel="noopener noreferrer" className="watchlist-news-title" style={{ 
+                          fontSize: "0.82rem", 
+                          fontWeight: "600", 
+                          lineHeight: "1.3",
+                          color: "var(--text-main)",
+                          textDecoration: "none",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden"
+                        }}>
+                          {news.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
             {/* Top VN Stocks List (Điểm nhấn Thị trường) */}
             <div className={`widget-panel ${activeMobileTab === "markets" ? "" : "hidden-mobile"}`}>
               <div className="widget-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingBottom: "0.75rem" }}>
@@ -2021,7 +2109,7 @@ export default function Home() {
 
                           {/* Related News */}
                           {item.relatedNews && item.relatedNews.length > 0 && (
-                            <div className="stock-related-news">
+                            <div className="stock-related-news hidden-mobile">
                               <div className="stock-financial-label">📰 {lang === "vi" ? "Tin tức mới nhất" : "Latest News"}</div>
                               <ul className="stock-news-list">
                                 {item.relatedNews.map((news, ni) => (
