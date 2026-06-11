@@ -2452,10 +2452,7 @@ export default function Home() {
           className="mobile-podcast-app-section mobile-only mobile-tab-animate"
           style={{ '--active-channel-color': channelsList.find(c => c.id === selectedChannel)?.color || 'var(--accent-blue)' } as React.CSSProperties}
         >
-          <div className="mobile-podcast-app-bg">
-              <img src={currentTrack?.coverUrl} alt="" className="mobile-podcast-app-bg-image" />
-              <div className="mobile-podcast-app-bg-overlay"></div>
-            </div>
+
               <div className="mobile-podcast-app-header">
                 <h2>
                   <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
