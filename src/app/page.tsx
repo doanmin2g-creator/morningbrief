@@ -141,6 +141,10 @@ function hasDisplayImage(image?: string): boolean {
   return !normalized.includes("news_image_default") && !normalized.includes("photo-1590283603385");
 }
 
+function toSafeJsonLd(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
 const trans = {
   vi: {
     market: "THỊ TRƯỜNG",
@@ -481,6 +485,22 @@ const SkipPreviousIcon = ({ size = 20, color = "currentColor" }) => (
   </svg>
 );
 
+const Rewind10Icon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M11.2 6.4H6.8V2" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M6.9 6.5A9.4 9.4 0 1 1 4.6 13" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M10.2 12.1v6.1M9 13.2l1.2-1.1 1.2 1.1M15.2 12.1h1.3c1.1 0 1.9.8 1.9 1.9v2.4c0 1.1-.8 1.9-1.9 1.9h-1.3c-1.1 0-1.9-.8-1.9-1.9V14c0-1.1.8-1.9 1.9-1.9Z" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const Forward30Icon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16.8 6.4h4.4V2" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M21.1 6.5A9.4 9.4 0 1 0 23.4 13" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M9.2 12.1h2.9l-1.7 2.2h.6c1.1 0 1.9.8 1.9 1.9s-.8 2-2 2H9.2M16.2 12.1h1.3c1.1 0 1.9.8 1.9 1.9v2.4c0 1.1-.8 1.9-1.9 1.9h-1.3c-1.1 0-1.9-.8-1.9-1.9V14c0-1.1.8-1.9 1.9-1.9Z" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const PlaylistIcon = ({ size = 20, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M4 6h16M4 12h16M4 18h10" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -607,6 +627,10 @@ export default function Home() {
       { id: "VOV", name: "VOV", logo: "/icon/microphone-icon.png", color: "#A30000", desc: lang === "vi" ? "Đài Tiếng nói Việt Nam VOV - Tin thời sự & kinh tế vĩ mô nóng hổi." : "Voice of Vietnam news and macroeconomic updates." },
       { id: "Tuổi Trẻ", name: "Tuổi Trẻ", logo: "/icon/closed-book-icon.png", color: "#005ea5", desc: lang === "vi" ? "Báo Tuổi Trẻ - Tin tức đời sống & tài chính tiêu dùng." : "Tuoi Tre news, social updates & consumer finance." },
       { id: "Vietcetera", name: "Vietcetera", logo: "/icon/coffee-cup-icon.png", color: "#ff3e00", desc: lang === "vi" ? "Podcast đối thoại kinh doanh, đổi mới & lối sống." : "Vietcetera conversations on business, career & lifestyle." },
+      { id: "VietSuccess", name: "VietSuccess", logo: "/icon/chart-icon.png", color: "#0b7a53", desc: lang === "vi" ? "Câu chuyện lãnh đạo, kinh doanh và tư duy tài chính từ VietSuccess." : "Leadership, business and finance conversations from VietSuccess." },
+      { id: "Tài Chính & Kinh Doanh", name: "Tài chính & KD", logo: "/icon/piggy-bank-icon.png", color: "#c47a00", desc: lang === "vi" ? "Nội dung tài chính và kinh doanh cho nhà đầu tư cá nhân." : "Finance and business episodes for individual investors." },
+      { id: "Tâm Sự Tài Chính", name: "Tâm sự TC", logo: "/icon/newspaper-icon.png", color: "#7a4ce0", desc: lang === "vi" ? "Tâm sự tài chính cùng Trịnh Công Hoà." : "Personal finance conversations with Trinh Cong Hoa." },
+      { id: "Hieu.TV", name: "Hieu.TV", logo: "/icon/globes-icon.png", color: "#111827", desc: lang === "vi" ? "Podcast về tài chính cá nhân, đầu tư và cuộc sống." : "Personal finance, investing and life lessons from Hieu.TV." },
       { id: "BBC", name: "BBC", logo: "/icon/globes-icon.png", color: "#b00000", desc: lang === "vi" ? "BBC World Service - Tin tức toàn cầu & Tiếng Anh." : "BBC global perspective and English learning." }
     ];
   }, [lang]);
@@ -1160,6 +1184,15 @@ export default function Home() {
     setCurrentTime(newTime);
   };
 
+  const seekAudioBy = (seconds: number) => {
+    if (!audioRef.current) return;
+    const current = audioRef.current.currentTime || 0;
+    const maxDuration = Number.isFinite(audioRef.current.duration) ? audioRef.current.duration : duration;
+    const nextTime = Math.min(Math.max(current + seconds, 0), maxDuration || current + seconds);
+    audioRef.current.currentTime = nextTime;
+    setCurrentTime(nextTime);
+  };
+
   const selectTrack = (index: number) => {
     const track = filteredPlaylist[index] || podcastPlaylist[index] || fallbackPlaylist[index];
     if (!track) return;
@@ -1623,9 +1656,94 @@ export default function Home() {
   const mobilePlayerProgress = duration > 0 ? `${Math.min(100, (currentTime / duration) * 100)}%` : "0%";
   const shouldShowFloatingMiniPlayer = Boolean(currentTrack && !isMobileMiniHidden && activeMobileTab !== "podcast");
   const shouldShowMiniRevealTab = Boolean(currentTrack && isMobileMiniHidden && activeMobileTab !== "podcast");
+  const aiReadableDataJson = useMemo(() => toSafeJsonLd({
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    name: "The Morning Brief - readable news, market and podcast data",
+    description: "Structured copy of the news, market, macro and podcast information visible to readers in The Morning Brief.",
+    inLanguage: lang === "vi" ? "vi-VN" : "en-US",
+    dateModified: macroData?.updatedAt || dateText,
+    hasPart: [
+      {
+        "@type": "ItemList",
+        name: "News articles",
+        itemListElement: newsList.slice(0, 24).map((item, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          item: {
+            "@type": "NewsArticle",
+            headline: item.title,
+            description: item.description,
+            url: item.link,
+            datePublished: item.time,
+            publisher: {
+              "@type": "Organization",
+              name: item.source,
+            },
+          },
+        })),
+      },
+      {
+        "@type": "ItemList",
+        name: "Market tickers",
+        itemListElement: tickerList.slice(0, 40).map((item, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          item: {
+            "@type": "FinancialProduct",
+            name: item.symbol,
+            description: `${item.symbol}: ${item.price}, ${item.change}`,
+            category: item.sector,
+            additionalProperty: [
+              { "@type": "PropertyValue", name: "price", value: item.price },
+              { "@type": "PropertyValue", name: "change", value: item.change },
+              { "@type": "PropertyValue", name: "exchange", value: item.exchange || "" },
+            ],
+          },
+        })),
+      },
+      {
+        "@type": "ItemList",
+        name: "Macro indicators",
+        itemListElement: macroData ? [
+          { "@type": "ListItem", position: 1, item: { "@type": "Thing", name: "SJC gold", description: `Buy ${macroData.goldSjc.buy}, sell ${macroData.goldSjc.sell}, change ${macroData.goldSjc.change}` } },
+          { "@type": "ListItem", position: 2, item: { "@type": "Thing", name: "Ring gold", description: `Buy ${macroData.goldRing.buy}, sell ${macroData.goldRing.sell}, change ${macroData.goldRing.change}` } },
+          { "@type": "ListItem", position: 3, item: { "@type": "Thing", name: "USD/VND", description: `Buy ${macroData.usdRate.buy}, sell ${macroData.usdRate.sell}, change ${macroData.usdRate.change}` } },
+        ] : [],
+      },
+      {
+        "@type": "ItemList",
+        name: "Podcast episodes",
+        itemListElement: podcastPlaylist.slice(0, 36).map((track, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          item: {
+            "@type": "PodcastEpisode",
+            name: track.title,
+            description: track.description,
+            datePublished: track.pubDate || "",
+            partOfSeries: {
+              "@type": "PodcastSeries",
+              name: track.sourceName,
+            },
+            associatedMedia: {
+              "@type": "MediaObject",
+              contentUrl: track.audioUrl,
+              duration: track.duration || "",
+            },
+          },
+        })),
+      },
+    ],
+  }), [dateText, lang, macroData, newsList, podcastPlaylist, tickerList]);
 
   return (
     <div className="app-container">
+      <script
+        id="morningbrief-ai-readable-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: aiReadableDataJson }}
+      />
       {/* Floating Header/Masthead */}
       <header className="masthead">
         <div className="masthead-top">
@@ -1902,8 +2020,14 @@ export default function Home() {
                   <button onClick={handlePrevTrack} className="podcast-control-btn" title={trans[lang].prevTrack}>
                     <SkipPreviousIcon size={20} />
                   </button>
+                  <button onClick={() => seekAudioBy(-10)} className="podcast-control-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}>
+                    <Rewind10Icon size={22} />
+                  </button>
                   <button onClick={togglePlayPause} className="podcast-control-btn play-btn" title={isPlaying ? trans[lang].pause : trans[lang].play}>
                     {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
+                  </button>
+                  <button onClick={() => seekAudioBy(30)} className="podcast-control-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}>
+                    <Forward30Icon size={22} />
                   </button>
                   <button onClick={handleNextTrack} className="podcast-control-btn" title={trans[lang].nextTrack}>
                     <SkipNextIcon size={20} />
@@ -3014,7 +3138,9 @@ export default function Home() {
               </div>
               <div className="podcast-modal-controls">
                 <button onClick={handlePrevTrack} className="podcast-modal-ctrl-btn" title={trans[lang].prevTrack}><SkipPreviousIcon size={18} /></button>
+                <button onClick={() => seekAudioBy(-10)} className="podcast-modal-ctrl-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}><Rewind10Icon size={20} /></button>
                 <button onClick={togglePlayPause} className="podcast-modal-ctrl-btn play-btn">{isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}</button>
+                <button onClick={() => seekAudioBy(30)} className="podcast-modal-ctrl-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}><Forward30Icon size={20} /></button>
                 <button onClick={handleNextTrack} className="podcast-modal-ctrl-btn" title={trans[lang].nextTrack}><SkipNextIcon size={18} /></button>
                 <button onClick={() => setPlaybackRate(prev => { const speeds = [0.75, 1.0, 1.25, 1.5, 2.0]; return speeds[(speeds.indexOf(prev) + 1) % speeds.length]; })} className="podcast-modal-speed-btn">{playbackRate}×</button>
               </div>
@@ -3126,8 +3252,14 @@ export default function Home() {
               <button onClick={handlePrevTrack} className="mobile-player-control-btn side-btn">
                 <SkipPreviousIcon size={34} />
               </button>
+              <button onClick={() => seekAudioBy(-10)} className="mobile-player-control-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}>
+                <Rewind10Icon size={30} />
+              </button>
               <button onClick={togglePlayPause} className="mobile-player-control-btn center-btn">
                 {isPlaying ? <PauseIcon size={40} /> : <PlayIcon size={40} />}
+              </button>
+              <button onClick={() => seekAudioBy(30)} className="mobile-player-control-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}>
+                <Forward30Icon size={30} />
               </button>
               <button onClick={handleNextTrack} className="mobile-player-control-btn side-btn">
                 <SkipNextIcon size={34} />

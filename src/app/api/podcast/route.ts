@@ -25,13 +25,13 @@ interface FeedConfig {
 }
 
 // ---------------------------------------------------------------------------
-// In-memory cache (5-minute TTL)
+// In-memory cache (6-hour TTL)
 // ---------------------------------------------------------------------------
 
 let cache: { data: PodcastEpisode[]; timestamp: number } | null = null;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const RESPONSE_CACHE_HEADERS = {
-  "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600"
+  "Cache-Control": "public, s-maxage=21600, stale-while-revalidate=43200"
 };
 
 // ---------------------------------------------------------------------------
@@ -95,6 +95,48 @@ const PODCAST_FEEDS: FeedConfig[] = [
     artist: "BBC 6 Minute English",
     url: "https://podcasts.files.bbci.co.uk/p02pc9tn.rss",
     coverUrl: "http://ichef.bbci.co.uk/images/ic/3000x3000/p0hxqkd0.jpg"
+  },
+  {
+    id: "vietsuccess_quoc_khanh",
+    sourceName: "VietSuccess",
+    artist: "The Quoc Khanh Show",
+    url: "https://anchor.fm/s/1081bb15c/podcast/rss",
+    coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ed/91/18/ed91187e-8d10-1e3d-de5b-dd741c92d2bc/mza_1922540784731860387.jpg/600x600bb.jpg"
+  },
+  {
+    id: "vietsuccess_business_insights",
+    sourceName: "VietSuccess",
+    artist: "Business Insights",
+    url: "https://anchor.fm/s/e828cf38/podcast/rss",
+    coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/59/b5/71/59b571ad-8030-97a2-487b-5f5092aba85a/mza_12575266205870036217.jpg/600x600bb.jpg"
+  },
+  {
+    id: "vietsuccess_wealth_being",
+    sourceName: "VietSuccess",
+    artist: "Wealth-Being",
+    url: "https://anchor.fm/s/e837c5b0/podcast/rss",
+    coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/50/db/83/50db830e-f454-cf3a-707b-7fc2fcd33c2a/mza_5776704164194231845.jpg/600x600bb.jpg"
+  },
+  {
+    id: "tai_chinh_kinh_doanh",
+    sourceName: "Tài Chính & Kinh Doanh",
+    artist: "Tài Chính & Kinh Doanh",
+    url: "https://anchor.fm/s/6a069144/podcast/rss",
+    coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/c9/b4/8b/c9b48b24-cd0a-4682-9888-0c69686a6ecd/mza_4587360825708001018.jpg/600x600bb.jpg"
+  },
+  {
+    id: "tam_su_tai_chinh",
+    sourceName: "Tâm Sự Tài Chính",
+    artist: "Trịnh Công Hoà",
+    url: "https://anchor.fm/s/36c11764/podcast/rss",
+    coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts124/v4/a0/8a/50/a08a505f-aaa8-4fa9-a85e-c74be3933a80/mza_11474860969538108436.jpg/600x600bb.jpg"
+  },
+  {
+    id: "hieu_tv",
+    sourceName: "Hieu.TV",
+    artist: "Hieu Nguyen",
+    url: "https://anchor.fm/s/4cfb55bc/podcast/rss",
+    coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cd/7b/23/cd7b2350-66e1-b756-a95f-5d21880e1506/mza_9323174983059431278.jpg/600x600bb.jpg"
   }
 ];
 
@@ -259,7 +301,7 @@ function parseRssXml(xml: string, feed: FeedConfig): PodcastEpisode[] {
       pubDate,
     });
 
-    if (episodes.length >= 10) break;
+    if (episodes.length >= 8) break;
   }
 
   return episodes;
@@ -272,7 +314,7 @@ async function fetchAndParseFeed(feed: FeedConfig): Promise<PodcastEpisode[]> {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
       },
-      cache: "no-store",
+      next: { revalidate: 21600 },
     });
     if (!res.ok) {
       throw new Error(`HTTP status ${res.status}`);
@@ -321,6 +363,12 @@ export async function GET() {
       "BBC": []
     };
 
+    for (const feed of PODCAST_FEEDS) {
+      if (!groups[feed.sourceName]) {
+        groups[feed.sourceName] = [];
+      }
+    }
+
     for (const ep of allEpisodes) {
       if (groups[ep.sourceName]) {
         groups[ep.sourceName].push(ep);
@@ -334,8 +382,8 @@ export async function GET() {
 
     // Round-robin interleaving to guarantee representation of all 4 sources
     const interleaved: PodcastEpisode[] = [];
-    const maxItems = 16;
-    const sources = ["Vietcetera", "VOV", "Tuổi Trẻ", "BBC"];
+    const maxItems = 48;
+    const sources = Object.keys(groups);
     
     let added = true;
     let index = 0;
@@ -354,7 +402,10 @@ export async function GET() {
       index++;
     }
 
-    // Assign 1-indexed IDs to interleaved list
+    // Sort the final playlist by publish date, newest first.
+    interleaved.sort((a, b) => parseDate(b.pubDate) - parseDate(a.pubDate));
+
+    // Assign 1-indexed IDs to the sorted list.
     interleaved.forEach((episode, idx) => {
       episode.id = idx + 1;
     });
