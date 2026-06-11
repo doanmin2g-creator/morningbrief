@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from "react";
+import { NewsFeed } from "@/components/NewsFeed";
+import { EconomicCalendar } from "@/components/EconomicCalendar";
+import { MarketHighlights } from "@/components/MarketHighlights";
+import { GoldForexPanel } from "@/components/GoldForexPanel";
 
 // Types
 interface TickerItem {
@@ -1227,54 +1231,7 @@ export default function Home() {
     return item.isPositive ? "positive" : "negative";
   };
 
-  const renderStockTable = (list: TickerItem[], showVolume: boolean = false) => {
-    if (!list || list.length === 0) {
-      return (
-        <div style={{ padding: "20px", textAlign: "center", fontSize: "0.82rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-          {lang === "vi" ? "Đang tải dữ liệu..." : "Loading data..."}
-        </div>
-      );
-    }
-    return (
-      <div className="highlights-detailed-table-wrap">
-        <table className="highlights-detailed-table">
-          <thead>
-            <tr>
-              <th>{lang === "vi" ? "Mã" : "Symbol"}</th>
-              <th style={{ textAlign: "right" }}>{lang === "vi" ? "Giá" : "Price"}</th>
-              <th style={{ textAlign: "right" }}>{lang === "vi" ? "Tăng/Giảm" : "Change"}</th>
-              {showVolume && <th style={{ textAlign: "right" }}>{lang === "vi" ? "Khối lượng" : "Volume"}</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((item, idx) => {
-              const code = item.symbol;
-              const colorClass = getStockColorClass(item);
-              return (
-                <tr key={idx}>
-                  <td>
-                    <span className="stock-table-symbol">{code}</span>
-                    <span className="stock-table-exchange">{item.exchange}</span>
-                  </td>
-                  <td style={{ textAlign: "right", fontWeight: "700" }}>{item.price}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <span className={`ticker-change ${colorClass}`} style={{ fontSize: "0.78rem" }}>
-                      {item.change}
-                    </span>
-                  </td>
-                  {showVolume && (
-                    <td style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                      {(item as any).volumeStr || (item as any).volume || "0"}
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
+
 
   // Click handler for financial calendar event reading
   const handleCalendarClick = (event: typeof calendarEvents[number]) => {
@@ -1702,89 +1659,22 @@ export default function Home() {
               </div>
             </div>
 
-            {useMemo(() => (
-              <div className="news-feed">
-                {loadingNews ? (
-                  <>
-                    <div className="skeleton-card"></div>
-                    <div className="skeleton-card"></div>
-                  </>
-                ) : (
-                  <>
-                    {newsList.slice(0, visibleNewsCount).map((item, idx) => (
-                      <div 
-                        key={idx} 
-                        onClick={() => openArticle(item)} 
-                        className="news-card" 
-                        style={{ cursor: "pointer" }}
-                      >
-                        <div className="news-content">
-                          <span className="news-source">{item.source}</span>
-                          <h3 className="news-title">{item.title}</h3>
-                          <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
-                            {item.description}
-                          </p>
-                          <span className="news-meta">{item.time}</span>
-                        </div>
-                        <div className="news-image-wrap">
-                          <img src={item.image} alt={item.title} className="news-image" />
-                        </div>
-                      </div>
-                    ))}
-                    {newsList.length > visibleNewsCount && (
-                      <button 
-                        className="load-more-news-btn"
-                        onClick={() => setVisibleNewsCount(prev => prev + 6)}
-                      >
-                        {trans[lang].loadMore}
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            ), [loadingNews, newsList, visibleNewsCount, lang, trans, openArticle])}
+            <NewsFeed
+              loadingNews={loadingNews}
+              newsList={newsList}
+              visibleNewsCount={visibleNewsCount}
+              lang={lang}
+              trans={trans}
+              openArticle={openArticle}
+              setVisibleNewsCount={setVisibleNewsCount}
+            />
 
-            {useMemo(() => (
-              <div className="widget-panel" style={{ marginTop: "2rem" }}>
-                <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                  <h3>
-                    <img src="/icon/calendar-icon.png" className="header-3d-icon" alt="" />
-                    {trans[lang].economicCalendar}
-                  </h3>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
-                  {calendarEvents.map((item, idx) => (
-                    <div 
-                      key={idx} 
-                      onClick={() => handleCalendarClick(item)}
-                      className="calendar-item-card"
-                      style={{ 
-                        display: "flex", 
-                        gap: "10px", 
-                        paddingBottom: "8px", 
-                        borderBottom: idx < calendarEvents.length - 1 ? "1px dashed var(--border-classic)" : "none",
-                        cursor: "pointer" 
-                      }}
-                    >
-                      <div className="calendar-date-badge">
-                        {item.date}
-                      </div>
-                      <div>
-                        <strong className="calendar-event-title" style={{ display: "block", color: "var(--text-primary)", fontSize: "0.8rem", lineHeight: "1.3", transition: "color 0.2s" }}>{item.event}</strong>
-                        <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "2px" }}>
-                          <span className={`ticker-change ${item.class}`} style={{ fontSize: "0.65rem", padding: "1px 4px", borderRadius: "3px", fontWeight: "700" }}>
-                            {lang === "vi" ? "Tác động" : "Impact"}: {item.impact === "LỚN" ? (lang === "vi" ? "LỚN" : "HIGH") : item.impact === "VỪA" ? (lang === "vi" ? "VỪA" : "MED") : (lang === "vi" ? "NHỎ" : "LOW")}
-                          </span>
-                          <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
-                            • {lang === "vi" ? "Nguồn" : "Source"}: {item.source}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ), [calendarEvents, lang, trans, handleCalendarClick])}
+            <EconomicCalendar
+              calendarEvents={calendarEvents}
+              lang={lang}
+              trans={trans}
+              handleCalendarClick={handleCalendarClick}
+            />
 
 
           </section>
@@ -2531,192 +2421,27 @@ export default function Home() {
             )}
 
             {/* Top VN Stocks List (Điểm nhấn Thị trường) */}
-            <div className={`widget-panel ${activeMobileTab === "markets" ? "mobile-tab-animate" : "hidden-mobile"}`}>
-              <div className="widget-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingBottom: "0.75rem" }}>
-                <h3 style={{ margin: 0, fontSize: "0.85rem", letterSpacing: "1.5px" }}>
-                  <img src="/icon/stock-tickers-icon.png" className="header-3d-icon" style={{ width: '16px', height: '16px', marginRight: '6px' }} alt="" />
-                  {trans[lang].marketHighlights}
-                </h3>
-                
-                {/* Sub-tabs for Market Highlights */}
-                <div className="tabs" style={{ padding: "2px", borderRadius: "20px" }}>
-                  <button
-                    className={`tab ${stockFilterTab === "all" ? "active" : ""}`}
-                    onClick={() => setStockFilterTab("all")}
-                    style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
-                  >
-                    {trans[lang].allTab}
-                  </button>
-                  <button
-                    className={`tab ${stockFilterTab === "gainers" ? "active" : ""}`}
-                    onClick={() => setStockFilterTab("gainers")}
-                    style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
-                  >
-                    {trans[lang].gainerTab}
-                  </button>
-                  <button
-                    className={`tab ${stockFilterTab === "losers" ? "active" : ""}`}
-                    onClick={() => setStockFilterTab("losers")}
-                    style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
-                  >
-                    {trans[lang].loserTab}
-                  </button>
-                  <button
-                    className={`tab ${stockFilterTab === "volume" ? "active" : ""}`}
-                    onClick={() => setStockFilterTab("volume")}
-                    style={{ padding: "0.2rem 0.6rem", fontSize: "0.7rem", borderRadius: "15px" }}
-                  >
-                    {trans[lang].volumeTab}
-                  </button>
-                </div>
-              </div>
-
-              {useMemo(() => (
-                <>
-                  {/* === TOP 5 GAINERS & LOSERS LEADERBOARD === */}
-                  {!loadingStocks && stockFilterTab === "all" && (() => {
-                    const stocksOnly = tickerList.filter(item => item.sector !== "Chỉ số");
-                    const parseChangePercent = (s: string) => { try { return parseFloat(s.replace("%", "")); } catch { return 0; } };
-                    const sorted = [...stocksOnly].sort((a, b) => parseChangePercent(b.change) - parseChangePercent(a.change));
-
-                    const top5Gainers = (highlights && highlights.gainers && highlights.gainers.length > 0)
-                      ? highlights.gainers.slice(0, 5)
-                      : sorted.filter(s => parseChangePercent(s.change) > 0).slice(0, 5);
-
-                    const top5Losers = (highlights && highlights.losers && highlights.losers.length > 0)
-                      ? highlights.losers.slice(0, 5)
-                      : sorted.filter(s => parseChangePercent(s.change) < 0).reverse().slice(0, 5);
-
-                    const renderLeaderItem = (item: TickerItem, rank: number, type: "gainer" | "loser") => {
-                      const code = item.symbol.split(" ")[0];
-                      const exTag = item.exchange ? ` ${item.exchange}` : "";
-                      const colorClass = getStockColorClass(item);
-                      const typeMapped = type === "gainer" ? "gainers" : "losers";
-                      return (
-                        <div key={code} className={`leaderboard-item ${typeMapped}`}>
-                          <div className="leaderboard-rank">{rank}</div>
-                          <div className="leaderboard-info">
-                            <span className="leaderboard-code">{code}</span>
-                            <span className="leaderboard-exchange">{exTag}</span>
-                          </div>
-                          <div className="leaderboard-price">{item.price}</div>
-                          <div className={`leaderboard-change ticker-change ${colorClass}`}>
-                            {item.change}
-                          </div>
-                        </div>
-                      );
-                    };
-
-                    return (
-                      <div className="leaderboard-grid">
-                        <div className="leaderboard-column">
-                          <div className="leaderboard-column-header gainers" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                            <span className="leaderboard-icon">🌱</span>
-                            <span>{lang === "vi" ? "TĂNG" : "GAINERS"}</span>
-                          </div>
-                          {top5Gainers.length > 0 ? (
-                            top5Gainers.map((item, i) => renderLeaderItem(item, i + 1, "gainer"))
-                          ) : (
-                            <div className="leaderboard-empty">{lang === "vi" ? "Không có mã tăng" : "No Gainers"}</div>
-                          )}
-                        </div>
-                        <div className="leaderboard-column">
-                          <div className="leaderboard-column-header losers" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                            <span className="leaderboard-icon">🍂</span>
-                            <span>{lang === "vi" ? "GIẢM" : "LOSERS"}</span>
-                          </div>
-                          {top5Losers.length > 0 ? (
-                            top5Losers.map((item, i) => renderLeaderItem(item, i + 1, "loser"))
-                          ) : (
-                            <div className="leaderboard-empty">{lang === "vi" ? "Không có mã giảm" : "No Losers"}</div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {!loadingStocks && stockFilterTab === "gainers" && (
-                    renderStockTable(highlights?.gainers || [])
-                  )}
-
-                  {!loadingStocks && stockFilterTab === "losers" && (
-                    renderStockTable(highlights?.losers || [])
-                  )}
-
-                  {!loadingStocks && stockFilterTab === "volume" && (
-                    renderStockTable(highlights?.volume || [], true)
-                  )}
-                </>
-              ), [loadingStocks, stockFilterTab, tickerList, highlights, lang, renderStockTable, getStockColorClass])}
-            </div>
+            <MarketHighlights
+              loadingStocks={loadingStocks}
+              stockFilterTab={stockFilterTab}
+              tickerList={tickerList}
+              highlights={highlights}
+              lang={lang}
+              trans={trans}
+              setStockFilterTab={setStockFilterTab}
+              activeMobileTab={activeMobileTab}
+            />
 
 
 
             {/* Macro Economics Panel */}
-            <div className={`widget-panel ${activeMobileTab === "markets" ? "mobile-tab-animate" : "hidden-mobile"}`}>
-              <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>
-                  <img src="/icon/landmark-icon.png" className="header-3d-icon" alt="" />
-                  {trans[lang].goldForex}
-                </h3>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
-                {useMemo(() => (
-                  loadingMacro ? (
-                    <>
-                      <div className="skeleton-item" style={{ height: "30px" }}></div>
-                      <div className="skeleton-item" style={{ height: "30px" }}></div>
-                    </>
-                  ) : macroData ? (
-                    <>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
-                        <div>
-                          <strong style={{ display: "block" }}>{lang === "vi" ? "Vàng SJC" : "SJC Gold Bar"}</strong>
-                          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                            {lang === "vi" ? "Đơn vị: Triệu đ/lượng" : "Unit: Million VND/Tael"}
-                          </span>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldSjc.buy} - {macroData.goldSjc.sell}</span>
-                          <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0 }}>{macroData.goldSjc.change}</span>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
-                        <div>
-                          <strong style={{ display: "block" }}>{lang === "vi" ? "Vàng Nhẫn 9999" : "24K Gold Ring"}</strong>
-                          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                            {lang === "vi" ? "Đơn vị: Triệu đ/lượng" : "Unit: Million VND/Tael"}
-                          </span>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldRing.buy} - {macroData.goldRing.sell}</span>
-                          <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0 }}>{macroData.goldRing.change}</span>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div>
-                          <strong style={{ display: "block" }}>{lang === "vi" ? "Tỷ giá USD/VND" : "USD/VND Rate"}</strong>
-                          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                            {lang === "vi" ? "Nguồn: Vietcombank" : "Source: Vietcombank"}
-                          </span>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <span style={{ fontWeight: "700", display: "block" }}>{macroData.usdRate.buy} - {macroData.usdRate.sell}</span>
-                          <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0, color: "var(--success-green)" }}>{macroData.usdRate.change}</span>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textAlign: "right", marginTop: "4px" }}>
-                        {lang === "vi" ? "Cập nhật" : "Updated"}: {macroData.updatedAt}
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
-                      {lang === "vi" ? "Không tải được dữ liệu vĩ mô" : "Failed to load macro data"}
-                    </div>
-                  )
-                ), [loadingMacro, macroData, lang])}
-              </div>
-            </div>
+            <GoldForexPanel
+              loadingMacro={loadingMacro}
+              macroData={macroData}
+              lang={lang}
+              trans={trans}
+              activeMobileTab={activeMobileTab}
+            />
 
           </aside>
         </div>
