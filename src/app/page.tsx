@@ -1604,214 +1604,21 @@ export default function Home() {
             {trans[lang].market}
           </div>
           <div className={`ticker-scroll ${loadingStocks ? "loading" : ""}`}>
-            {loadingStocks ? (
-              <div className="ticker-item-placeholder">{trans[lang].loadingMarket}</div>
-            ) : (
-              duplicatedTickers.map((item, idx) => (
-                <div key={idx} className="ticker-card">
-                  <span className="ticker-symbol">{item.symbol}</span>
-                  <span className="ticker-price">{item.price}</span>
-                  <span className={`ticker-change ${getStockColorClass(item)}`}>
-                    {item.change}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Top Search Bar */}
-      {activeMobileTab !== "podcast" && (
-      <div className="mobile-search-bar-top-container mobile-only">
-        <div className="stock-search-input-wrap">
-          <span className="stock-search-icon">
-            <img src="/icon/globes-icon.png" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle' }} alt="" />
-          </span>
-          <input
-            type="text"
-            className="stock-search-input"
-            placeholder={lang === "vi" ? "Nhập mã CK hoặc tên công ty..." : "Search Symbol or Company..."}
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-          {searchQuery && (
-            <button
-              className="stock-search-clear"
-              onClick={() => {
-                setSearchQuery("");
-                setSearchResults([]);
-                setSearchError("");
-              }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-        {/* Render search results inline on mobile */}
-        {searchLoading && (
-          <div className="stock-search-status">
-            <span className="podcast-live-dot"></span> {lang === "vi" ? "Đang tra cứu..." : "Searching..."}
-          </div>
-        )}
-        {searchError && !searchLoading && (
-          <div className="stock-search-status" style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
-            {searchError}
-          </div>
-        )}
-        {!searchLoading && searchResults.length > 0 && (
-          <div className="stock-search-results">
-            {searchResults.map((item, idx) => renderSearchResultCard(item, idx))}
-        theme: "Đang tổng hợp...",
-        summary: "Hệ thống đang thu thập thông tin thị trường chứng khoán VN-30 và bài viết mới nhất từ CafeF & VnExpress để đưa ra báo cáo tổng quan hôm nay.",
-        advancing: 0,
-        declining: 0
-      };
-    }
-
-    // 1. Calculate stock market sentiment index across equities (excluding indices)
-    const equities = tickerList.filter(t => t.sector !== "Chỉ số");
-    const advancing = equities.filter(t => t.isPositive).length;
-    const declining = equities.length - advancing;
-    const greenRatio = equities.length > 0 ? (advancing / equities.length) * 100 : 50;
-
-    let sentiment = "GIẰNG CO (TRUNG LẬP)";
-    if (greenRatio >= 60) {
-      sentiment = `TÍCH CỰC (TĂNG) — ${advancing}/${equities.length} mã tăng điểm`;
-    } else if (greenRatio <= 40) {
-      sentiment = `THẬN TRỌNG (GIẢM) — ${declining}/${equities.length} mã giảm điểm`;
-    } else {
-      sentiment = `GIẰNG CO (TRUNG LẬP) — ${advancing} mã tăng / ${declining} mã giảm`;
-    }
-
-    // 2. Extract top keyword themes from news titles/descriptions
-    const textCorpus = newsList.map(n => n.title.toLowerCase() + " " + n.description.toLowerCase()).join(" ");
-    const keywordDefinitions = [
-      { term: "Công nghệ & Chip bán dẫn", keywords: ["công nghệ", "số hóa", "ai", "trí tuệ nhân tạo", "openai", "bán dẫn", "chip"] },
-      { term: "Nghị định & Chính sách Vĩ mô", keywords: ["chính phủ", "thủ tướng", "nghị định", "quyết định", "luật", "chính sách"] },
-      { term: "Tiền tệ & Lãi suất ngân hàng", keywords: ["lãi suất", "ngân hàng", "tín dụng", "tỷ giá", "usd", "vcb", "bid"] },
-      { term: "Xúc tiến Thương mại & FDI", keywords: ["doanh nghiệp", "đầu tư", "fdi", "xuất khẩu", "nhập khẩu", "thương mại"] },
-      { term: "Giao dịch Vàng & Bất động sản", keywords: ["vàng", "bất động sản", "nhà đất", "trái phiếu", "cổ phiếu", "ipo"] }
-    ];
-
-    const keywordScores = keywordDefinitions.map(def => {
-      let score = 0;
-      def.keywords.forEach(kw => {
-        const regex = new RegExp(kw, "gi");
-        const count = (textCorpus.match(regex) || []).length;
-        score += count;
-      });
-      return { term: def.term, score };
-    });
-
-    keywordScores.sort((a, b) => b.score - a.score);
-    const topTheme = keywordScores[0].score > 0 ? keywordScores[0].term : "Thông tin Tổng hợp";
-
-    // 3. Generate Executive Summary
-    const vnIndex = tickerList.find(t => t.symbol === "VN-Index");
-    const indexLine = vnIndex 
-      ? `Chỉ số VN-Index hôm nay giao dịch quanh mức ${vnIndex.price} (thay đổi ${vnIndex.change}).`
-      : "";
-    
-    const marketDirectionLine = greenRatio >= 60 
-      ? `Độ rộng thị trường nghiêng hẳn về phía tăng điểm với ${advancing} mã tăng giá, tạo lực đỡ vững chắc cho chỉ số chung.`
-      : greenRatio <= 40
-      ? `Áp lực bán chiếm ưu thế khiến ${declining} mã giảm điểm, phản ánh sự thận trọng đáng kể từ phía dòng tiền đầu tư.`
-      : `Bảng điện tử ghi nhận sự cân bằng tương đối khi có ${advancing} mã tăng và ${declining} mã giảm, dòng tiền luân chuyển cục bộ phân hóa sâu sắc.`;
-
-    const newsTrendLine = keywordScores[0].score > 0 
-      ? `Tin tức vĩ mô hàng đầu phản ánh tiêu điểm về lĩnh vực ${keywordScores[0].term.toLowerCase()}.`
-      : "Trang tin tức ghi nhận các biến động chuyển động đa chiều ở nhiều phân khúc kinh tế xã hội.";
-
-    const summary = `${indexLine} ${marketDirectionLine} ${newsTrendLine} Phân tích kỹ thuật khuyên dùng các vị thế phòng thủ chủ động trong giai đoạn này.`;
-
-    return {
-      sentiment,
-      sentimentClass: greenRatio >= 60 ? "positive-stance" : greenRatio <= 40 ? "negative-stance" : "neutral-stance",
-      theme: topTheme,
-      summary,
-      advancing,
-      declining
-    };
-  };
-
-  const analysis = getAnalysis();
-
-  // Seamless scrolling marquee requires duplicated list
-  const duplicatedTickers = [...tickerList, ...tickerList];
-  const mobilePlayerProgress = duration > 0 ? `${Math.min(100, (currentTime / duration) * 100)}%` : "0%";
-  const shouldShowFloatingMiniPlayer = Boolean(currentTrack && !isMobileMiniHidden && activeMobileTab !== "podcast");
-  const shouldShowMiniRevealTab = Boolean(currentTrack && isMobileMiniHidden && activeMobileTab !== "podcast");
-
-  return (
-    <div className="app-container">
-      {/* Floating Header/Masthead */}
-      <header className="masthead">
-        <div className="masthead-top">
-          <div className="date-badge">{dateText || (lang === "vi" ? "Đang tải ngày..." : "Loading date...")}</div>
-          
-          {/* Mobile Only Reload button on the left (absolute position to ensure title centers perfectly) */}
-          <div 
-            className="reload-btn-container mobile-only" 
-            onClick={fetchStocks} 
-            title={trans[lang].refresh}
-          >
-            <img src="/icon/piggy-bank-icon.png" className="reload-icon" alt="Reload" />
-          </div>
-
-          <div className="logo">
-            <h1>THE MORNING BRIEF</h1>
-          </div>
-          
-          <div className="user-profile" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            {/* Apple style Language Switcher Segmented Capsule */}
-            <div className="lang-switcher">
-              <button
-                className={`lang-btn ${lang === "vi" ? "active" : ""}`}
-                onClick={() => {
-                  setLang("vi");
-                  localStorage.setItem("morningbrief_lang", "vi");
-                }}
-              >
-                VI
-              </button>
-              <button
-                className={`lang-btn ${lang === "en" ? "active" : ""}`}
-                onClick={() => {
-                  setLang("en");
-                  localStorage.setItem("morningbrief_lang", "en");
-                }}
-              >
-                EN
-              </button>
-            </div>
-            {/* Desktop Only Reload button on the right (uses piggy-bank-icon and aligned beautifully) */}
-            <div className="avatar hidden-mobile" onClick={fetchStocks} title={trans[lang].refresh}>
-              <img src="/icon/piggy-bank-icon.png" alt="Reload" />
-            </div>
-          </div>
-        </div>
-
-        {/* Animated Market Ticker Banner */}
-        <div className="ticker-wrap">
-          <div className="ticker-label">
-            <img src="/icon/chart-icon.png" style={{ width: '13px', height: '13px', marginRight: '4px', verticalAlign: 'middle', display: 'inline-block', objectFit: 'contain' }} alt="" />
-            {trans[lang].market}
-          </div>
-          <div className={`ticker-scroll ${loadingStocks ? "loading" : ""}`}>
-            {loadingStocks ? (
-              <div className="ticker-item-placeholder">{trans[lang].loadingMarket}</div>
-            ) : (
-              duplicatedTickers.map((item, idx) => (
-                <div key={idx} className="ticker-card">
-                  <span className="ticker-symbol">{item.symbol}</span>
-                  <span className="ticker-price">{item.price}</span>
-                  <span className={`ticker-change ${getStockColorClass(item)}`}>
-                    {item.change}
-                  </span>
-                </div>
-              ))
-            )}
+            {useMemo(() => (
+              loadingStocks ? (
+                <div className="ticker-item-placeholder">{trans[lang].loadingMarket}</div>
+              ) : (
+                duplicatedTickers.map((item, idx) => (
+                  <div key={idx} className="ticker-card">
+                    <span className="ticker-symbol">{item.symbol}</span>
+                    <span className="ticker-price">{item.price}</span>
+                    <span className={`ticker-change ${getStockColorClass(item)}`}>
+                      {item.change}
+                    </span>
+                  </div>
+                ))
+              )
+            ), [loadingStocks, duplicatedTickers, lang, trans, getStockColorClass])}
           </div>
         </div>
       </header>
@@ -1863,8 +1670,6 @@ export default function Home() {
       )}
 
       {/* Main Content Area */}
-      {/* eslint-disable-next-line react-hooks/exhaustive-deps */}
-      {useMemo(() => (
       <main className="main-content">
         <div className="broadsheet-grid">
           
@@ -1897,86 +1702,89 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="news-feed">
-              {loadingNews ? (
-                <>
-                  <div className="skeleton-card"></div>
-                  <div className="skeleton-card"></div>
-                </>
-              ) : (
-                <>
-                  {newsList.slice(0, visibleNewsCount).map((item, idx) => (
+            {useMemo(() => (
+              <div className="news-feed">
+                {loadingNews ? (
+                  <>
+                    <div className="skeleton-card"></div>
+                    <div className="skeleton-card"></div>
+                  </>
+                ) : (
+                  <>
+                    {newsList.slice(0, visibleNewsCount).map((item, idx) => (
+                      <div 
+                        key={idx} 
+                        onClick={() => openArticle(item)} 
+                        className="news-card" 
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div className="news-content">
+                          <span className="news-source">{item.source}</span>
+                          <h3 className="news-title">{item.title}</h3>
+                          <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                            {item.description}
+                          </p>
+                          <span className="news-meta">{item.time}</span>
+                        </div>
+                        <div className="news-image-wrap">
+                          <img src={item.image} alt={item.title} className="news-image" />
+                        </div>
+                      </div>
+                    ))}
+                    {newsList.length > visibleNewsCount && (
+                      <button 
+                        className="load-more-news-btn"
+                        onClick={() => setVisibleNewsCount(prev => prev + 6)}
+                      >
+                        {trans[lang].loadMore}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            ), [loadingNews, newsList, visibleNewsCount, lang, trans, openArticle])}
+
+            {useMemo(() => (
+              <div className="widget-panel" style={{ marginTop: "2rem" }}>
+                <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
+                  <h3>
+                    <img src="/icon/calendar-icon.png" className="header-3d-icon" alt="" />
+                    {trans[lang].economicCalendar}
+                  </h3>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
+                  {calendarEvents.map((item, idx) => (
                     <div 
                       key={idx} 
-                      onClick={() => openArticle(item)} 
-                      className="news-card" 
-                      style={{ cursor: "pointer" }}
+                      onClick={() => handleCalendarClick(item)}
+                      className="calendar-item-card"
+                      style={{ 
+                        display: "flex", 
+                        gap: "10px", 
+                        paddingBottom: "8px", 
+                        borderBottom: idx < calendarEvents.length - 1 ? "1px dashed var(--border-classic)" : "none",
+                        cursor: "pointer" 
+                      }}
                     >
-                      <div className="news-content">
-                        <span className="news-source">{item.source}</span>
-                        <h3 className="news-title">{item.title}</h3>
-                        <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
-                          {item.description}
-                        </p>
-                        <span className="news-meta">{item.time}</span>
+                      <div className="calendar-date-badge">
+                        {item.date}
                       </div>
-                      <div className="news-image-wrap">
-                        <img src={item.image} alt={item.title} className="news-image" />
+                      <div>
+                        <strong className="calendar-event-title" style={{ display: "block", color: "var(--text-primary)", fontSize: "0.8rem", lineHeight: "1.3", transition: "color 0.2s" }}>{item.event}</strong>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "2px" }}>
+                          <span className={`ticker-change ${item.class}`} style={{ fontSize: "0.65rem", padding: "1px 4px", borderRadius: "3px", fontWeight: "700" }}>
+                            {lang === "vi" ? "Tác động" : "Impact"}: {item.impact === "LỚN" ? (lang === "vi" ? "LỚN" : "HIGH") : item.impact === "VỪA" ? (lang === "vi" ? "VỪA" : "MED") : (lang === "vi" ? "NHỎ" : "LOW")}
+                          </span>
+                          <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
+                            • {lang === "vi" ? "Nguồn" : "Source"}: {item.source}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
-                  {newsList.length > visibleNewsCount && (
-                    <button 
-                      className="load-more-news-btn"
-                      onClick={() => setVisibleNewsCount(prev => prev + 6)}
-                    >
-                      {trans[lang].loadMore}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Economic Calendar Panel (Interactive click-to-read) */}
-            <div className="widget-panel" style={{ marginTop: "2rem" }}>
-              <div className="widget-header" style={{ marginBottom: "0.5rem" }}>
-                <h3>
-                  <img src="/icon/calendar-icon.png" className="header-3d-icon" alt="" />
-                  {trans[lang].economicCalendar}
-                </h3>
+                </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
-                {calendarEvents.map((item, idx) => (
-                  <div 
-                    key={idx} 
-                    onClick={() => handleCalendarClick(item)}
-                    className="calendar-item-card"
-                    style={{ 
-                      display: "flex", 
-                      gap: "10px", 
-                      paddingBottom: "8px", 
-                      borderBottom: idx < calendarEvents.length - 1 ? "1px dashed var(--border-classic)" : "none",
-                      cursor: "pointer" 
-                    }}
-                  >
-                    <div className="calendar-date-badge">
-                      {item.date}
-                    </div>
-                    <div>
-                      <strong className="calendar-event-title" style={{ display: "block", color: "var(--text-primary)", fontSize: "0.8rem", lineHeight: "1.3", transition: "color 0.2s" }}>{item.event}</strong>
-                      <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "2px" }}>
-                        <span className={`ticker-change ${item.class}`} style={{ fontSize: "0.65rem", padding: "1px 4px", borderRadius: "3px", fontWeight: "700" }}>
-                          {lang === "vi" ? "Tác động" : "Impact"}: {item.impact === "LỚN" ? (lang === "vi" ? "LỚN" : "HIGH") : item.impact === "VỪA" ? (lang === "vi" ? "VỪA" : "MED") : (lang === "vi" ? "NHỎ" : "LOW")}
-                        </span>
-                        <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
-                          • {lang === "vi" ? "Nguồn" : "Source"}: {item.source}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ), [calendarEvents, lang, trans, handleCalendarClick])}
 
 
           </section>
@@ -2763,79 +2571,83 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* === TOP 5 GAINERS & LOSERS LEADERBOARD === */}
-              {!loadingStocks && stockFilterTab === "all" && (() => {
-                const stocksOnly = tickerList.filter(item => item.sector !== "Chỉ số");
-                const parseChangePercent = (s: string) => { try { return parseFloat(s.replace("%", "")); } catch { return 0; } };
-                const sorted = [...stocksOnly].sort((a, b) => parseChangePercent(b.change) - parseChangePercent(a.change));
+              {useMemo(() => (
+                <>
+                  {/* === TOP 5 GAINERS & LOSERS LEADERBOARD === */}
+                  {!loadingStocks && stockFilterTab === "all" && (() => {
+                    const stocksOnly = tickerList.filter(item => item.sector !== "Chỉ số");
+                    const parseChangePercent = (s: string) => { try { return parseFloat(s.replace("%", "")); } catch { return 0; } };
+                    const sorted = [...stocksOnly].sort((a, b) => parseChangePercent(b.change) - parseChangePercent(a.change));
 
-                const top5Gainers = (highlights && highlights.gainers && highlights.gainers.length > 0)
-                  ? highlights.gainers.slice(0, 5)
-                  : sorted.filter(s => parseChangePercent(s.change) > 0).slice(0, 5);
+                    const top5Gainers = (highlights && highlights.gainers && highlights.gainers.length > 0)
+                      ? highlights.gainers.slice(0, 5)
+                      : sorted.filter(s => parseChangePercent(s.change) > 0).slice(0, 5);
 
-                const top5Losers = (highlights && highlights.losers && highlights.losers.length > 0)
-                  ? highlights.losers.slice(0, 5)
-                  : sorted.filter(s => parseChangePercent(s.change) < 0).reverse().slice(0, 5);
+                    const top5Losers = (highlights && highlights.losers && highlights.losers.length > 0)
+                      ? highlights.losers.slice(0, 5)
+                      : sorted.filter(s => parseChangePercent(s.change) < 0).reverse().slice(0, 5);
 
-                const renderLeaderItem = (item: TickerItem, rank: number, type: "gainer" | "loser") => {
-                  const code = item.symbol.split(" ")[0];
-                  const exTag = item.exchange ? ` ${item.exchange}` : "";
-                  const colorClass = getStockColorClass(item);
-                  const typeMapped = type === "gainer" ? "gainers" : "losers";
-                  return (
-                    <div key={code} className={`leaderboard-item ${typeMapped}`}>
-                      <div className="leaderboard-rank">{rank}</div>
-                      <div className="leaderboard-info">
-                        <span className="leaderboard-code">{code}</span>
-                        <span className="leaderboard-exchange">{exTag}</span>
+                    const renderLeaderItem = (item: TickerItem, rank: number, type: "gainer" | "loser") => {
+                      const code = item.symbol.split(" ")[0];
+                      const exTag = item.exchange ? ` ${item.exchange}` : "";
+                      const colorClass = getStockColorClass(item);
+                      const typeMapped = type === "gainer" ? "gainers" : "losers";
+                      return (
+                        <div key={code} className={`leaderboard-item ${typeMapped}`}>
+                          <div className="leaderboard-rank">{rank}</div>
+                          <div className="leaderboard-info">
+                            <span className="leaderboard-code">{code}</span>
+                            <span className="leaderboard-exchange">{exTag}</span>
+                          </div>
+                          <div className="leaderboard-price">{item.price}</div>
+                          <div className={`leaderboard-change ticker-change ${colorClass}`}>
+                            {item.change}
+                          </div>
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <div className="leaderboard-grid">
+                        <div className="leaderboard-column">
+                          <div className="leaderboard-column-header gainers" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <span className="leaderboard-icon">🌱</span>
+                            <span>{lang === "vi" ? "TĂNG" : "GAINERS"}</span>
+                          </div>
+                          {top5Gainers.length > 0 ? (
+                            top5Gainers.map((item, i) => renderLeaderItem(item, i + 1, "gainer"))
+                          ) : (
+                            <div className="leaderboard-empty">{lang === "vi" ? "Không có mã tăng" : "No Gainers"}</div>
+                          )}
+                        </div>
+                        <div className="leaderboard-column">
+                          <div className="leaderboard-column-header losers" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <span className="leaderboard-icon">🍂</span>
+                            <span>{lang === "vi" ? "GIẢM" : "LOSERS"}</span>
+                          </div>
+                          {top5Losers.length > 0 ? (
+                            top5Losers.map((item, i) => renderLeaderItem(item, i + 1, "loser"))
+                          ) : (
+                            <div className="leaderboard-empty">{lang === "vi" ? "Không có mã giảm" : "No Losers"}</div>
+                          )}
+                        </div>
                       </div>
-                      <div className="leaderboard-price">{item.price}</div>
-                      <div className={`leaderboard-change ticker-change ${colorClass}`}>
-                        {item.change}
-                      </div>
-                    </div>
-                  );
-                };
+                    );
+                  })()}
 
-                return (
-                  <div className="leaderboard-grid">
-                    <div className="leaderboard-column">
-                      <div className="leaderboard-column-header gainers" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span className="leaderboard-icon">🌱</span>
-                        <span>{lang === "vi" ? "TĂNG" : "GAINERS"}</span>
-                      </div>
-                      {top5Gainers.length > 0 ? (
-                        top5Gainers.map((item, i) => renderLeaderItem(item, i + 1, "gainer"))
-                      ) : (
-                        <div className="leaderboard-empty">{lang === "vi" ? "Không có mã tăng" : "No Gainers"}</div>
-                      )}
-                    </div>
-                    <div className="leaderboard-column">
-                      <div className="leaderboard-column-header losers" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span className="leaderboard-icon">🍂</span>
-                        <span>{lang === "vi" ? "GIẢM" : "LOSERS"}</span>
-                      </div>
-                      {top5Losers.length > 0 ? (
-                        top5Losers.map((item, i) => renderLeaderItem(item, i + 1, "loser"))
-                      ) : (
-                        <div className="leaderboard-empty">{lang === "vi" ? "Không có mã giảm" : "No Losers"}</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
+                  {!loadingStocks && stockFilterTab === "gainers" && (
+                    renderStockTable(highlights?.gainers || [])
+                  )}
 
-              {!loadingStocks && stockFilterTab === "gainers" && (
-                renderStockTable(highlights?.gainers || [])
-              )}
+                  {!loadingStocks && stockFilterTab === "losers" && (
+                    renderStockTable(highlights?.losers || [])
+                  )}
 
-              {!loadingStocks && stockFilterTab === "losers" && (
-                renderStockTable(highlights?.losers || [])
-              )}
-
-              {!loadingStocks && stockFilterTab === "volume" && (
-                renderStockTable(highlights?.volume || [], true)
-              )}
+                  {!loadingStocks && stockFilterTab === "volume" && (
+                    renderStockTable(highlights?.volume || [], true)
+                  )}
+                </>
+              ), [loadingStocks, stockFilterTab, tickerList, highlights, lang, renderStockTable, getStockColorClass])}
             </div>
 
 
@@ -2849,58 +2661,60 @@ export default function Home() {
                 </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.82rem" }}>
-                {loadingMacro ? (
-                  <>
-                    <div className="skeleton-item" style={{ height: "30px" }}></div>
-                    <div className="skeleton-item" style={{ height: "30px" }}></div>
-                  </>
-                ) : macroData ? (
-                  <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
-                      <div>
-                        <strong style={{ display: "block" }}>{lang === "vi" ? "Vàng SJC" : "SJC Gold Bar"}</strong>
-                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                          {lang === "vi" ? "Đơn vị: Triệu đ/lượng" : "Unit: Million VND/Tael"}
-                        </span>
+                {useMemo(() => (
+                  loadingMacro ? (
+                    <>
+                      <div className="skeleton-item" style={{ height: "30px" }}></div>
+                      <div className="skeleton-item" style={{ height: "30px" }}></div>
+                    </>
+                  ) : macroData ? (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
+                        <div>
+                          <strong style={{ display: "block" }}>{lang === "vi" ? "Vàng SJC" : "SJC Gold Bar"}</strong>
+                          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                            {lang === "vi" ? "Đơn vị: Triệu đ/lượng" : "Unit: Million VND/Tael"}
+                          </span>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldSjc.buy} - {macroData.goldSjc.sell}</span>
+                          <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0 }}>{macroData.goldSjc.change}</span>
+                        </div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldSjc.buy} - {macroData.goldSjc.sell}</span>
-                        <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0 }}>{macroData.goldSjc.change}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
+                        <div>
+                          <strong style={{ display: "block" }}>{lang === "vi" ? "Vàng Nhẫn 9999" : "24K Gold Ring"}</strong>
+                          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                            {lang === "vi" ? "Đơn vị: Triệu đ/lượng" : "Unit: Million VND/Tael"}
+                          </span>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldRing.buy} - {macroData.goldRing.sell}</span>
+                          <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0 }}>{macroData.goldRing.change}</span>
+                        </div>
                       </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <strong style={{ display: "block" }}>{lang === "vi" ? "Tỷ giá USD/VND" : "USD/VND Rate"}</strong>
+                          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                            {lang === "vi" ? "Nguồn: Vietcombank" : "Source: Vietcombank"}
+                          </span>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <span style={{ fontWeight: "700", display: "block" }}>{macroData.usdRate.buy} - {macroData.usdRate.sell}</span>
+                          <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0, color: "var(--success-green)" }}>{macroData.usdRate.change}</span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textAlign: "right", marginTop: "4px" }}>
+                        {lang === "vi" ? "Cập nhật" : "Updated"}: {macroData.updatedAt}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
+                      {lang === "vi" ? "Không tải được dữ liệu vĩ mô" : "Failed to load macro data"}
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "8px", borderBottom: "1px dashed var(--border-classic)" }}>
-                      <div>
-                        <strong style={{ display: "block" }}>{lang === "vi" ? "Vàng Nhẫn 9999" : "24K Gold Ring"}</strong>
-                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                          {lang === "vi" ? "Đơn vị: Triệu đ/lượng" : "Unit: Million VND/Tael"}
-                        </span>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <span style={{ fontWeight: "700", display: "block" }}>{macroData.goldRing.buy} - {macroData.goldRing.sell}</span>
-                        <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0 }}>{macroData.goldRing.change}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <strong style={{ display: "block" }}>{lang === "vi" ? "Tỷ giá USD/VND" : "USD/VND Rate"}</strong>
-                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                          {lang === "vi" ? "Nguồn: Vietcombank" : "Source: Vietcombank"}
-                        </span>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <span style={{ fontWeight: "700", display: "block" }}>{macroData.usdRate.buy} - {macroData.usdRate.sell}</span>
-                        <span className="ticker-change positive" style={{ fontSize: "0.72rem", background: "transparent", padding: 0, color: "var(--success-green)" }}>{macroData.usdRate.change}</span>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textAlign: "right", marginTop: "4px" }}>
-                      {lang === "vi" ? "Cập nhật" : "Updated"}: {macroData.updatedAt}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
-                    {lang === "vi" ? "Không tải được dữ liệu vĩ mô" : "Failed to load macro data"}
-                  </div>
-                )}
+                  )
+                ), [loadingMacro, macroData, lang])}
               </div>
             </div>
 
@@ -2956,8 +2770,66 @@ export default function Home() {
                 </div>
               )}
 
-              
+              {/* Glassmorphic Hub Wrapper for podcast channel selector and options */}
               <div className="mobile-podcast-hub-wrapper">
+                {/* Instagram-style circular channels */}
+                <div className="mobile-podcast-channels-carousel">
+                  {channelsList.map((ch) => (
+                    <button
+                      key={ch.id}
+                      onClick={() => {
+                        setSelectedChannel(ch.id);
+                        setSelectedSubChannel("All");
+                        setCurrentTrackIndex(0);
+                      }}
+                      className={`mobile-channel-bubble-btn ${selectedChannel === ch.id ? "active" : ""}`}
+                      style={{ '--channel-color': ch.color } as React.CSSProperties}
+                    >
+                      <div className="mobile-channel-bubble-avatar-wrap">
+                        <img src={ch.logo} alt={ch.name} className="mobile-channel-bubble-avatar" />
+                      </div>
+                      <span className="mobile-channel-bubble-name">{ch.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Subchannels & search options container */}
+                <div className="mobile-podcast-filters-row">
+                  <input
+                    type="text"
+                    placeholder={lang === "vi" ? "Tìm tập podcast..." : "Search episodes..."}
+                    value={podcastSearchQuery}
+                    onChange={(e) => setPodcastSearchQuery(e.target.value)}
+                    className="mobile-podcast-search-input"
+                  />
+                </div>
+
+                {/* Subchannels horizontal capsule scrolling */}
+                {subChannelsList.length > 1 && (
+                  <div className="mobile-podcast-subchannels-pills">
+                    {subChannelsList.map((sc) => (
+                      <button
+                        key={sc}
+                        onClick={() => {
+                          setSelectedSubChannel(sc);
+                          setCurrentTrackIndex(0);
+                        }}
+                        className={`mobile-subchannel-pill ${selectedSubChannel === sc ? "active" : ""}`}
+                      >
+                        {sc === "All" ? (lang === "vi" ? "Tất cả chuyên mục" : "All Shows") : sc}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Active Channel Intro Banner */}
+                {selectedChannel !== "All" && (
+                  <div className="mobile-channel-intro-banner" style={{ borderLeft: `3px solid ${channelsList.find(c => c.id === selectedChannel)?.color || 'var(--accent-blue)'}` }}>
+                    <h4>{selectedChannel}</h4>
+                    <p>{channelsList.find(c => c.id === selectedChannel)?.desc}</p>
+                  </div>
+                )}
+              </div>
 
               {/* Episode Feed List */}
               <div className="mobile-podcast-episodes-feed">
@@ -3017,8 +2889,6 @@ export default function Home() {
               </div>
             </section>
       </main>
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      ), [lang, trans, activeMobileTab, activeTab, loadingNews, visibleNewsCount, newsList, activeArticle, isReaderClosing, readerTab, scrapedParagraphs, fullContent, searchLoading, searchResults, searchQuery, tickerList, loadingStocks, stockFilterTab, highlights, macroData, loadingMacro, indexStats, indexAnalyses, brokerOutlooks, watchlist, watchlistNews, loadingWatchlistNews, visibleWatchlistNewsCount])}
 
       {/* Footer */}
       <footer className="ft-footer">
