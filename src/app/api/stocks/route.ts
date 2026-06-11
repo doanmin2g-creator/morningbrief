@@ -78,28 +78,137 @@ function formatVolume(value?: number) {
   return value.toLocaleString("en-US");
 }
 
-async function fetchCafeFOrderBook(symbol: string): Promise<{ buyVolume?: string; sellVolume?: string } | null> {
+interface CafeFRealtimeQuote {
+  price?: string;
+  change?: string;
+  isPositive?: boolean;
+  prevClose?: string;
+  dayHigh?: string;
+  dayLow?: string;
+  volume?: number;
+  volumeStr?: string;
+  buyVolume?: string;
+  sellVolume?: string;
+}
+
+async function fetchCafeFRealtimeQuote(symbol: string): Promise<CafeFRealtimeQuote | null> {
   const cleanSym = symbol.split(" ")[0].replace(".VN", "").replace("^", "").trim().toUpperCase();
   if (cleanSym === "VNINDEX" || cleanSym === "HNXINDEX" || cleanSym === "UPCOM") return null;
 
-  const url = `https://cafef.vn/du-lieu/Ajax/PageNew/GetDataTKDL.ashx?Symbol=${cleanSym}&PageIndex=1&PageSize=1`;
+  let result: CafeFRealtimeQuote = {};
+
   try {
-    const res = await fetch(url, { headers: CAFEF_HEADERS });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const latest = json?.Data?.[0];
-    if (latest) {
+    const [headerRes, priceRes, orderBookRes] = await Promise.all([
+      fetch(`https://cafef.vn/du-lieu/Ajax/PageNew/PriceRealTimeHeader.ashx?Symbol=${cleanSym}`, { headers: CAFEF_HEADERS }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`https://cafef.vn/du-lieu/Ajax/PageNew/RealtimePrice.ashx?Symbol=${cleanSym}`, { headers: CAFEF_HEADERS }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`https://cafef.vn/du-lieu/Ajax/PageNew/GetDataTKDL.ashx?Symbol=${cleanSym}&PageIndex=1&PageSize=1`, { headers: CAFEF_HEADERS }).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+
+    let rawPrice = 0;
+    let rawPrevClose = 0;
+
+    if (headerRes && headerRes.Success && headerRes.Data) {
+      const d = headerRes.Data;
+      rawPrice = d.Gia || 0;
+      rawPrevClose = d.GiaThamChieu || 0;
+      result.volume = d.KhoiLuong || 0;
+      result.volumeStr = formatVolume(d.KhoiLuong);
+    }
+
+    if (priceRes && priceRes.Success && priceRes.Data) {
+      const d = priceRes.Data;
+      if (d.GiaThamChieu && !rawPrevClose) {
+        rawPrevClose = d.GiaThamChieu;
+      }
+      if (d.GiaCaoNhat) result.dayHigh = d.GiaCaoNhat.toLocaleString("en-US", { maximumFractionDigits: 2 });
+      if (d.GiaThapNhat) result.dayLow = d.GiaThapNhat.toLocaleString("en-US", { maximumFractionDigits: 2 });
+    }
+
+    if (rawPrice > 0 && rawPrevClose > 0) {
+      result.price = rawPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      result.prevClose = rawPrevClose.toLocaleString("en-US", { maximumFractionDigits: 2 });
+      
+      const diff = rawPrice - rawPrevClose;
+      const pctChange = (diff / rawPrevClose) * 100;
+      result.change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
+      result.isPositive = pctChange >= 0;
+    }
+
+    if (orderBookRes && orderBookRes.Success && Array.isArray(orderBookRes.Data) && orderBookRes.Data.length > 0) {
+      const latest = orderBookRes.Data[0];
       const bidLeft = latest.BidLeft;
       const askLeft = latest.AskLeft;
-      return {
-        buyVolume: bidLeft !== null && bidLeft !== undefined ? formatVolume(bidLeft) : "N/A",
-        sellVolume: askLeft !== null && askLeft !== undefined ? formatVolume(askLeft) : "N/A"
-      };
+      result.buyVolume = bidLeft !== null && bidLeft !== undefined ? formatVolume(bidLeft) : "N/A";
+      result.sellVolume = askLeft !== null && askLeft !== undefined ? formatVolume(askLeft) : "N/A";
+    } else {
+      result.buyVolume = "N/A";
+      result.sellVolume = "N/A";
     }
   } catch (err) {
-    console.error(`Error fetching CafeF order book for ${cleanSym}:`, err);
+    console.error(`Error fetching CafeF realtime quote for ${cleanSym}:`, err);
   }
-  return null;
+
+  // Fallback to Entrade if CafeF didn't return valid pricing/prevClose data
+  if (!result.price || !result.prevClose || result.prevClose === "N/A") {
+    try {
+      const to = Math.floor(Date.now() / 1000);
+      const from = to - 10 * 24 * 60 * 60; // 10 days
+      const url = `https://services.entrade.com.vn/chart-api/v2/ohlcs/stock?from=${from}&to=${to}&symbol=${cleanSym}&resolution=1D`;
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.c && data.c.length >= 1) {
+          const latestPrice = data.c[data.c.length - 1];
+          const prevPrice = data.c.length >= 2 ? data.c[data.c.length - 2] : latestPrice;
+          const diff = latestPrice - prevPrice;
+          const pctChange = prevPrice !== 0 ? (diff / prevPrice) * 100 : 0;
+
+          if (!result.price) {
+            result.price = latestPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+          if (!result.prevClose || result.prevClose === "N/A") {
+            result.prevClose = prevPrice.toLocaleString("en-US", { maximumFractionDigits: 2 });
+          }
+          if (!result.change) {
+            result.change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
+            result.isPositive = pctChange >= 0;
+          }
+          if (!result.dayHigh || result.dayHigh === "N/A") {
+            const highPrice = data.h && data.h.length >= 1 ? Math.max(...data.h.slice(-2)) : latestPrice;
+            result.dayHigh = highPrice.toLocaleString("en-US", { maximumFractionDigits: 2 });
+          }
+          if (!result.dayLow || result.dayLow === "N/A") {
+            const lowPrice = data.l && data.l.length >= 1 ? Math.min(...data.l.slice(-2)) : latestPrice;
+            result.dayLow = lowPrice.toLocaleString("en-US", { maximumFractionDigits: 2 });
+          }
+          if (!result.volume) {
+            const lastVol = data.v && data.v.length >= 1 ? data.v[data.v.length - 1] : 0;
+            result.volume = lastVol;
+            result.volumeStr = formatVolume(lastVol);
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`Entrade fallback failed for ${cleanSym}:`, err);
+    }
+  }
+
+  // Ensure default stats are never empty if still N/A
+  if (!result.price) result.price = "N/A";
+  if (!result.change) result.change = "0.00%";
+  if (result.isPositive === undefined) result.isPositive = true;
+  if (!result.prevClose) result.prevClose = "N/A";
+  if (!result.dayHigh) result.dayHigh = "N/A";
+  if (!result.dayLow) result.dayLow = "N/A";
+  if (!result.volumeStr) result.volumeStr = "N/A";
+  if (!result.buyVolume) result.buyVolume = "N/A";
+  if (!result.sellVolume) result.sellVolume = "N/A";
+
+  return result;
 }
 
 async function fetchSymbolsChunk(symbols: string[]) {
@@ -492,16 +601,37 @@ export async function GET(request: Request) {
   const enrichedWatchlistTickers = await Promise.all(
     combinedWatchlistTickers.map(async (ticker) => {
       const cleanTicker = ticker.ticker.replace(".VN", "").replace("^", "").trim().toUpperCase();
+      
+      // Look up full name from companies.json
+      const company = (companies as any[]).find(c => c.symbol.toUpperCase() === cleanTicker);
+      const companyName = company ? `${cleanTicker} - ${company.name_vn}` : ticker.symbol;
+      const exchange = company ? company.exchange : ticker.exchange;
+
       if (activeSymbols.has(cleanTicker)) {
-        const orderBook = await fetchCafeFOrderBook(ticker.ticker);
+        const quote = await fetchCafeFRealtimeQuote(ticker.ticker);
         return {
           ...ticker,
-          buyVolume: orderBook?.buyVolume || "N/A",
-          sellVolume: orderBook?.sellVolume || "N/A"
+          symbol: companyName,
+          exchange: exchange,
+          price: quote?.price || ticker.price,
+          change: quote?.change || ticker.change,
+          isPositive: quote?.isPositive ?? ticker.isPositive,
+          prevClose: quote?.prevClose || "N/A",
+          dayHigh: quote?.dayHigh || "N/A",
+          dayLow: quote?.dayLow || "N/A",
+          volume: quote?.volume || ticker.volume,
+          volumeStr: quote?.volumeStr || ticker.volumeStr,
+          buyVolume: quote?.buyVolume || "N/A",
+          sellVolume: quote?.sellVolume || "N/A"
         };
       }
       return {
         ...ticker,
+        symbol: companyName,
+        exchange: exchange,
+        prevClose: "N/A",
+        dayHigh: "N/A",
+        dayLow: "N/A",
         buyVolume: "N/A",
         sellVolume: "N/A"
       };

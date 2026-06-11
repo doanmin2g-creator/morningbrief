@@ -44,6 +44,7 @@ interface SearchResult {
   dataSource?: string;
   updatedAt?: string;
   relatedNews?: RelatedNews[];
+  history?: number[];
 }
 
 interface CompanyInfo {
@@ -151,67 +152,106 @@ function searchDirectory(query: string): string[] {
   return results.map((r) => r.symbol).slice(0, 8);
 }
 
-// Fetch stock profile from CafeF (P/E, P/B, EPS, market cap, description)
-async function fetchCafeFStockProfile(symbol: string): Promise<{ pe?: string; pb?: string; eps?: string; marketCapVnd?: string; description?: string } | null> {
+// Fetch stock profile from CafeF (P/E, P/B, EPS, market cap, description, prevClose, dayHigh, dayLow, volume)
+async function fetchCafeFStockProfile(symbol: string): Promise<{ pe?: string; pb?: string; eps?: string; marketCapVnd?: string; description?: string; prevClose?: string; dayHigh?: string; dayLow?: string; volume?: string } | null> {
+  const cleanSym = symbol.split(" ")[0].replace(".VN", "").replace("^", "").trim().toUpperCase();
+  if (cleanSym === "VNINDEX" || cleanSym === "HNXINDEX" || cleanSym === "UPCOM") return null;
+
   // Check cache first
-  const cached = cafefProfileCache.get(symbol);
+  const cached = cafefProfileCache.get(cleanSym);
   if (cached && Date.now() - cached.timestamp < CAFEF_CACHE_TTL) {
     return cached.data;
   }
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const [indicatorsRes, realtimeRes, headerRes] = await Promise.all([
+      fetch(`https://cafef.vn/du-lieu/Ajax/PageNew/ChiSoTaiChinh.ashx?Symbol=${cleanSym}`, { headers: CAFEF_HEADERS }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`https://cafef.vn/du-lieu/Ajax/PageNew/RealtimePrice.ashx?Symbol=${cleanSym}`, { headers: CAFEF_HEADERS }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`https://cafef.vn/du-lieu/Ajax/PageNew/PriceRealTimeHeader.ashx?Symbol=${cleanSym}`, { headers: CAFEF_HEADERS }).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
 
-    const url = `https://cafef.vn/du-lieu/Ajax/PageNew/DataFollowSymbol/api/getStockOverview.ashx?symbol=${symbol}`;
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: CAFEF_HEADERS
-    });
-    clearTimeout(timeout);
+    const result: any = {};
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    
-    const data = await res.json();
-    const d = data?.Data || data;
+    if (indicatorsRes && indicatorsRes.Success && Array.isArray(indicatorsRes.Data)) {
+      const data = indicatorsRes.Data;
+      
+      const epsItem = data.find((item: any) => item.Code === "EPScoBan" || item.Code === "EPSphaLoang");
+      if (epsItem && epsItem.Value) {
+        const epsVal = parseFloat(epsItem.Value.replace(/,/g, ""));
+        result.eps = !isNaN(epsVal) ? (epsVal * 1000).toLocaleString("vi-VN") + " đ" : epsItem.Value;
+      }
 
-    if (!d) return null;
+      const peItem = data.find((item: any) => item.Code === "P/E" || item.Code === "PE");
+      if (peItem && peItem.Value) {
+        result.pe = peItem.Value + "x";
+      }
 
-    // Parse CafeF response fields (try multiple possible field names)
-    const pe = d.PE !== undefined && d.PE !== null && d.PE !== 0
-      ? parseFloat(d.PE).toFixed(1) + "x"
-      : d.DanhGiaChiSoPE || undefined;
+      const pbItem = data.find((item: any) => item.Code === "Beta" || item.Code === "P/B" || item.Code === "PB");
+      if (pbItem && pbItem.Value) {
+        result.pb = pbItem.Value + "x";
+      }
 
-    const pb = d.PB !== undefined && d.PB !== null && d.PB !== 0
-      ? parseFloat(d.PB).toFixed(2) + "x"
-      : undefined;
+      const mcapItem = data.find((item: any) => item.Code === "VonHoaThiTruong");
+      if (mcapItem && mcapItem.Value) {
+        result.marketCapVnd = mcapItem.Value + " tỷ";
+      }
+    }
 
-    const epsRaw = d.EPS || d.EPS_TTM;
-    const eps = epsRaw !== undefined && epsRaw !== null && epsRaw !== 0
-      ? parseFloat(epsRaw).toLocaleString("vi-VN") + " đ"
-      : undefined;
+    if (realtimeRes && realtimeRes.Success && realtimeRes.Data) {
+      const d = realtimeRes.Data;
+      if (d.GiaThamChieu) result.prevClose = String(d.GiaThamChieu);
+      if (d.GiaCaoNhat) result.dayHigh = String(d.GiaCaoNhat);
+      if (d.GiaThapNhat) result.dayLow = String(d.GiaThapNhat);
+    }
 
-    // Market cap: CafeF usually returns in tỷ VNĐ
-    const mcapRaw = d.MarketCap || d.VonHoa || d.VonHoaThi;
-    const marketCapVnd = mcapRaw !== undefined && mcapRaw !== null && mcapRaw !== 0
-      ? parseFloat(mcapRaw).toLocaleString("vi-VN") + " tỷ"
-      : undefined;
+    if (headerRes && headerRes.Success && headerRes.Data) {
+      const d = headerRes.Data;
+      if (d.KhoiLuong) {
+        result.volume = formatVolume(d.KhoiLuong);
+      }
+    }
 
-    // Company description / industry
-    const description = d.CompanyProfile || d.BusinessInfo || d.NganhNghe || d.Nganh || undefined;
+    // Fallback/enrich description (if any default name exists)
+    const company = (companies as any[]).find(c => c.symbol.toUpperCase() === cleanSym);
+    if (company) {
+      result.description = `${company.name_vn} (${company.name}) niêm yết trên sàn ${company.exchange}.`;
+    }
 
-    const result = { pe, pb, eps, marketCapVnd, description };
-    
-    cafefProfileCache.set(symbol, { data: result, timestamp: Date.now() });
+    cafefProfileCache.set(cleanSym, { data: result, timestamp: Date.now() });
     return result;
   } catch (err: any) {
-    if (err.name === "AbortError") {
-      console.warn(`CafeF profile timeout for ${symbol}`);
-    } else {
-      console.error(`CafeF profile error for ${symbol}:`, err?.message);
-    }
+    console.error(`CafeF profile error for ${cleanSym}:`, err?.message);
     return null;
   }
+}
+
+// Fetch 30 days history from Entrade
+async function fetchHistory(symbol: string): Promise<number[]> {
+  const cleanSym = symbol.split(" ")[0].replace(".VN", "").replace("^", "").trim().toUpperCase();
+  const to = Math.floor(Date.now() / 1000);
+  const from = to - 30 * 24 * 60 * 60; // 30 days
+  
+  const isIndex = cleanSym === "VNINDEX" || cleanSym === "HNX" || cleanSym === "HNXINDEX" || cleanSym === "UPCOM";
+  const path = isIndex ? "index" : "stock";
+  const entradeSym = cleanSym === "HNXINDEX" ? "HNX" : cleanSym;
+  
+  const url = `https://services.entrade.com.vn/chart-api/v2/ohlcs/${path}?from=${from}&to=${to}&symbol=${entradeSym}&resolution=1D`;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.c && Array.isArray(data.c)) {
+        return data.c;
+      }
+    }
+  } catch (err) {
+    console.error(`Error fetching history for ${cleanSym}:`, err);
+  }
+  return [];
 }
 
 // Fetch latest related news for a stock symbol from CafeF
@@ -509,6 +549,10 @@ async function fetchStockQuote(symbol: string, forceRefresh = false): Promise<Se
       baseResult.eps = cafefProfile.eps;
       baseResult.marketCapVnd = cafefProfile.marketCapVnd;
       baseResult.description = cafefProfile.description;
+      if (cafefProfile.prevClose) baseResult.prevClose = cafefProfile.prevClose;
+      if (cafefProfile.dayHigh) baseResult.dayHigh = cafefProfile.dayHigh;
+      if (cafefProfile.dayLow) baseResult.dayLow = cafefProfile.dayLow;
+      if (cafefProfile.volume) baseResult.volume = cafefProfile.volume;
     }
 
     if (cafefNews && cafefNews.length > 0) {
@@ -520,6 +564,12 @@ async function fetchStockQuote(symbol: string, forceRefresh = false): Promise<Se
   } else {
     baseResult.buyVolume = "N/A";
     baseResult.sellVolume = "N/A";
+  }
+
+  // Fetch 30-day history for the ticker
+  const history = await fetchHistory(symbol);
+  if (history && history.length > 0) {
+    baseResult.history = history;
   }
 
   searchCache.set(symbol, { data: baseResult, timestamp: Date.now() });

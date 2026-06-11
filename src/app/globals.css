@@ -5721,3 +5721,279 @@ body {
     border-color: color-mix(in srgb, var(--active-channel-color, var(--accent-blue)) 38%, rgba(120,120,120,0.18));
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.72), 0 6px 18px rgba(0,0,0,0.05);
 }
+
+/* ==========================================
+   Redesigned Watchlist Stock Cards
+   ========================================== */
+.watchlist-stock-card-redesigned {
+    width: 100%;
+    border: 1px solid var(--border-classic);
+    border-radius: var(--radius-sm);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 250, 245, 0.95)), var(--bg-card);
+    padding: 12px 14px !important;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+    box-shadow: 0 2px 8px rgba(134, 121, 110, 0.04);
+}
+
+.watchlist-stock-card-redesigned:hover,
+.watchlist-stock-card-redesigned:focus-visible {
+    transform: translateY(-2px) translateX(2px);
+    border-color: rgba(0, 130, 138, 0.28);
+    box-shadow: 0 10px 24px rgba(134, 121, 110, 0.12);
+    outline: none;
+}
+
+.watchlist-card-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.watchlist-card-symbol-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.watchlist-card-star-btn {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 2px;
+    transition: transform 0.15s ease;
+}
+
+.watchlist-card-star-btn:hover {
+    transform: scale(1.2);
+}
+
+.watchlist-card-star-btn:active {
+    transform: scale(0.9);
+}
+
+.watchlist-card-symbol-text {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    letter-spacing: -0.2px;
+}
+
+.watchlist-card-exchange-badge {
+    border: 1px solid rgba(134, 121, 110, 0.22);
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.6rem;
+    font-family: var(--font-sans);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.watchlist-card-exchange-badge.hose {
+    background: rgba(0, 130, 138, 0.06);
+    color: var(--accent-blue);
+    border-color: rgba(0, 130, 138, 0.25);
+}
+
+.watchlist-card-exchange-badge.hnx {
+    background: rgba(88, 86, 214, 0.06);
+    color: #5856D6;
+    border-color: rgba(88, 86, 214, 0.25);
+}
+
+.watchlist-card-exchange-badge.upcom {
+    background: rgba(150, 137, 125, 0.08);
+    color: var(--text-secondary);
+    border-color: rgba(150, 137, 125, 0.25);
+}
+
+.watchlist-card-price-area {
+    text-align: right;
+}
+
+.watchlist-card-price-text {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+}
+
+.watchlist-card-second-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.watchlist-card-company-name {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 70%;
+    font-family: var(--font-sans);
+}
+
+.watchlist-card-change-area {
+    text-align: right;
+}
+
+.watchlist-card-change-text {
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: var(--font-sans);
+}
+
+/* Colors for positive, negative, unchanged */
+.watchlist-card-change-text.positive,
+.watchlist-card-price-text.positive {
+    color: var(--success-green);
+}
+
+.watchlist-card-change-text.negative,
+.watchlist-card-price-text.negative {
+    color: var(--danger-red);
+}
+
+.watchlist-card-change-text.ceiling,
+.watchlist-card-price-text.ceiling {
+    color: var(--ceiling-purple);
+}
+
+.watchlist-card-change-text.floor,
+.watchlist-card-price-text.floor {
+    color: var(--floor-blue);
+}
+
+.watchlist-card-change-text.flat,
+.watchlist-card-price-text.flat {
+    color: var(--warning-orange);
+}
+
+.watchlist-card-separator {
+    border: none;
+    border-top: 1px dashed rgba(134, 121, 110, 0.25);
+    margin: 4px 0;
+    width: 100%;
+}
+
+.watchlist-card-bottom-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    width: 100%;
+}
+
+.watchlist-card-stat-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.watchlist-card-stat-label {
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+
+.watchlist-card-stat-value {
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-family: var(--font-sans);
+}
+
+/* Related News Cards in Stock Detail modal */
+.stock-detail-news .news-card {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.stock-detail-news .news-card.no-image {
+    grid-template-columns: 1fr;
+}
+
+.stock-detail-news .news-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-blue);
+    transform: translateY(-2px);
+}
+
+.stock-detail-news .news-card .news-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stock-detail-news .news-card .news-source {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--warning-orange);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.stock-detail-news .news-card .news-title {
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.3;
+    margin: 0;
+}
+
+.stock-detail-news .news-card .news-summary {
+    font-size: 0.76rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.3;
+    margin: 4px 0 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.stock-detail-news .news-card .news-meta {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 4px;
+}
+
+.stock-detail-news .news-card .news-image-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.stock-detail-news .news-card .news-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}

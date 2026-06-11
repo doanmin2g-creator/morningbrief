@@ -21,6 +21,9 @@ interface TickerItem {
   buyVolume?: string;
   sellVolume?: string;
   lastUpdated?: string;
+  prevClose?: string;
+  dayHigh?: string;
+  dayLow?: string;
 }
 
 interface StockSearchResult {
@@ -45,7 +48,8 @@ interface StockSearchResult {
   cafefDataUrl?: string;
   dataSource?: string;
   updatedAt?: string;
-  relatedNews?: { title: string; link: string; time: string }[];
+  relatedNews?: { title: string; link: string; time: string; image?: string; description?: string; }[];
+  history?: number[];
 }
 
 interface IndexOverview {
@@ -2691,7 +2695,7 @@ export default function Home() {
                     return (
                     <div
                       key={`${symbol}-${idx}`}
-                      className="crypto-item watchlist-stock-card"
+                      className="crypto-item watchlist-stock-card-redesigned"
                       onClick={() => openWatchlistStockDetail(item)}
                       role="button"
                       tabIndex={0}
@@ -2699,30 +2703,63 @@ export default function Home() {
                         if (event.key === "Enter" || event.key === " ") openWatchlistStockDetail(item);
                       }}
                     >
-                      <div className="crypto-info watchlist-stock-main">
-                        <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <span 
+                      {/* Top Row: Star, Symbol, Exchange Badge | Price */}
+                      <div className="watchlist-card-top-row">
+                        <div className="watchlist-card-symbol-area">
+                          <button
+                            className="watchlist-card-star-btn"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleWatchlist(symbol);
                             }}
-                            style={{ color: "var(--accent-red)", cursor: "pointer", fontSize: "0.95rem" }}
+                            aria-label="Toggle Watchlist"
                           >
                             ⭐
-                          </span>
-                          {symbol}
-                        </h4>
-                        <p style={{ fontSize: "0.7rem" }}>{item.sector}</p>
+                          </button>
+                          <span className="watchlist-card-symbol-text">{symbol}</span>
+                          {item.exchange && item.exchange !== "INDEX" && (
+                            <span className={`watchlist-card-exchange-badge ${item.exchange.toLowerCase()}`}>
+                              {item.exchange}
+                            </span>
+                          )}
+                        </div>
+                        <div className="watchlist-card-price-area">
+                          <span className={`watchlist-card-price-text ${getStockColorClass(item)}`}>{item.price}</span>
+                        </div>
                       </div>
-                      <div className="crypto-price-info watchlist-stock-side">
-                        <h4 style={{ fontSize: "0.88rem" }}>{item.price}</h4>
-                        <span className={`ticker-change ${getStockColorClass(item)}`} style={{ fontSize: "0.78rem" }}>
-                          {item.change}
-                        </span>
-                        <div className="watchlist-stock-flow">
-                          <span>{lang === "vi" ? "KL" : "Vol"} {volumeLabel}</span>
-                          <span>{lang === "vi" ? "Mua" : "Buy"} {item.buyVolume || "..."}</span>
-                          <span>{lang === "vi" ? "Bán" : "Sell"} {item.sellVolume || "..."}</span>
+
+                      {/* Second Row: Company full name | Change percentage */}
+                      <div className="watchlist-card-second-row">
+                        <div className="watchlist-card-company-name" title={item.symbol}>
+                          {item.symbol.includes(" - ") ? item.symbol.split(" - ").slice(1).join(" - ") : item.symbol}
+                        </div>
+                        <div className="watchlist-card-change-area">
+                          <span className={`watchlist-card-change-text ${getStockColorClass(item)}`}>
+                            {item.change}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Dashed Separator */}
+                      <hr className="watchlist-card-separator" />
+
+                      {/* Bottom Grid: 4 stats columns */}
+                      <div className="watchlist-card-bottom-grid">
+                        <div className="watchlist-card-stat-col">
+                          <span className="watchlist-card-stat-label">PREV CLOSE</span>
+                          <span className="watchlist-card-stat-value">{item.prevClose || "N/A"}</span>
+                        </div>
+                        <div className="watchlist-card-stat-col">
+                          <span className="watchlist-card-stat-label">DAY HIGH</span>
+                          <span className="watchlist-card-stat-value">{item.dayHigh || "N/A"}</span>
+                        </div>
+                        <div className="watchlist-card-stat-col">
+                          <span className="watchlist-card-stat-label">DAY LOW</span>
+                          <span className="watchlist-card-stat-value">{item.dayLow || "N/A"}</span>
+                        </div>
+                        <div className="watchlist-card-stat-col">
+                          <span className="watchlist-card-stat-label">VOLUME</span>
+                          <span className="watchlist-card-stat-value">{volumeLabel || "N/A"}</span>
                         </div>
                       </div>
                     </div>
@@ -3086,13 +3123,15 @@ export default function Home() {
         const isPositive = detail?.isPositive ?? stock.isPositive;
         const colorClass = isPositive ? "positive" : "negative";
         const rawPrice = parseFloat(String(price).replace(/,/g, "")) || 1;
-        const chartValues = stock.history && stock.history.length > 1
-          ? stock.history
-          : [rawPrice * 0.985, rawPrice * 1.004, rawPrice * 0.996, rawPrice * 1.012, rawPrice * 0.991, rawPrice];
+        const chartValues = detail?.history && detail.history.length > 1
+          ? detail.history
+          : (stock.history && stock.history.length > 1
+            ? stock.history
+            : [rawPrice * 0.985, rawPrice * 1.004, rawPrice * 0.996, rawPrice * 1.012, rawPrice * 0.991, rawPrice]);
         const minChart = Math.min(...chartValues);
         const maxChart = Math.max(...chartValues);
         const range = maxChart - minChart || 1;
-        const chartPoints = chartValues.map((value, index) => {
+        const chartPoints = chartValues.map((value: number, index: number) => {
           const x = 12 + (index / Math.max(chartValues.length - 1, 1)) * 276;
           const y = 126 - ((value - minChart) / range) * 92;
           return `${x},${y}`;
@@ -3221,12 +3260,48 @@ export default function Home() {
                     {detail?.relatedNews && detail.relatedNews.length > 0 && (
                       <section className="stock-detail-panel stock-detail-news">
                         <h3>{lang === "vi" ? "Tin liên quan" : "Related news"}</h3>
-                        {detail.relatedNews.slice(0, 3).map((news, index) => (
-                          <a key={`${news.link}-${index}`} href={news.link} target="_blank" rel="noopener noreferrer">
-                            <span>{news.title}</span>
-                            <small>{news.time}</small>
-                          </a>
-                        ))}
+                        {detail.relatedNews.slice(0, 3).map((news, index) => {
+                          const newsItem: NewsItem = {
+                            title: news.title,
+                            link: news.link,
+                            time: news.time,
+                            source: "CafeF",
+                            description: news.description || "",
+                            image: news.image || ""
+                          };
+                          const hasImage = hasDisplayImage(newsItem.image);
+                          return (
+                            <div
+                              key={`${news.link}-${index}`}
+                              onClick={() => openArticle(newsItem)}
+                              className={`news-card ${hasImage ? "" : "no-image"}`}
+                              style={{ cursor: "pointer" }}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  openArticle(newsItem);
+                                }
+                              }}
+                            >
+                              <div className="news-content">
+                                <span className="news-source">{newsItem.source}</span>
+                                <h3 className="news-title">{newsItem.title}</h3>
+                                {newsItem.description && (
+                                  <p className="news-meta news-summary">
+                                    {newsItem.description}
+                                  </p>
+                                )}
+                                <span className="news-meta">{newsItem.time}</span>
+                              </div>
+                              {hasImage && (
+                                <div className="news-image-wrap">
+                                  <img src={newsItem.image} alt={newsItem.title} className="news-image" />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </section>
                     )}
                   </>
