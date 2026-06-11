@@ -56,7 +56,7 @@ interface NewsItem {
   description: string;
   link: string;
   time: string;
-  image: string;
+  image?: string;
   body?: string[];
 }
 
@@ -133,6 +133,12 @@ function writeClientCache<T>(key: string, data: T) {
   } catch {
     // Storage can be unavailable in private mode or under quota pressure.
   }
+}
+
+function hasDisplayImage(image?: string): boolean {
+  const normalized = image?.trim().toLowerCase();
+  if (!normalized || normalized === "#" || normalized === "about:blank") return false;
+  return !normalized.includes("news_image_default") && !normalized.includes("photo-1590283603385");
 }
 
 const trans = {
@@ -2439,28 +2445,31 @@ export default function Home() {
                         description: news.description || "",
                         link: news.link,
                         time: news.time,
-                        image: news.image || "https://cafef1.mediacdn.vn/Images/Icons/News_image_default.png"
+                        image: news.image
                       };
+                      const hasImage = hasDisplayImage(newsItem.image);
                       return (
                         <div 
                           key={ni} 
                           onClick={() => openArticle(newsItem)} 
-                          className="news-card" 
+                          className={`news-card ${hasImage ? "" : "no-image"}`}
                           style={{ cursor: "pointer" }}
                         >
                           <div className="news-content">
                             <span className="news-source">{newsItem.source}</span>
                             <h3 className="news-title">{newsItem.title}</h3>
                             {newsItem.description && (
-                              <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                              <p className="news-meta news-summary">
                                 {newsItem.description}
                               </p>
                             )}
                             <span className="news-meta">{newsItem.time}</span>
                           </div>
-                          <div className="news-image-wrap">
-                            <img src={newsItem.image} alt={newsItem.title} className="news-image" />
-                          </div>
+                          {hasImage && (
+                            <div className="news-image-wrap">
+                              <img src={newsItem.image} alt={newsItem.title} className="news-image" />
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -2501,28 +2510,31 @@ export default function Home() {
                           description: news.description || "",
                           link: news.link,
                           time: news.time,
-                          image: news.image || "https://cafef1.mediacdn.vn/Images/Icons/News_image_default.png"
+                          image: news.image
                         };
+                        const hasImage = hasDisplayImage(newsItem.image);
                         return (
                           <div 
                             key={ni} 
                             onClick={() => openArticle(newsItem)} 
-                            className="news-card" 
+                            className={`news-card ${hasImage ? "" : "no-image"}`}
                             style={{ cursor: "pointer" }}
                           >
                             <div className="news-content">
                               <span className="news-source">{newsItem.source}</span>
                               <h3 className="news-title">{newsItem.title}</h3>
                               {newsItem.description && (
-                                <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                                <p className="news-meta news-summary">
                                   {newsItem.description}
                                 </p>
                               )}
                               <span className="news-meta">{newsItem.time}</span>
                             </div>
-                            <div className="news-image-wrap">
-                              <img src={newsItem.image} alt={newsItem.title} className="news-image" />
-                            </div>
+                            {hasImage && (
+                              <div className="news-image-wrap">
+                                <img src={newsItem.image} alt={newsItem.title} className="news-image" />
+                              </div>
+                            )}
                           </div>
                         );
                       })}

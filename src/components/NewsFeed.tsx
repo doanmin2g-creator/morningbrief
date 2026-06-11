@@ -7,7 +7,7 @@ export interface NewsItem {
   description: string;
   link: string;
   time: string;
-  image: string;
+  image?: string;
   body?: string[];
 }
 
@@ -20,6 +20,12 @@ interface NewsFeedProps {
   openArticle: (item: NewsItem) => void;
   setVisibleNewsCount: React.Dispatch<React.SetStateAction<number>>;
 }
+
+const hasDisplayImage = (image?: string): boolean => {
+  const normalized = image?.trim().toLowerCase();
+  if (!normalized || normalized === "#" || normalized === "about:blank") return false;
+  return !normalized.includes("news_image_default") && !normalized.includes("photo-1590283603385");
+};
 
 export const NewsFeed: React.FC<NewsFeedProps> = React.memo(({
   loadingNews,
@@ -39,26 +45,33 @@ export const NewsFeed: React.FC<NewsFeedProps> = React.memo(({
         </>
       ) : (
         <>
-          {newsList.slice(0, visibleNewsCount).map((item, idx) => (
-            <div 
-              key={idx} 
-              onClick={() => openArticle(item)} 
-              className="news-card" 
-              style={{ cursor: "pointer" }}
-            >
-              <div className="news-content">
-                <span className="news-source">{item.source}</span>
-                <h3 className="news-title">{item.title}</h3>
-                <p className="news-meta" style={{ marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
-                  {item.description}
-                </p>
-                <span className="news-meta">{item.time}</span>
+          {newsList.slice(0, visibleNewsCount).map((item, idx) => {
+            const hasImage = hasDisplayImage(item.image);
+            return (
+              <div
+                key={idx}
+                onClick={() => openArticle(item)}
+                className={`news-card ${hasImage ? "" : "no-image"}`}
+                style={{ cursor: "pointer" }}
+              >
+                <div className="news-content">
+                  <span className="news-source">{item.source}</span>
+                  <h3 className="news-title">{item.title}</h3>
+                  {item.description && (
+                    <p className="news-meta news-summary">
+                      {item.description}
+                    </p>
+                  )}
+                  <span className="news-meta">{item.time}</span>
+                </div>
+                {hasImage && (
+                  <div className="news-image-wrap">
+                    <img src={item.image} alt={item.title} className="news-image" />
+                  </div>
+                )}
               </div>
-              <div className="news-image-wrap">
-                <img src={item.image} alt={item.title} className="news-image" />
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {newsList.length > visibleNewsCount && (
             <button 
               className="load-more-news-btn"

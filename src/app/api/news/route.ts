@@ -59,7 +59,7 @@ function parseRssXml(xmlText: string, isCafeF: boolean): any[] {
     const pubDate = extractField("pubDate");
 
     // Extract image URL from description HTML (e.g. <img src="IMAGE_URL" ...>)
-    let image = "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=200"; // Default fallback
+    let image = "";
     const imgRegex = /<img[^>]+src=["']([^"']+)["']/i;
     const imgMatch = descriptionRaw.match(imgRegex);
     if (imgMatch && imgMatch[1]) {

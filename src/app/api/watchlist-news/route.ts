@@ -132,7 +132,7 @@ async function fetchSingleSymbolNews(symbol: string): Promise<NewsItem[]> {
         time: timeStr,
         timestamp,
         relatedSymbol: cleanSym,
-        image: item.Image || "https://cafef1.mediacdn.vn/Images/Icons/News_image_default.png",
+        image: item.Image || "",
         description: item.SubTitle || ""
       };
     }).filter((n: NewsItem) => n.title);

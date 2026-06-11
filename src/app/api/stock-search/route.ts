@@ -198,7 +198,7 @@ async function fetchCafeFStockNews(symbol: string): Promise<RelatedNews[]> {
         title: item.Title || "",
         link: absoluteLink || `https://cafef.vn/search/${symbol}`,
         time: timeStr,
-        image: item.Image || "https://cafef1.mediacdn.vn/Images/Icons/News_image_default.png",
+        image: item.Image || "",
         description: item.SubTitle || ""
       };
     }).filter((n: RelatedNews) => n.title);
