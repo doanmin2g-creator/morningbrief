@@ -306,7 +306,7 @@ Việc công bố thông tin minh bạch, đúng thời hạn sẽ giúp duy tr�
 function getTradingDays(count: number) {
   if (count <= 0) return [];
   const dates: string[] = [];
-  let current = new Date();
+  const current = new Date();
   
   while (dates.length < count) {
     const day = current.getDay();
@@ -1849,7 +1849,7 @@ export default function Home() {
                 </h3>
               </div>
               <p style={{ lineHeight: "1.5", fontSize: "0.85rem", fontStyle: "italic", fontFamily: "var(--font-serif)", color: "var(--text-secondary)", margin: 0 }}>
-                "{analysis.summary}"
+                &quot;{analysis.summary}&quot;
               </p>
             </div>
 
@@ -2174,7 +2174,7 @@ export default function Home() {
                             {lang === "vi" ? "Nhận định chuyên gia" : "Expert Stance"} • {indexAnalyses[selectedChartIndex]?.expert}
                           </span>
                           <p style={{ lineHeight: "1.45", color: "var(--text-secondary)", fontStyle: "italic", fontFamily: "var(--font-serif)", fontSize: "0.82rem" }}>
-                            "{indexAnalyses[selectedChartIndex]?.analysis}"
+                            &quot;{indexAnalyses[selectedChartIndex]?.analysis}&quot;
                           </p>
                         </div>
                         <div>
