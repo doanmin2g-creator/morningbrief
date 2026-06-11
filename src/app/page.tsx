@@ -2722,7 +2722,7 @@ export default function Home() {
                         <div className="watchlist-stock-flow">
                           <span>{lang === "vi" ? "KL" : "Vol"} {volumeLabel}</span>
                           <span>{lang === "vi" ? "Mua" : "Buy"} {item.buyVolume || "..."}</span>
-                          <span>{lang === "vi" ? "Ban" : "Sell"} {item.sellVolume || "..."}</span>
+                          <span>{lang === "vi" ? "Bán" : "Sell"} {item.sellVolume || "..."}</span>
                         </div>
                       </div>
                     </div>

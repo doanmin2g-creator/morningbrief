@@ -78,6 +78,30 @@ function formatVolume(value?: number) {
   return value.toLocaleString("en-US");
 }
 
+async function fetchCafeFOrderBook(symbol: string): Promise<{ buyVolume?: string; sellVolume?: string } | null> {
+  const cleanSym = symbol.split(" ")[0].replace(".VN", "").replace("^", "").trim().toUpperCase();
+  if (cleanSym === "VNINDEX" || cleanSym === "HNXINDEX" || cleanSym === "UPCOM") return null;
+
+  const url = `https://cafef.vn/du-lieu/Ajax/PageNew/GetDataTKDL.ashx?Symbol=${cleanSym}&PageIndex=1&PageSize=1`;
+  try {
+    const res = await fetch(url, { headers: CAFEF_HEADERS });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const latest = json?.Data?.[0];
+    if (latest) {
+      const bidLeft = latest.BidLeft;
+      const askLeft = latest.AskLeft;
+      return {
+        buyVolume: bidLeft !== null && bidLeft !== undefined ? formatVolume(bidLeft) : "N/A",
+        sellVolume: askLeft !== null && askLeft !== undefined ? formatVolume(askLeft) : "N/A"
+      };
+    }
+  } catch (err) {
+    console.error(`Error fetching CafeF order book for ${cleanSym}:`, err);
+  }
+  return null;
+}
+
 async function fetchSymbolsChunk(symbols: string[]) {
   const symbolsStr = symbols.map(s => encodeURIComponent(s)).join(",");
   const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${symbolsStr}&range=1d&interval=1d`;
@@ -453,14 +477,40 @@ export async function GET(request: Request) {
     }
   }
 
+  const activeSymbols = new Set(
+    watchlistQuery
+      .split(",")
+      .map(s => s.trim().replace(".VN", "").replace("^", "").toUpperCase())
+      .filter(Boolean)
+  );
+
   const combinedWatchlistTickers = [
     ...baseData.defaultWatchlistTickers,
     ...customTickers
   ];
 
+  const enrichedWatchlistTickers = await Promise.all(
+    combinedWatchlistTickers.map(async (ticker) => {
+      const cleanTicker = ticker.ticker.replace(".VN", "").replace("^", "").trim().toUpperCase();
+      if (activeSymbols.has(cleanTicker)) {
+        const orderBook = await fetchCafeFOrderBook(ticker.ticker);
+        return {
+          ...ticker,
+          buyVolume: orderBook?.buyVolume || "N/A",
+          sellVolume: orderBook?.sellVolume || "N/A"
+        };
+      }
+      return {
+        ...ticker,
+        buyVolume: "N/A",
+        sellVolume: "N/A"
+      };
+    })
+  );
+
   return NextResponse.json({
     indices: baseData.indices,
-    watchlistTickers: combinedWatchlistTickers,
+    watchlistTickers: enrichedWatchlistTickers,
     highlights: baseData.highlights
   }, {
     headers: {

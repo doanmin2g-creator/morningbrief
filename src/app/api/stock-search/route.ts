@@ -37,6 +37,8 @@ interface SearchResult {
   pb?: string;
   eps?: string;
   marketCapVnd?: string;
+  buyVolume?: string;
+  sellVolume?: string;
   description?: string;
   cafefDataUrl?: string;
   dataSource?: string;
@@ -68,6 +70,44 @@ const INDEXES: CompanyInfo[] = [
 
 const ALL_COMPANIES = [...INDEXES, ...(companies as CompanyInfo[])];
 
+function formatVolume(value?: number) {
+  if (!value || !Number.isFinite(value)) return "N/A";
+  if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })}B`;
+  }
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })}M`;
+  }
+  if (value >= 1_000) {
+    return `${(value / 1_000).toLocaleString("en-US", { maximumFractionDigits: 1 })}K`;
+  }
+  return value.toLocaleString("en-US");
+}
+
+async function fetchCafeFOrderBook(symbol: string): Promise<{ buyVolume?: string; sellVolume?: string } | null> {
+  const cleanSym = symbol.split(" ")[0].replace(".VN", "").replace("^", "").trim().toUpperCase();
+  if (cleanSym === "VNINDEX" || cleanSym === "HNXINDEX" || cleanSym === "UPCOM") return null;
+
+  const url = `https://cafef.vn/du-lieu/Ajax/PageNew/GetDataTKDL.ashx?Symbol=${cleanSym}&PageIndex=1&PageSize=1`;
+  try {
+    const res = await fetch(url, { headers: CAFEF_HEADERS });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const latest = json?.Data?.[0];
+    if (latest) {
+      const bidLeft = latest.BidLeft;
+      const askLeft = latest.AskLeft;
+      return {
+        buyVolume: bidLeft !== null && bidLeft !== undefined ? formatVolume(bidLeft) : "N/A",
+        sellVolume: askLeft !== null && askLeft !== undefined ? formatVolume(askLeft) : "N/A"
+      };
+    }
+  } catch (err) {
+    console.error(`Error fetching CafeF order book for ${cleanSym}:`, err);
+  }
+  return null;
+}
+
 function createFallbackResult(symbol: string, displayName: string, exchange: string, sector: string): SearchResult {
   return {
     symbol,
@@ -82,6 +122,8 @@ function createFallbackResult(symbol: string, displayName: string, exchange: str
     dayLow: "N/A",
     volume: "N/A",
     marketCap: "N/A",
+    buyVolume: "N/A",
+    sellVolume: "N/A",
     cafefDataUrl: "https://cafef.vn/du-lieu.chn",
     dataSource: "CafeF / market data",
     updatedAt: new Date().toISOString()
@@ -455,9 +497,10 @@ async function fetchStockQuote(symbol: string, forceRefresh = false): Promise<Se
 
   // Enrich with CafeF data for non-index stocks (run concurrently)
   if (!isIndex && symbol !== "HNXINDEX" && symbol !== "UPCOM") {
-    const [cafefProfile, cafefNews] = await Promise.all([
+    const [cafefProfile, cafefNews, cafefOrderBook] = await Promise.all([
       fetchCafeFStockProfile(symbol).catch(() => null),
-      fetchCafeFStockNews(symbol).catch(() => [])
+      fetchCafeFStockNews(symbol).catch(() => []),
+      fetchCafeFOrderBook(symbol).catch(() => null)
     ]);
 
     if (cafefProfile) {
@@ -471,6 +514,12 @@ async function fetchStockQuote(symbol: string, forceRefresh = false): Promise<Se
     if (cafefNews && cafefNews.length > 0) {
       baseResult.relatedNews = cafefNews;
     }
+
+    baseResult.buyVolume = cafefOrderBook?.buyVolume || "N/A";
+    baseResult.sellVolume = cafefOrderBook?.sellVolume || "N/A";
+  } else {
+    baseResult.buyVolume = "N/A";
+    baseResult.sellVolume = "N/A";
   }
 
   searchCache.set(symbol, { data: baseResult, timestamp: Date.now() });
