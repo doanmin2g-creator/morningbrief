@@ -5,6 +5,9 @@ import companies from "../stock-search/companies.json";
 let cachedData: any = null;
 let lastCacheTime = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const RESPONSE_CACHE_HEADERS = {
+  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300"
+};
 
 // CafeF browser simulation headers
 const CAFEF_HEADERS = {
@@ -439,6 +442,7 @@ export async function GET(request: Request) {
     highlights: baseData.highlights
   }, {
     headers: {
+      ...RESPONSE_CACHE_HEADERS,
       "x-cache": isHit,
       "x-cache-age": String(Math.floor((now - lastCacheTime) / 1000)) + "s"
     }

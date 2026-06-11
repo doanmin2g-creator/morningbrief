@@ -30,6 +30,9 @@ interface FeedConfig {
 
 let cache: { data: PodcastEpisode[]; timestamp: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const RESPONSE_CACHE_HEADERS = {
+  "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600"
+};
 
 // ---------------------------------------------------------------------------
 // Podcast Feeds Config
@@ -291,7 +294,7 @@ export async function GET() {
   const now = Date.now();
   if (cache && now - cache.timestamp < CACHE_TTL_MS) {
     return NextResponse.json(cache.data, {
-      headers: { "x-cache": "HIT" },
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "HIT" },
     });
   }
 
@@ -360,14 +363,14 @@ export async function GET() {
     cache = { data: interleaved, timestamp: now };
 
     return NextResponse.json(interleaved, {
-      headers: { "x-cache": "MISS" },
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "MISS" },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Podcast aggregation failed, using fallback:", message);
 
     return NextResponse.json(FALLBACK_EPISODES, {
-      headers: { "x-cache": "FALLBACK" },
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "FALLBACK" },
     });
   }
 }

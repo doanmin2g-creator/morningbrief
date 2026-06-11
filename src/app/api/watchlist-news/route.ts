@@ -22,6 +22,9 @@ interface NewsItem {
 // In-memory cache for news per symbol (5 minutes TTL)
 const newsCache = new Map<string, { data: NewsItem[]; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const RESPONSE_CACHE_HEADERS = {
+  "Cache-Control": "public, s-maxage=300, stale-while-revalidate=900"
+};
 
 // Ecosystem/Sector Mapping
 const ECOSYSTEM_MAP: Record<string, string[]> = {
@@ -152,7 +155,7 @@ export async function GET(request: Request) {
   const symbolsQuery = searchParams.get("symbols") || "";
 
   if (!symbolsQuery) {
-    return NextResponse.json([]);
+    return NextResponse.json([], { headers: RESPONSE_CACHE_HEADERS });
   }
 
   // Parse list of symbols
@@ -162,7 +165,7 @@ export async function GET(request: Request) {
     .filter(Boolean);
 
   if (watchlistSymbols.length === 0) {
-    return NextResponse.json([]);
+    return NextResponse.json([], { headers: RESPONSE_CACHE_HEADERS });
   }
 
   // Resolve all ecosystem symbols
@@ -212,7 +215,7 @@ export async function GET(request: Request) {
     // Limit to 12 items for mobile friendliness
     const finalNews = mergedNews.slice(0, 12);
 
-    return NextResponse.json(finalNews);
+    return NextResponse.json(finalNews, { headers: RESPONSE_CACHE_HEADERS });
   } catch (err: any) {
     console.error("Error generating watchlist news:", err);
     return NextResponse.json({ error: "Failed to generate watchlist news" }, { status: 500 });

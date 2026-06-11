@@ -60,6 +60,33 @@ interface NewsItem {
   body?: string[];
 }
 
+interface StocksApiResponse {
+  indices?: Array<TickerItem & { overview?: IndexOverview }>;
+  watchlistTickers?: TickerItem[];
+  highlights?: {
+    gainers: TickerItem[];
+    losers: TickerItem[];
+    volume: TickerItem[];
+  };
+}
+
+interface MacroData {
+  goldSjc: { buy: string; sell: string; change: string };
+  goldRing: { buy: string; sell: string; change: string };
+  usdRate: { buy: string; sell: string; change: string };
+  updatedAt: string;
+}
+
+interface WatchlistNewsItem {
+  title: string;
+  link: string;
+  time: string;
+  timestamp: number;
+  relatedSymbol: string;
+  image?: string;
+  description?: string;
+}
+
 // Podcast Playlist Item Type
 interface PodcastTrack {
   id: number;
@@ -71,6 +98,41 @@ interface PodcastTrack {
   description: string;
   duration?: string;
   pubDate?: string;
+}
+
+const CLIENT_CACHE_PREFIX = "morningbrief_cache_v1";
+const CLIENT_CACHE_MAX_AGE = {
+  stocks: 15 * 60 * 1000,
+  news: 20 * 60 * 1000,
+  macro: 5 * 60 * 1000,
+  podcasts: 6 * 60 * 60 * 1000,
+  watchlistNews: 20 * 60 * 1000,
+};
+
+function readClientCache<T>(key: string, maxAgeMs: number): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`${CLIENT_CACHE_PREFIX}:${key}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { data?: T; timestamp?: number };
+    if (!parsed || typeof parsed.timestamp !== "number") return null;
+    if (Date.now() - parsed.timestamp > maxAgeMs) return null;
+    return parsed.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeClientCache<T>(key: string, data: T) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      `${CLIENT_CACHE_PREFIX}:${key}`,
+      JSON.stringify({ data, timestamp: Date.now() })
+    );
+  } catch {
+    // Storage can be unavailable in private mode or under quota pressure.
+  }
 }
 
 const trans = {
@@ -488,10 +550,10 @@ export default function Home() {
   const [hoveredPoint, setHoveredPoint] = useState<{ value: number; index: number; x: number; y: number } | null>(null);
   const [isChartTransitioning, setIsChartTransitioning] = useState(false);
   const [watchlist, setWatchlist] = useState<string[]>([]);
-  const [watchlistNews, setWatchlistNews] = useState<any[]>([]);
+  const [watchlistNews, setWatchlistNews] = useState<WatchlistNewsItem[]>([]);
   const [loadingWatchlistNews, setLoadingWatchlistNews] = useState(false);
   const [visibleWatchlistNewsCount, setVisibleWatchlistNewsCount] = useState(8);
-  const [macroData, setMacroData] = useState<any>(null);
+  const [macroData, setMacroData] = useState<MacroData | null>(null);
   const [loadingMacro, setLoadingMacro] = useState(true);
   // Index overview stats (liquidity, breadth, foreign trading) from CafeF
   const [indexStats, setIndexStats] = useState<Record<string, IndexOverview>>({});
@@ -771,47 +833,65 @@ export default function Home() {
     }
   }, [activeArticle]);
 
+  const getSavedWatchlistSymbols = () => {
+    try {
+      const saved = localStorage.getItem("morningbrief_watchlist");
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const getStocksCacheKey = (symbols: string[]) => (
+    symbols.length > 0 ? `stocks:${symbols.join(",")}` : "stocks:default"
+  );
+
+  const applyStockData = (data: StocksApiResponse) => {
+    const combined = [...(data.indices || []), ...(data.watchlistTickers || [])];
+    setTickerList(combined);
+    setHighlights(data.highlights || null);
+    hasLoadedStocksRef.current = true;
+
+    const statsMap: Record<string, IndexOverview> = {};
+    (data.indices || []).forEach((idx) => {
+      if (idx.overview) {
+        statsMap[idx.symbol] = idx.overview;
+      }
+    });
+    setIndexStats(statsMap);
+  };
+
   // Fetch Vietnamese Stocks
   const fetchStocks = async () => {
+    const savedWatchlist = getSavedWatchlistSymbols();
+    const cacheKey = getStocksCacheKey(savedWatchlist);
+    const cached = readClientCache<StocksApiResponse>(cacheKey, CLIENT_CACHE_MAX_AGE.stocks);
+
+    if (!hasLoadedStocksRef.current && cached) {
+      applyStockData(cached);
+      setLoadingStocks(false);
+    }
+
     const shouldShowInitialLoader = !hasLoadedStocksRef.current && tickerList.length === 0;
-    if (shouldShowInitialLoader) {
+    if (shouldShowInitialLoader && !cached) {
       setLoadingStocks(true);
     }
     try {
-      // Load watchlist from localStorage directly to get the latest updated values
-      const saved = localStorage.getItem("morningbrief_watchlist");
-      let watchlistParams = "";
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            watchlistParams = `?watchlist=${encodeURIComponent(parsed.join(","))}`;
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
+      const watchlistParams = savedWatchlist.length > 0
+        ? `?watchlist=${encodeURIComponent(savedWatchlist.join(","))}`
+        : "";
 
       const res = await fetch(`/api/stocks${watchlistParams}`);
       if (!res.ok) throw new Error("Failed to fetch stock data");
-      const data = await res.json();
-      const combined = [...(data.indices || []), ...(data.watchlistTickers || [])];
-      setTickerList(combined);
-      setHighlights(data.highlights || null);
-      hasLoadedStocksRef.current = true;
-      // Extract index overview stats from each index entry
-      const statsMap: Record<string, IndexOverview> = {};
-      (data.indices || []).forEach((idx: any) => {
-        if (idx.overview) {
-          statsMap[idx.symbol] = idx.overview;
-        }
-      });
-      setIndexStats(statsMap);
+      const data = await res.json() as StocksApiResponse;
+      applyStockData(data);
+      writeClientCache(cacheKey, data);
     } catch (error) {
       console.error(error);
       setErrorMsg("Unable to retrieve stock data");
     } finally {
-      if (shouldShowInitialLoader) {
+      if (shouldShowInitialLoader || cached) {
         setLoadingStocks(false);
       }
     }
@@ -819,12 +899,20 @@ export default function Home() {
 
   // Fetch News Feed based on selected category tab
   const fetchNews = async (category: string) => {
-    setLoadingNews(true);
+    const cacheKey = `news:${category}`;
+    const cached = readClientCache<NewsItem[]>(cacheKey, CLIENT_CACHE_MAX_AGE.news);
+    if (cached && cached.length > 0) {
+      setNewsList(cached);
+      setLoadingNews(false);
+    } else {
+      setLoadingNews(true);
+    }
     try {
       const res = await fetch(`/api/news?category=${category}`);
       if (!res.ok) throw new Error("Failed to fetch news data");
-      const data = await res.json();
+      const data = await res.json() as NewsItem[];
       setNewsList(data);
+      writeClientCache(cacheKey, data);
     } catch (error) {
       console.error(error);
     } finally {
@@ -833,12 +921,19 @@ export default function Home() {
   };
 
   const fetchMacroData = async () => {
-    setLoadingMacro(true);
+    const cached = readClientCache<MacroData>("macro", CLIENT_CACHE_MAX_AGE.macro);
+    if (cached) {
+      setMacroData(cached);
+      setLoadingMacro(false);
+    } else {
+      setLoadingMacro(true);
+    }
     try {
       const res = await fetch("/api/macro");
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as MacroData;
         setMacroData(data);
+        writeClientCache("macro", data);
       }
     } catch (e) {
       console.error("Failed to fetch macro data:", e);
@@ -1298,14 +1393,22 @@ export default function Home() {
 
   // Fetch podcasts from API
   const fetchPodcasts = async () => {
-    setLoadingPodcast(true);
+    const cached = readClientCache<PodcastTrack[]>("podcasts", CLIENT_CACHE_MAX_AGE.podcasts);
+    if (cached && cached.length > 0) {
+      setPodcastPlaylist(cached);
+      setPodcastSource(cached[0].sourceName || "Cached");
+      setLoadingPodcast(false);
+    } else {
+      setLoadingPodcast(true);
+    }
     try {
       const res = await fetch("/api/podcast");
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as PodcastTrack[];
         if (Array.isArray(data) && data.length > 0) {
           setPodcastPlaylist(data);
           setPodcastSource(data[0].sourceName || "VnExpress");
+          writeClientCache("podcasts", data);
         }
       }
     } catch (e) {
@@ -1357,13 +1460,23 @@ export default function Home() {
     }
 
     const fetchWatchlistNews = async () => {
-      setLoadingWatchlistNews(true);
+      const symbolsParam = watchlist.join(",");
+      const cacheKey = `watchlist-news:${symbolsParam}`;
+      const cached = readClientCache<WatchlistNewsItem[]>(cacheKey, CLIENT_CACHE_MAX_AGE.watchlistNews);
+      if (cached) {
+        setWatchlistNews(cached);
+        setLoadingWatchlistNews(false);
+      } else {
+        setLoadingWatchlistNews(true);
+      }
       try {
-        const symbolsParam = watchlist.join(",");
         const res = await fetch(`/api/watchlist-news?symbols=${encodeURIComponent(symbolsParam)}`);
         if (res.ok) {
-          const data = await res.json();
+          const data = await res.json() as WatchlistNewsItem[];
           setWatchlistNews(Array.isArray(data) ? data : []);
+          if (Array.isArray(data)) {
+            writeClientCache(cacheKey, data);
+          }
         }
       } catch (err) {
         console.error("Error fetching watchlist news:", err);
@@ -2320,9 +2433,13 @@ export default function Home() {
                 ) : (
                   <div className="watchlist-news-list desktop-slider">
                     {watchlistNews.map((news, ni) => {
-                      const newsItem = {
-                        ...news,
-                        source: news.relatedSymbol ? `${news.relatedSymbol} • CafeF` : "CafeF"
+                      const newsItem: NewsItem = {
+                        source: news.relatedSymbol ? `${news.relatedSymbol} • CafeF` : "CafeF",
+                        title: news.title,
+                        description: news.description || "",
+                        link: news.link,
+                        time: news.time,
+                        image: news.image || "https://cafef1.mediacdn.vn/Images/Icons/News_image_default.png"
                       };
                       return (
                         <div 
@@ -2378,9 +2495,13 @@ export default function Home() {
                   <>
                     <div className="news-feed" style={{ borderTop: "none", paddingTop: 0 }}>
                       {watchlistNews.slice(0, visibleWatchlistNewsCount).map((news, ni) => {
-                        const newsItem = {
-                          ...news,
-                          source: news.relatedSymbol ? `${news.relatedSymbol} • CafeF` : "CafeF"
+                        const newsItem: NewsItem = {
+                          source: news.relatedSymbol ? `${news.relatedSymbol} • CafeF` : "CafeF",
+                          title: news.title,
+                          description: news.description || "",
+                          link: news.link,
+                          time: news.time,
+                          image: news.image || "https://cafef1.mediacdn.vn/Images/Icons/News_image_default.png"
                         };
                         return (
                           <div 

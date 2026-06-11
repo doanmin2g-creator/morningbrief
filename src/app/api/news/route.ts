@@ -9,6 +9,9 @@ const FEEDS: Record<string, string> = {
 // Memory Cache
 const cache: Record<string, { data: any; timestamp: number }> = {};
 const CACHE_TTL_MS = 3 * 60 * 1000; // Cache news for 3 minutes
+const RESPONSE_CACHE_HEADERS = {
+  "Cache-Control": "public, s-maxage=180, stale-while-revalidate=600"
+};
 
 function parseTimeAgo(pubDateStr: string): string {
   try {
@@ -96,7 +99,7 @@ export async function GET(request: NextRequest) {
 
   if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
     return NextResponse.json(cached.data, {
-      headers: { "x-cache": "HIT" }
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "HIT" }
     });
   }
 
@@ -126,7 +129,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(results, {
-      headers: { "x-cache": "MISS" }
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "MISS" }
     });
   } catch (error: any) {
     console.error("Error parsing news feed:", error);

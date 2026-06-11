@@ -4,6 +4,9 @@ import { NextResponse } from "next/server";
 let cachedMacro: any = null;
 let lastCacheTime = 0;
 const CACHE_TTL_MS = 60 * 1000; // Cache macro data for 1 minute
+const RESPONSE_CACHE_HEADERS = {
+  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300"
+};
 
 async function fetchWithTimeout(url: string, options: any, timeoutMs = 1500) {
   const controller = new AbortController();
@@ -21,7 +24,7 @@ async function fetchWithTimeout(url: string, options: any, timeoutMs = 1500) {
 export async function GET() {
   const now = Date.now();
   if (cachedMacro && (now - lastCacheTime < CACHE_TTL_MS)) {
-    return NextResponse.json(cachedMacro, { headers: { "x-cache": "HIT" } });
+    return NextResponse.json(cachedMacro, { headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "HIT" } });
   }
 
   // Realistic mock data as fallback
@@ -121,5 +124,5 @@ export async function GET() {
   cachedMacro = result;
   lastCacheTime = now;
 
-  return NextResponse.json(result, { headers: { "x-cache": "MISS" } });
+  return NextResponse.json(result, { headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "MISS" } });
 }
