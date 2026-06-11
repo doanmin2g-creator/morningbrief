@@ -28,6 +28,9 @@ interface AudioContextProps {
   volume: number;
   setVolume: (v: number) => void;
   isPodcastExpanded: boolean;
+  showPlaylist: boolean;
+  setShowPlaylist: (s: boolean) => void;
+  handleSeekChange: (e: any) => void;
   setIsPodcastExpanded: (e: boolean) => void;
   isPodcastClosing: boolean;
   setIsPodcastClosing: (c: boolean) => void;
@@ -72,6 +75,7 @@ export function AudioProvider({ children, lang }: { children: ReactNode, lang: s
   const [podcastSearchQuery, setPodcastSearchQuery] = useState<string>("");
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const [volume, setVolume] = useState<number>(1.0);
+  const [showPlaylist, setShowPlaylist] = useState(false);
   const [isPodcastExpanded, setIsPodcastExpanded] = useState<boolean>(false);
   const [isPodcastClosing, setIsPodcastClosing] = useState<boolean>(false);
   const [isMobilePlaylistOpen, setIsMobilePlaylistOpen] = useState<boolean>(false);
@@ -237,6 +241,8 @@ export function AudioProvider({ children, lang }: { children: ReactNode, lang: s
     if (audioRef.current) setDuration(audioRef.current.duration);
   };
 
+  const handleSeekChange = (e: any) => { if (!audioRef.current) return; const newTime = parseFloat(e.target.value); audioRef.current.currentTime = newTime; setCurrentTime(newTime); };
+
   const handleTrackEnded = () => {
     nextTrack();
   };
@@ -256,6 +262,8 @@ export function AudioProvider({ children, lang }: { children: ReactNode, lang: s
       playbackRate, setPlaybackRate,
       volume, setVolume,
       isPodcastExpanded, setIsPodcastExpanded,
+      showPlaylist, setShowPlaylist,
+      handleSeekChange,
       isPodcastClosing, setIsPodcastClosing,
       isMobilePlaylistOpen, setIsMobilePlaylistOpen,
       isMobileMiniHidden, setIsMobileMiniHidden,

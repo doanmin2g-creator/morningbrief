@@ -4879,3 +4879,50 @@ body {
     animation: trackFadeIn 0.28s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
+
+.mobile-podcast-hub-wrapper { 
+  background: rgba(255,255,255,0.03); 
+  border-radius: 28px; 
+  padding: 20px 8px; 
+  margin: 0 16px 24px; 
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 12px 40px rgba(0,0,0,0.15); 
+  backdrop-filter: blur(24px); 
+  -webkit-backdrop-filter: blur(24px); 
+}
+[data-theme="light"] .mobile-podcast-hub-wrapper { 
+  background: rgba(255,255,255,0.65); 
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04), 0 12px 40px rgba(0,0,0,0.08); 
+}
+
+/* Glassmorphism overrides for Hub Elements */
+.mobile-podcast-hub-wrapper .mobile-channel-bubble-avatar-wrap {
+    background: rgba(120, 120, 120, 0.1);
+    border: 2.5px solid rgba(120, 120, 120, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.mobile-podcast-hub-wrapper .mobile-channel-bubble-btn.active .mobile-channel-bubble-avatar-wrap {
+    border-color: var(--channel-color);
+    box-shadow: 0 0 0 2px var(--bg-body), 0 0 0 4px var(--channel-color);
+}
+.mobile-podcast-hub-wrapper .mobile-podcast-search-input {
+    background: rgba(120, 120, 120, 0.12);
+    border: 1px solid rgba(120, 120, 120, 0.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.mobile-podcast-hub-wrapper .mobile-podcast-search-input:focus {
+    background: rgba(120, 120, 120, 0.22);
+    border-color: var(--accent-blue);
+}
+.mobile-podcast-hub-wrapper .mobile-subchannel-pill {
+    background: rgba(120, 120, 120, 0.12);
+    border: 1px solid rgba(120, 120, 120, 0.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.mobile-podcast-hub-wrapper .mobile-subchannel-pill.active {
+    background: var(--text-primary);
+    color: var(--bg-body);
+    border-color: transparent;
+}
