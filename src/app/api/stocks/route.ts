@@ -64,6 +64,20 @@ interface IndexOverview {
   noChange: number;          // Số mã không đổi
 }
 
+function formatVolume(value?: number) {
+  if (!value || !Number.isFinite(value)) return "N/A";
+  if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })}B`;
+  }
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })}M`;
+  }
+  if (value >= 1_000) {
+    return `${(value / 1_000).toLocaleString("en-US", { maximumFractionDigits: 1 })}K`;
+  }
+  return value.toLocaleString("en-US");
+}
+
 async function fetchSymbolsChunk(symbols: string[]) {
   const symbolsStr = symbols.map(s => encodeURIComponent(s)).join(",");
   const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${symbolsStr}&range=1d&interval=1d`;
@@ -275,10 +289,12 @@ export async function GET(request: Request) {
         let price = "N/A";
         let change = "0.00%";
         let isPositive = true;
+        let volume = 0;
 
         if (meta) {
           const currentPrice = meta.regularMarketPrice;
           const prevClose = meta.previousClose || meta.chartPreviousClose;
+          volume = meta.regularMarketVolume || 0;
 
           if (currentPrice !== undefined && prevClose !== undefined) {
             const diff = currentPrice - prevClose;
@@ -301,7 +317,9 @@ export async function GET(request: Request) {
           change,
           isPositive,
           sector: t.sector,
-          exchange: t.exchange
+          exchange: t.exchange,
+          volume,
+          volumeStr: formatVolume(volume)
         };
       });
 
@@ -398,10 +416,12 @@ export async function GET(request: Request) {
         let price = "N/A";
         let change = "0.00%";
         let isPositive = true;
+        let volume = 0;
 
         if (meta) {
           const currentPrice = meta.regularMarketPrice;
           const prevClose = meta.previousClose || meta.chartPreviousClose;
+          volume = meta.regularMarketVolume || 0;
 
           if (currentPrice !== undefined && prevClose !== undefined) {
             const diff = currentPrice - prevClose;
@@ -423,7 +443,9 @@ export async function GET(request: Request) {
           change,
           isPositive,
           sector: info.name_vn,
-          exchange
+          exchange,
+          volume,
+          volumeStr: formatVolume(volume)
         };
       });
     } catch (err) {

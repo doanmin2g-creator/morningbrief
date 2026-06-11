@@ -76,11 +76,14 @@ const ECOSYSTEM_MAP: Record<string, string[]> = {
 };
 
 // Fetch CafeF news for a single symbol
-async function fetchSingleSymbolNews(symbol: string): Promise<NewsItem[]> {
+async function fetchSingleSymbolNews(symbol: string, pageIndex = 1, pageSize = 5): Promise<NewsItem[]> {
   const cleanSym = symbol.trim().toUpperCase();
+  const safePage = Math.max(1, Math.min(pageIndex, 200));
+  const safePageSize = Math.max(1, Math.min(pageSize, 10));
   
   // Check cache
-  const cached = newsCache.get(cleanSym);
+  const cacheKey = `${cleanSym}:${safePage}:${safePageSize}`;
+  const cached = newsCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
   }
@@ -89,7 +92,7 @@ async function fetchSingleSymbolNews(symbol: string): Promise<NewsItem[]> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
-    const url = `https://cafef.vn/du-lieu/Ajax/PageNew/News.ashx?Symbol=${cleanSym}&NewsType=0&PageIndex=1&PageSize=5`;
+    const url = `https://cafef.vn/du-lieu/Ajax/PageNew/News.ashx?Symbol=${cleanSym}&NewsType=0&PageIndex=${safePage}&PageSize=${safePageSize}`;
     const res = await fetch(url, {
       signal: controller.signal,
       headers: CAFEF_HEADERS
@@ -137,7 +140,7 @@ async function fetchSingleSymbolNews(symbol: string): Promise<NewsItem[]> {
       };
     }).filter((n: NewsItem) => n.title);
 
-    newsCache.set(cleanSym, { data: news, timestamp: Date.now() });
+    newsCache.set(cacheKey, { data: news, timestamp: Date.now() });
     return news;
   } catch (err: any) {
     if (err.name === "AbortError") {
@@ -153,6 +156,8 @@ async function fetchSingleSymbolNews(symbol: string): Promise<NewsItem[]> {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const symbolsQuery = searchParams.get("symbols") || "";
+  const page = Math.max(1, Math.min(parseInt(searchParams.get("page") || "1", 10) || 1, 200));
+  const pageSize = Math.max(1, Math.min(parseInt(searchParams.get("pageSize") || "5", 10) || 5, 10));
 
   if (!symbolsQuery) {
     return NextResponse.json([], { headers: RESPONSE_CACHE_HEADERS });
@@ -188,7 +193,7 @@ export async function GET(request: Request) {
   try {
     // Fetch news concurrently for all resolved symbols
     const results = await Promise.all(
-      symbolsToFetch.map(sym => fetchSingleSymbolNews(sym).catch(() => [] as NewsItem[]))
+      symbolsToFetch.map(sym => fetchSingleSymbolNews(sym, page, pageSize).catch(() => [] as NewsItem[]))
     );
 
     // Merge news
@@ -212,8 +217,8 @@ export async function GET(request: Request) {
     // Sort by timestamp descending (most recent first)
     mergedNews.sort((a, b) => b.timestamp - a.timestamp);
 
-    // Limit to 12 items for mobile friendliness
-    const finalNews = mergedNews.slice(0, 12);
+    // Keep each response compact; the client appends page by page.
+    const finalNews = mergedNews.slice(0, 24);
 
     return NextResponse.json(finalNews, { headers: RESPONSE_CACHE_HEADERS });
   } catch (err: any) {

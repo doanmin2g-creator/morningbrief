@@ -10,7 +10,7 @@ export interface TickerItem {
   sector: string;
   exchange?: string;
   history?: number[];
-  volume?: string;
+  volume?: string | number;
   volumeStr?: string;
 }
 

@@ -16,6 +16,11 @@ interface TickerItem {
   sector: string;
   exchange?: string;
   history?: number[];
+  volume?: number;
+  volumeStr?: string;
+  buyVolume?: string;
+  sellVolume?: string;
+  lastUpdated?: string;
 }
 
 interface StockSearchResult {
@@ -578,7 +583,14 @@ export default function Home() {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [watchlistNews, setWatchlistNews] = useState<WatchlistNewsItem[]>([]);
   const [loadingWatchlistNews, setLoadingWatchlistNews] = useState(false);
+  const [loadingMoreWatchlistNews, setLoadingMoreWatchlistNews] = useState(false);
+  const [watchlistNewsPage, setWatchlistNewsPage] = useState(1);
+  const [hasMoreWatchlistNews, setHasMoreWatchlistNews] = useState(true);
   const [visibleWatchlistNewsCount, setVisibleWatchlistNewsCount] = useState(8);
+  const [activeWatchlistStock, setActiveWatchlistStock] = useState<TickerItem | null>(null);
+  const [activeWatchlistDetail, setActiveWatchlistDetail] = useState<StockSearchResult | null>(null);
+  const [loadingWatchlistDetail, setLoadingWatchlistDetail] = useState(false);
+  const [isWatchlistDetailClosing, setIsWatchlistDetailClosing] = useState(false);
   const [macroData, setMacroData] = useState<MacroData | null>(null);
   const [loadingMacro, setLoadingMacro] = useState(true);
   // Index overview stats (liquidity, breadth, foreign trading) from CafeF
@@ -720,6 +732,7 @@ export default function Home() {
       if (mobilePlayerCloseTimerRef.current) clearTimeout(mobilePlayerCloseTimerRef.current);
       if (readerCloseTimerRef.current) clearTimeout(readerCloseTimerRef.current);
       if (artSwipeTimerRef.current) clearTimeout(artSwipeTimerRef.current);
+      if (watchlistDetailCloseTimerRef.current) clearTimeout(watchlistDetailCloseTimerRef.current);
     };
   }, []);
   
@@ -750,6 +763,7 @@ export default function Home() {
   const mobilePlayerCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
   const readerCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
   const artSwipeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const watchlistDetailCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   function openArticle(article: NewsItem) {
     if (readerCloseTimerRef.current) clearTimeout(readerCloseTimerRef.current);
@@ -766,6 +780,52 @@ export default function Home() {
       setIsReaderClosing(false);
     }, 360);
   }
+
+  const getCleanTickerSymbol = (symbol: string) => {
+    return symbol.split(" ")[0].replace(".VN", "").replace("^", "").trim().toUpperCase();
+  };
+
+  const formatWatchlistVolume = (item?: TickerItem | null) => {
+    if (!item) return "N/A";
+    if (item.volumeStr) return item.volumeStr;
+    if (item.volume && Number.isFinite(item.volume)) return item.volume.toLocaleString("en-US");
+    return "N/A";
+  };
+
+  const openWatchlistStockDetail = async (item: TickerItem) => {
+    if (watchlistDetailCloseTimerRef.current) clearTimeout(watchlistDetailCloseTimerRef.current);
+    setIsWatchlistDetailClosing(false);
+    setActiveWatchlistStock(item);
+    setActiveWatchlistDetail(null);
+    setLoadingWatchlistDetail(true);
+
+    const symbol = getCleanTickerSymbol(item.symbol || item.ticker);
+    try {
+      const res = await fetch(`/api/stock-search?q=${encodeURIComponent(symbol)}`);
+      if (res.ok) {
+        const data = await res.json() as StockSearchResult[];
+        const exactMatch = Array.isArray(data)
+          ? data.find((entry) => entry.symbol.toUpperCase() === symbol) || data[0]
+          : null;
+        setActiveWatchlistDetail(exactMatch || null);
+      }
+    } catch (err) {
+      console.error("Error fetching watchlist stock detail:", err);
+    } finally {
+      setLoadingWatchlistDetail(false);
+    }
+  };
+
+  const closeWatchlistStockDetail = () => {
+    if (!activeWatchlistStock || isWatchlistDetailClosing) return;
+    setIsWatchlistDetailClosing(true);
+    if (watchlistDetailCloseTimerRef.current) clearTimeout(watchlistDetailCloseTimerRef.current);
+    watchlistDetailCloseTimerRef.current = setTimeout(() => {
+      setActiveWatchlistStock(null);
+      setActiveWatchlistDetail(null);
+      setIsWatchlistDetailClosing(false);
+    }, 420);
+  };
 
   function closeMobilePlayer() {
     if (!isMobilePlayerOpen || isMobilePlayerClosing) return;
@@ -1505,13 +1565,19 @@ export default function Home() {
   useEffect(() => {
     if (watchlist.length === 0) {
       setWatchlistNews([]);
+      setWatchlistNewsPage(1);
+      setHasMoreWatchlistNews(false);
+      setLoadingWatchlistNews(false);
       return;
     }
 
     const fetchWatchlistNews = async () => {
       const symbolsParam = watchlist.join(",");
-      const cacheKey = `watchlist-news:${symbolsParam}`;
+      const cacheKey = `watchlist-news:${symbolsParam}:page:1`;
       const cached = readClientCache<WatchlistNewsItem[]>(cacheKey, CLIENT_CACHE_MAX_AGE.watchlistNews);
+      setWatchlistNewsPage(1);
+      setVisibleWatchlistNewsCount(8);
+      setHasMoreWatchlistNews(true);
       if (cached) {
         setWatchlistNews(cached);
         setLoadingWatchlistNews(false);
@@ -1519,10 +1585,11 @@ export default function Home() {
         setLoadingWatchlistNews(true);
       }
       try {
-        const res = await fetch(`/api/watchlist-news?symbols=${encodeURIComponent(symbolsParam)}`);
+        const res = await fetch(`/api/watchlist-news?symbols=${encodeURIComponent(symbolsParam)}&page=1&pageSize=5`);
         if (res.ok) {
           const data = await res.json() as WatchlistNewsItem[];
           setWatchlistNews(Array.isArray(data) ? data : []);
+          setHasMoreWatchlistNews(Array.isArray(data) && data.length > 0);
           if (Array.isArray(data)) {
             writeClientCache(cacheKey, data);
           }
@@ -1536,6 +1603,52 @@ export default function Home() {
 
     fetchWatchlistNews();
   }, [watchlist]);
+
+  const loadMoreWatchlistNews = async () => {
+    if (watchlist.length === 0 || loadingMoreWatchlistNews) return;
+
+    const nextPage = watchlistNewsPage + 1;
+    const symbolsParam = watchlist.join(",");
+    const cacheKey = `watchlist-news:${symbolsParam}:page:${nextPage}`;
+    setLoadingMoreWatchlistNews(true);
+
+    try {
+      const cached = readClientCache<WatchlistNewsItem[]>(cacheKey, CLIENT_CACHE_MAX_AGE.watchlistNews);
+      let data = cached;
+      if (!data) {
+        const res = await fetch(`/api/watchlist-news?symbols=${encodeURIComponent(symbolsParam)}&page=${nextPage}&pageSize=5`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json() as WatchlistNewsItem[];
+        if (Array.isArray(data)) writeClientCache(cacheKey, data);
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        setHasMoreWatchlistNews(false);
+        return;
+      }
+
+      setWatchlistNews((prev) => {
+        const seen = new Set(prev.map((item) => item.link || item.title));
+        const fresh = data.filter((item) => {
+          const key = item.link || item.title;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        if (fresh.length === 0) {
+          setHasMoreWatchlistNews(false);
+          return prev;
+        }
+        setVisibleWatchlistNewsCount(prev.length + fresh.length);
+        return [...prev, ...fresh];
+      });
+      setWatchlistNewsPage(nextPage);
+    } catch (err) {
+      console.error("Error loading more watchlist news:", err);
+    } finally {
+      setLoadingMoreWatchlistNews(false);
+    }
+  };
 
   // Extract dynamically what real-time broker articles might be in the news list
   useEffect(() => {
@@ -2512,31 +2625,49 @@ export default function Home() {
                       : "Click the star ⭐ next to symbols to pin them here."}
                   </div>
                 ) : (
-                  tickerList.filter(item => watchlist.includes(item.symbol.split(" ")[0])).map((item, idx) => (
-                    <div key={idx} className="crypto-item" style={{ padding: "4px 0" }}>
-                      <div className="crypto-info">
+                  tickerList.filter(item => watchlist.includes(getCleanTickerSymbol(item.symbol))).map((item, idx) => {
+                    const symbol = getCleanTickerSymbol(item.symbol || item.ticker);
+                    const volumeLabel = formatWatchlistVolume(item);
+                    return (
+                    <div
+                      key={`${symbol}-${idx}`}
+                      className="crypto-item watchlist-stock-card"
+                      onClick={() => openWatchlistStockDetail(item)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") openWatchlistStockDetail(item);
+                      }}
+                    >
+                      <div className="crypto-info watchlist-stock-main">
                         <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                           <span 
                             onClick={(e) => {
                               e.stopPropagation();
-                              toggleWatchlist(item.symbol.split(" ")[0]);
+                              toggleWatchlist(symbol);
                             }}
                             style={{ color: "var(--accent-red)", cursor: "pointer", fontSize: "0.95rem" }}
                           >
                             ⭐
                           </span>
-                          {item.symbol.split(" ")[0]}
+                          {symbol}
                         </h4>
                         <p style={{ fontSize: "0.7rem" }}>{item.sector}</p>
                       </div>
-                      <div className="crypto-price-info">
+                      <div className="crypto-price-info watchlist-stock-side">
                         <h4 style={{ fontSize: "0.88rem" }}>{item.price}</h4>
                         <span className={`ticker-change ${getStockColorClass(item)}`} style={{ fontSize: "0.78rem" }}>
                           {item.change}
                         </span>
+                        <div className="watchlist-stock-flow">
+                          <span>{lang === "vi" ? "KL" : "Vol"} {volumeLabel}</span>
+                          <span>{lang === "vi" ? "Mua" : "Buy"} {item.buyVolume || "..."}</span>
+                          <span>{lang === "vi" ? "Ban" : "Sell"} {item.sellVolume || "..."}</span>
+                        </div>
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -2673,13 +2804,16 @@ export default function Home() {
                         );
                       })}
                     </div>
-                    {watchlistNews.length > visibleWatchlistNewsCount && (
+                    {hasMoreWatchlistNews && (
                       <button 
                         className="load-more-news-btn"
-                        onClick={() => setVisibleWatchlistNewsCount(prev => prev + 8)}
+                        onClick={loadMoreWatchlistNews}
+                        disabled={loadingMoreWatchlistNews}
                         style={{ marginTop: "1rem", width: "100%" }}
                       >
-                        {lang === "vi" ? "Xem thêm tin hệ sinh thái" : "Load more ecosystem news"}
+                        {loadingMoreWatchlistNews
+                          ? (lang === "vi" ? "Đang tải thêm..." : "Loading more...")
+                          : (lang === "vi" ? "Xem thêm tin hệ sinh thái" : "Load more ecosystem news")}
                       </button>
                     )}
                   </>
@@ -2880,6 +3014,134 @@ export default function Home() {
       <footer className="ft-footer">
         <p>{trans[lang].footerText}</p>
       </footer>
+
+      {/* Mobile Stock Detail Sheet */}
+      {activeWatchlistStock && (() => {
+        const stock = activeWatchlistStock;
+        const detail = activeWatchlistDetail;
+        const symbol = getCleanTickerSymbol(stock.symbol || stock.ticker);
+        const displayName = detail?.displayName || stock.sector;
+        const price = detail?.price || stock.price;
+        const change = detail?.change || stock.change;
+        const isPositive = detail?.isPositive ?? stock.isPositive;
+        const colorClass = isPositive ? "positive" : "negative";
+        const rawPrice = parseFloat(String(price).replace(/,/g, "")) || 1;
+        const chartValues = stock.history && stock.history.length > 1
+          ? stock.history
+          : [rawPrice * 0.985, rawPrice * 1.004, rawPrice * 0.996, rawPrice * 1.012, rawPrice * 0.991, rawPrice];
+        const minChart = Math.min(...chartValues);
+        const maxChart = Math.max(...chartValues);
+        const range = maxChart - minChart || 1;
+        const chartPoints = chartValues.map((value, index) => {
+          const x = 12 + (index / Math.max(chartValues.length - 1, 1)) * 276;
+          const y = 126 - ((value - minChart) / range) * 92;
+          return `${x},${y}`;
+        }).join(" ");
+        const detailStats = [
+          { label: lang === "vi" ? "TC" : "Prev", value: detail?.prevClose || "N/A" },
+          { label: lang === "vi" ? "Cao nhất" : "High", value: detail?.dayHigh || "N/A" },
+          { label: lang === "vi" ? "Thấp nhất" : "Low", value: detail?.dayLow || "N/A" },
+          { label: lang === "vi" ? "Tổng KL" : "Volume", value: detail?.volume || formatWatchlistVolume(stock) },
+          { label: lang === "vi" ? "Mua" : "Buy", value: stock.buyVolume || (lang === "vi" ? "Đang cập nhật" : "Updating") },
+          { label: lang === "vi" ? "Bán" : "Sell", value: stock.sellVolume || (lang === "vi" ? "Đang cập nhật" : "Updating") },
+          { label: "EPS", value: detail?.eps || "N/A" },
+          { label: "P/E", value: detail?.pe || "N/A" },
+          { label: "P/B", value: detail?.pb || "N/A" },
+          { label: lang === "vi" ? "Vốn hóa" : "Mkt Cap", value: detail?.marketCapVnd || detail?.marketCap || "N/A" }
+        ];
+
+        return (
+          <div className={`stock-detail-overlay mobile-only ${isWatchlistDetailClosing ? "closing" : ""}`} onClick={closeWatchlistStockDetail}>
+            <section className={`stock-detail-sheet ${isWatchlistDetailClosing ? "closing" : ""}`} onClick={(event) => event.stopPropagation()}>
+              <header className="stock-detail-hero">
+                <button className="stock-detail-back-btn" onClick={closeWatchlistStockDetail} aria-label={lang === "vi" ? "Quay lại" : "Back"}>
+                  <span>‹</span>
+                </button>
+                <div className="stock-detail-title-wrap">
+                  <h2>{symbol}</h2>
+                  <p>{displayName}</p>
+                </div>
+                <button
+                  className="stock-detail-star-btn"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleWatchlist(symbol);
+                  }}
+                  aria-label={lang === "vi" ? "Watchlist" : "Watchlist"}
+                >
+                  ⭐
+                </button>
+              </header>
+
+              <div className="stock-detail-body">
+                <div className="stock-detail-price-block">
+                  <strong>{price}</strong>
+                  <span className={`ticker-change ${colorClass}`}>{change}</span>
+                </div>
+
+                <div className="stock-detail-tabs" aria-hidden="true">
+                  <span className="active">{lang === "vi" ? "Tổng quan" : "Overview"}</span>
+                  <span>{lang === "vi" ? "Tin tức" : "News"}</span>
+                  <span>{lang === "vi" ? "Phân tích" : "Analysis"}</span>
+                </div>
+
+                <div className="stock-detail-chart-card">
+                  <div className="stock-detail-chart-head">
+                    <span>{symbol} · 1D</span>
+                    <strong className={colorClass}>{change}</strong>
+                  </div>
+                  <svg viewBox="0 0 300 150" role="img" aria-label={`${symbol} intraday mini chart`}>
+                    <line x1="12" y1="34" x2="288" y2="34" />
+                    <line x1="12" y1="80" x2="288" y2="80" />
+                    <line x1="12" y1="126" x2="288" y2="126" />
+                    <polyline points={chartPoints} />
+                  </svg>
+                </div>
+
+                {loadingWatchlistDetail ? (
+                  <div className="stock-detail-loading">
+                    <div className="skeleton-line"></div>
+                    <div className="skeleton-line"></div>
+                    <div className="skeleton-line"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="stock-detail-stats-grid">
+                      {detailStats.map((item) => (
+                        <div key={item.label} className="stock-detail-stat">
+                          <span>{item.label}</span>
+                          <strong>{item.value}</strong>
+                        </div>
+                      ))}
+                    </div>
+
+                    {detail?.description && (
+                      <p className="stock-detail-description">{detail.description}</p>
+                    )}
+
+                    {detail?.relatedNews && detail.relatedNews.length > 0 && (
+                      <div className="stock-detail-news">
+                        <h3>{lang === "vi" ? "Tin liên quan" : "Related news"}</h3>
+                        {detail.relatedNews.slice(0, 3).map((news, index) => (
+                          <a key={`${news.link}-${index}`} href={news.link} target="_blank" rel="noopener noreferrer">
+                            <span>{news.title}</span>
+                            <small>{news.time}</small>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="stock-detail-actions">
+                <button className="buy">{lang === "vi" ? "Mua" : "Buy"}</button>
+                <button className="sell">{lang === "vi" ? "Bán" : "Sell"}</button>
+              </div>
+            </section>
+          </div>
+        );
+      })()}
 
       {/* Reader Mode Modal */}
       {activeArticle && (
