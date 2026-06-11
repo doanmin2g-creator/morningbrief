@@ -55,14 +55,16 @@ export const NewsFeed: React.FC<NewsFeedProps> = React.memo(({
                 style={{ cursor: "pointer" }}
               >
                 <div className="news-content">
-                  <span className="news-source">{item.source}</span>
+                  <span className="news-source">
+                    <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>Nguồn gốc: {item.source}</a>
+                  </span>
                   <h3 className="news-title">{item.title}</h3>
                   {item.description && (
                     <p className="news-meta news-summary">
                       {item.description}
                     </p>
                   )}
-                  <span className="news-meta">{item.time}</span>
+                  <span className="news-meta">Đăng lúc: {item.time}</span>
                 </div>
                 {hasImage && (
                   <div className="news-image-wrap">

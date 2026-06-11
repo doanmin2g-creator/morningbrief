@@ -157,6 +157,15 @@ function toSafeJsonLd(value: unknown): string {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
+const fetchWithTimeout = async (url: string, options: RequestInit & { timeout?: number } = {}) => {
+  const { timeout = 8000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  const response = await fetch(url, { ...fetchOptions, signal: controller.signal });
+  clearTimeout(id);
+  return response;
+};
+
 const trans = {
   vi: {
     market: "THỊ TRƯỜNG",
@@ -204,7 +213,7 @@ const trans = {
     loadingNews: "Đang tải tin tức...",
     economicImpact: "Mức độ tác động",
     economicSource: "Nguồn tin",
-    footerText: `© ${new Date().getFullYear()} THE MORNING BRIEF. Thiết kế theo phong cách báo giấy hiện đại của FT.`,
+    footerText: `© ${new Date().getFullYear()} THE MORNING BRIEF. Nội dung trên MorningBrief chỉ nhằm mục đích cung cấp thông tin và giáo dục, không phải khuyến nghị đầu tư, tư vấn tài chính cá nhân, hoặc lời mời mua/bán chứng khoán. Người dùng cần tự nghiên cứu và/hoặc tham khảo chuyên gia được cấp phép trước khi ra quyết định đầu tư.`,
     vovDesc: "Bản tin Thời sự 12h ngày 09/06/2026 của Đài Tiếng nói Việt Nam VOV. Cập nhật những tin tức nóng hổi trong nước và quốc tế.",
     tuoitreDesc: "Những thông tin hướng dẫn, giải đáp của các cơ quan quản lý và các bệnh viện về chính sách hỗ trợ thẻ bảo hiểm y tế cho người dân.",
     vietceteraDesc: "Trong số Vietnam Innovators Tiếng Việt tuần này, chúng ta sẽ trò chuyện cùng Phương Nam, Co-founder của Saigon Tếu về chủ đề kinh doanh biểu diễn nghệ thuật giải trí tại Việt Nam.",
@@ -262,7 +271,7 @@ const trans = {
     loadingNews: "Loading news...",
     economicImpact: "Impact level",
     economicSource: "Source",
-    footerText: `© ${new Date().getFullYear()} THE MORNING BRIEF. Designed in the modern broadsheet style of the Financial Times.`,
+    footerText: `© ${new Date().getFullYear()} THE MORNING BRIEF. MorningBrief content is for informational and educational purposes only. It is not personalized financial advice, investment recommendation, or an offer to buy or sell securities.`,
     vovDesc: "12h News Bulletin on June 9, 2026, from Voice of Vietnam VOV. Latest domestic and international updates.",
     tuoitreDesc: "Guidelines and explanations from regulatory agencies and hospitals on health insurance support policies for citizens.",
     vietceteraDesc: "In this week's Vietnamese edition of Vietnam Innovators, we chat with Phuong Nam, Co-founder of Saigon Teu, about the entertainment and performance business in Vietnam.",
@@ -334,17 +343,6 @@ const fallbackPlaylist: PodcastTrack[] = [
   }
 ];
 
-const channelSpotifyShowMap: Record<string, string> = {
-  "All": "https://open.spotify.com/embed/show/3S72mDqJjN3GjF8Xf4d8A8",
-  "VOV": "https://open.spotify.com/embed/show/6Xb7X5W7oQZ6o4Y6z3w8o2",
-  "Tuổi Trẻ": "https://open.spotify.com/embed/show/3S72mDqJjN3GjF8Xf4d8A8",
-  "Vietcetera": "https://open.spotify.com/embed/show/6pYVjYlT4K2s91Z1t2d2A2",
-  "VietSuccess": "https://open.spotify.com/embed/show/2BvQ7wU45P3a0Ww03gK82N",
-  "Tài Chính & Kinh Doanh": "https://open.spotify.com/embed/show/3x78X9TOWiJ4m4y1Jz2QzZ",
-  "Tâm Sự Tài Chính": "https://open.spotify.com/embed/show/3pYVjYlT4K2s91Z1t2d2A2",
-  "Hieu.TV": "https://open.spotify.com/embed/show/3x78X9TOWiJ4m4y1Jz2QzZ",
-  "BBC": "https://open.spotify.com/embed/show/0a5wdfz3T88Yq7r4P1RkYj"
-};
 
 // Dynamic Economic Calendar events generator based on user's system date
 function getUpcomingEvents(lang: "vi" | "en") {
@@ -763,6 +761,9 @@ export default function Home() {
   const [visibleWatchlistNewsCount, setVisibleWatchlistNewsCount] = useState(8);
   const [activeWatchlistStock, setActiveWatchlistStock] = useState<TickerItem | null>(null);
   const [activeWatchlistDetail, setActiveWatchlistDetail] = useState<StockSearchResult | null>(null);
+  const [detailChartTimeframe, setDetailChartTimeframe] = useState<number>(30);
+  const [detailChartData, setDetailChartData] = useState<number[]>([]);
+  const [loadingDetailChart, setLoadingDetailChart] = useState(false);
   const [loadingWatchlistDetail, setLoadingWatchlistDetail] = useState(false);
   const [isWatchlistDetailClosing, setIsWatchlistDetailClosing] = useState(false);
   const [macroData, setMacroData] = useState<MacroData | null>(null);
@@ -771,7 +772,6 @@ export default function Home() {
   const [indexStats, setIndexStats] = useState<Record<string, IndexOverview>>({});
   const [activeArticle, setActiveArticle] = useState<NewsItem | null>(null);
   const [activeMacroEvent, setActiveMacroEvent] = useState<any | null>(null);
-  const [podcastPlayerMode, setPodcastPlayerMode] = useState<"rss" | "spotify">("rss");
   const [isReaderClosing, setIsReaderClosing] = useState(false);
   const [isMacroEventClosing, setIsMacroEventClosing] = useState(false);
   const [scrapedParagraphs, setScrapedParagraphs] = useState<string[]>([]);
@@ -983,6 +983,23 @@ export default function Home() {
     return "N/A";
   };
 
+  const fetchDetailChart = async (symbol: string, days: number) => {
+    setLoadingDetailChart(true);
+    try {
+      const res = await fetch(`/api/stocks/history?symbol=${encodeURIComponent(symbol)}&days=${days}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.history) {
+          setDetailChartData(data.history);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching detail chart:", err);
+    } finally {
+      setLoadingDetailChart(false);
+    }
+  };
+
   const openWatchlistStockDetail = async (item: TickerItem) => {
     if (watchlistDetailCloseTimerRef.current) clearTimeout(watchlistDetailCloseTimerRef.current);
     setIsWatchlistDetailClosing(false);
@@ -991,6 +1008,10 @@ export default function Home() {
     setLoadingWatchlistDetail(true);
 
     const symbol = getCleanTickerSymbol(item.symbol || item.ticker);
+    setDetailChartTimeframe(30);
+    setDetailChartData([]);
+    fetchDetailChart(symbol, 30);
+    
     try {
       const res = await fetch(`/api/stock-search?q=${encodeURIComponent(symbol)}`);
       if (res.ok) {
@@ -1211,7 +1232,7 @@ export default function Home() {
         ? `?watchlist=${encodeURIComponent(savedWatchlist.join(","))}`
         : "";
 
-      const res = await fetch(`/api/stocks${watchlistParams}`);
+      const res = await fetchWithTimeout(`/api/stocks${watchlistParams}`);
       if (!res.ok) throw new Error("Failed to fetch stock data");
       const data = await res.json() as StocksApiResponse & { isFallback?: boolean };
       applyStockData(data);
@@ -1247,7 +1268,7 @@ export default function Home() {
       setLoadingNews(true);
     }
     try {
-      const res = await fetch(`/api/news?category=${category}`);
+      const res = await fetchWithTimeout(`/api/news?category=${category}`);
       if (!res.ok) throw new Error("Failed to fetch news data");
       const data = await res.json() as NewsItem[];
       setNewsList(data);
@@ -1268,7 +1289,7 @@ export default function Home() {
       setLoadingMacro(true);
     }
     try {
-      const res = await fetch("/api/macro");
+      const res = await fetchWithTimeout("/api/macro");
       if (res.ok) {
         const data = await res.json() as MacroData;
         setMacroData(data);
@@ -2340,39 +2361,6 @@ export default function Home() {
                 <div className="podcast-header-status" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                   {loadingPodcast && <span className="podcast-live-dot"></span>}
 
-                  <div className="podcast-mode-switch" style={{ display: "flex", gap: "2px", background: "rgba(0,0,0,0.06)", padding: "2px", borderRadius: "12px", zIndex: 5 }} onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      onClick={() => setPodcastPlayerMode("rss")}
-                      style={{
-                        background: podcastPlayerMode === "rss" ? "var(--bg-card)" : "transparent",
-                        border: "none",
-                        borderRadius: "10px",
-                        fontSize: "0.62rem",
-                        fontWeight: "700",
-                        padding: "2px 6px",
-                        color: podcastPlayerMode === "rss" ? "var(--text-primary)" : "var(--text-muted)",
-                        cursor: "pointer"
-                      }}
-                    >
-                      RSS
-                    </button>
-                    <button 
-                      onClick={() => setPodcastPlayerMode("spotify")}
-                      style={{
-                        background: podcastPlayerMode === "spotify" ? "var(--bg-card)" : "transparent",
-                        border: "none",
-                        borderRadius: "10px",
-                        fontSize: "0.62rem",
-                        fontWeight: "700",
-                        padding: "2px 6px",
-                        color: podcastPlayerMode === "spotify" ? "var(--text-primary)" : "var(--text-muted)",
-                        cursor: "pointer"
-                      }}
-                    >
-                      SPOTIFY
-                    </button>
-                  </div>
-
                   <button 
                     onClick={(e) => { e.stopPropagation(); setIsPodcastExpanded(true); }} 
                     className="podcast-expand-btn"
@@ -2404,19 +2392,7 @@ export default function Home() {
               </div>
               
               <div className="podcast-player-body">
-                {podcastPlayerMode === "spotify" ? (
-                  <div className="podcast-spotify-embed-container" style={{ padding: "0.5rem" }}>
-                    <iframe
-                      style={{ borderRadius: "12px", border: "none" }}
-                      src={channelSpotifyShowMap[selectedChannel] || channelSpotifyShowMap["All"]}
-                      width="100%"
-                      height="232"
-                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                      loading="lazy"
-                    />
-                  </div>
-                ) : (
-                  <>
+
                     <div className="podcast-cover-section" onClick={() => setIsPodcastExpanded(true)} style={{ cursor: "pointer" }}>
                       <div className={`podcast-cover-wrap ${isPlaying ? "spinning" : ""}`}>
                         <img 
@@ -2529,8 +2505,6 @@ export default function Home() {
                         ))}
                       </div>
                     </div>
-                  </>
-                )}
               </div>
             </div>
 
@@ -3103,14 +3077,21 @@ export default function Home() {
                           style={{ cursor: "pointer" }}
                         >
                           <div className="news-content">
-                            <span className="news-source">{newsItem.source}</span>
+                            <span className="news-source" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <a href={newsItem.link} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>Nguồn gốc: {newsItem.source}</a>
+                              {news.relatedSymbol && (
+                                <span style={{ backgroundColor: "var(--accent-blue)", color: "white", padding: "1px 4px", borderRadius: "3px", fontSize: "0.6rem", fontWeight: "bold" }}>
+                                  Liên quan: {news.relatedSymbol}
+                                </span>
+                              )}
+                            </span>
                             <h3 className="news-title">{newsItem.title}</h3>
                             {newsItem.description && (
                               <p className="news-meta news-summary">
                                 {newsItem.description}
                               </p>
                             )}
-                            <span className="news-meta">{newsItem.time}</span>
+                            <span className="news-meta">Đăng lúc: {newsItem.time}</span>
                           </div>
                           {hasImage && (
                             <div className="news-image-wrap">
@@ -3168,14 +3149,21 @@ export default function Home() {
                             style={{ cursor: "pointer" }}
                           >
                             <div className="news-content">
-                              <span className="news-source">{newsItem.source}</span>
+                              <span className="news-source" style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                                <a href={newsItem.link} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>Nguồn gốc: {newsItem.source}</a>
+                                {news.relatedSymbol && (
+                                  <span style={{ backgroundColor: "var(--accent-blue)", color: "white", padding: "1px 4px", borderRadius: "3px", fontSize: "0.6rem", fontWeight: "bold" }}>
+                                    Liên quan: {news.relatedSymbol}
+                                  </span>
+                                )}
+                              </span>
                               <h3 className="news-title">{newsItem.title}</h3>
                               {newsItem.description && (
                                 <p className="news-meta news-summary">
                                   {newsItem.description}
                                 </p>
                               )}
-                              <span className="news-meta">{newsItem.time}</span>
+                              <span className="news-meta">Đăng lúc: {newsItem.time}</span>
                             </div>
                             {hasImage && (
                               <div className="news-image-wrap">
@@ -3855,71 +3843,7 @@ export default function Home() {
             </div>
             {/* Modal Body */}
             <div className="podcast-modal-body">
-              {podcastPlayerMode === "spotify" ? (
-                <>
-                  {/* Left Column: Spotify Player Embed */}
-                  <div className="podcast-modal-now-playing-panel" style={{ display: "flex", flexDirection: "column", gap: "12px", justifyContent: "flex-start" }}>
-                    <iframe
-                      style={{ borderRadius: "12px", border: "none" }}
-                      src={channelSpotifyShowMap[selectedChannel] || channelSpotifyShowMap["All"]}
-                      width="100%"
-                      height="352"
-                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                      loading="lazy"
-                    />
-                    <div className="podcast-modal-now-playing-details" style={{ marginTop: "10px" }}>
-                      <span className="podcast-modal-now-playing-kicker" style={{ color: "var(--accent-red)", fontWeight: "bold", textTransform: "uppercase" }}>
-                        Spotify Channel Active
-                      </span>
-                      <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontStyle: "italic", margin: "4px 0 0 0" }}>
-                        {lang === "vi"
-                          ? "Kênh podcast được phát trực tiếp qua tiện ích của Spotify. Bạn có thể chọn danh mục kênh ở bảng bên phải."
-                          : "The podcast channel is streamed directly via the Spotify widget. Select channels on the right."}
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Right Column: Spotify channel description */}
-                  <div className="podcast-modal-main-panel">
-                    {/* Channels pill bar at top */}
-                    <div className="podcast-modal-channels-bar">
-                      {channelsList.map((ch) => (
-                        <button
-                          key={ch.id}
-                          onClick={() => { setSelectedChannel(ch.id); setSelectedSubChannel("All"); setCurrentTrackIndex(0); }}
-                          className={`podcast-modal-channel-pill ${selectedChannel === ch.id ? "active" : ""}`}
-                          style={{ '--channel-color': ch.color } as React.CSSProperties}
-                        >
-                          <img src={ch.logo} alt={ch.name} />
-                          <span>{ch.name}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "15px", height: "100%", overflowY: "auto", fontFamily: "var(--font-serif)" }}>
-                      <div style={{ borderBottom: "1px solid var(--border-classic)", paddingBottom: "10px" }}>
-                        <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: "bold" }}>
-                          {channelsList.find(c => c.id === selectedChannel)?.name || "Spotify Podcast"}
-                        </h3>
-                        <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
-                          {channelsList.find(c => c.id === selectedChannel)?.desc || ""}
-                        </p>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <span style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--accent-red)", letterSpacing: "1px", fontFamily: "var(--font-sans)" }}>
-                          {lang === "vi" ? "Tính năng Spotify" : "Spotify Features"}
-                        </span>
-                        <ul style={{ margin: "0 0 0 20px", padding: 0, fontSize: "0.85rem", color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: "6px" }}>
-                          <li>{lang === "vi" ? "Cập nhật tự động các tập phát sóng mới nhất" : "Automatically updates with the latest episodes"}</li>
-                          <li>{lang === "vi" ? "Chất lượng âm thanh chuẩn phòng thu" : "Studio-quality streaming directly from source"}</li>
-                          <li>{lang === "vi" ? "Hỗ trợ tua, phát nền và điều khiển linh hoạt" : "Supports seek, background play, and controls"}</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
                   {/* Left Column: Now Playing (Apple Music style) */}
                   <div className="podcast-modal-now-playing-panel">
                     <div className={`podcast-modal-now-playing-cover-wrap ${isPlaying ? "playing" : ""}`}>
@@ -3995,22 +3919,9 @@ export default function Home() {
                       })}
                     </div>
                   </div>
-                </>
-              )}
             </div>
             {/* Control Bar */}
-            {podcastPlayerMode === "spotify" ? (
-              <div className="podcast-modal-control-bar" style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "70px", background: "rgba(0, 0, 0, 0.02)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}>
-                  <span style={{ width: "8px", height: "8px", background: "#1DB954", borderRadius: "50%", display: "inline-block" }}></span>
-                  <span>
-                    {lang === "vi"
-                      ? "Trình phát Spotify đang được kích hoạt. Hãy điều khiển trực tiếp trên Widget phát nhạc."
-                      : "Spotify player is active. Control playback directly within the Spotify widget."}
-                  </span>
-                </div>
-              </div>
-            ) : (
+
               <div className="podcast-modal-control-bar">
                 <div className={`podcast-modal-now-playing-disc ${isPlaying ? "spinning" : ""}`}>
                   <img src={currentTrack?.coverUrl} alt="" />
@@ -4040,7 +3951,6 @@ export default function Home() {
                   <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} />
                 </div>
               </div>
-            )}
           </div>
         </div>
       )}

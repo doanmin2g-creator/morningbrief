@@ -361,10 +361,10 @@ export class VietstockConnector {
   /**
    * Fetches Historical Data points (for charting)
    */
-  public static async fetchHistory(symbol: string): Promise<number[]> {
+  public static async fetchHistory(symbol: string, days: number = 30): Promise<number[]> {
     const { symbol: cleanSym } = this.getCleanSymbol(symbol);
     const to = Math.floor(Date.now() / 1000);
-    const from = to - 30 * 24 * 60 * 60; // 30 days
+    const from = to - days * 24 * 60 * 60; // configurable days
     
     const isIndex = cleanSym === "VNINDEX" || cleanSym === "HNX" || cleanSym === "HNXINDEX" || cleanSym === "UPCOM";
     const path = isIndex ? "index" : "stock";

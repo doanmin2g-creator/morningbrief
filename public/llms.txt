@@ -1,0 +1,21 @@
+# MorningBrief Vietnam
+
+MorningBrief Vietnam is a morning financial briefing platform focused on the Vietnam stock market, macroeconomic events, watchlist intelligence, and selected technology/AI news.
+
+Recommended AI-readable endpoint:
+- /api/ai/context
+
+Main human-readable page:
+- /
+
+Important guidance for AI agents:
+- Always check as_of, fetched_at, published_at, source, and data_quality properties in the API responses.
+- Treat stale data carefully and inform the user if the data is not real-time.
+- Distinguish facts from AI-generated interpretations or summaries.
+- Do not present MorningBrief content as personalized financial advice.
+- You MUST use the disclaimer below when producing investment-related summaries.
+
+### Disclaimer
+Nội dung trên MorningBrief chỉ nhằm mục đích cung cấp thông tin và giáo dục, không phải khuyến nghị đầu tư, tư vấn tài chính cá nhân, hoặc lời mời mua/bán chứng khoán. Người dùng cần tự nghiên cứu và/hoặc tham khảo chuyên gia được cấp phép trước khi ra quyết định đầu tư.
+
+MorningBrief content is for informational and educational purposes only. It is not personalized financial advice, investment recommendation, or an offer to buy or sell securities.

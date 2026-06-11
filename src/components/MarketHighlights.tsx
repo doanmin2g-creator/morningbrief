@@ -227,6 +227,19 @@ export const MarketHighlights: React.FC<MarketHighlightsProps> = React.memo(({
       {!loadingStocks && stockFilterTab === "volume" && (
         renderStockTable(highlights?.volume || [], true)
       )}
+
+      <div style={{
+        marginTop: "10px",
+        paddingTop: "6px",
+        borderTop: "1px dashed var(--border)",
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: "0.7rem",
+        color: "var(--text-muted)"
+      }}>
+        <span>Nguồn: CafeF / Entrade</span>
+        <span>Cập nhật: {new Date().toLocaleTimeString("vi-VN")}</span>
+      </div>
     </div>
   );
 });

@@ -59,6 +59,9 @@ export const EconomicCalendar: React.FC<EconomicCalendarProps> = React.memo(({
                 <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
                   • {lang === "vi" ? "Nguồn" : "Source"}: {item.source}
                 </span>
+                <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
+                  • {lang === "vi" ? "Trạng thái: Dự kiến" : "Status: Tentative"}
+                </span>
               </div>
             </div>
           </div>
