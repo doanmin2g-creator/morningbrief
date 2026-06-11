@@ -1038,7 +1038,7 @@ body {
 }
 
 .podcast-playlist-section.open {
-    max-height: 250px;
+    height: 210px;
     opacity: 1;
     margin-top: 12px;
     padding-top: 12px;
@@ -1081,7 +1081,7 @@ body {
 }
 
 .playlist-drawer-items {
-    max-height: 160px;
+    height: 160px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -2898,7 +2898,7 @@ body {
 }
 
 .podcast-modal-overlay.closing {
-    animation: fadeOutOverlay 0.28s ease both;
+    animation: fadeOutOverlay 0.35s ease both;
 }
 
 @keyframes fadeInOverlay {
@@ -2926,7 +2926,7 @@ body {
 }
 
 .podcast-modal-content.closing {
-    animation: slideDownModal 0.28s cubic-bezier(0.4, 0, 1, 1) both;
+    animation: slideDownModal 0.35s cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 @keyframes slideUpModal {
@@ -4396,12 +4396,8 @@ body {
 }
 
 @keyframes playerOverlayOut {
-    from {
-        opacity: 1;
-    }
-    to {
-        opacity: 0;
-    }
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 @keyframes playerSheetUp {
@@ -4797,7 +4793,7 @@ body {
 .mobile-podcast-app-bg-overlay {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.05), var(--bg-paper) 80%);
+    background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--active-channel-color) 45%, transparent), var(--bg-paper) 75%);
 }
 
 /* --- Reader modal grabber & dragging transitions --- */

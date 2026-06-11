@@ -522,7 +522,7 @@ export default function Home() {
   const [isDraggingReader, setIsDraggingReader] = useState<boolean>(false);
   const readerSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const [isMobilePlaylistOpen, setIsMobilePlaylistOpen] = useState<boolean>(false);
-  const [isMobileMiniHidden, setIsMobileMiniHidden] = useState(false);
+  const [isMobileMiniHidden, setIsMobileMiniHidden] = useState(true);
   const [isMobilePlayerOpen, setIsMobilePlayerOpen] = useState(false);
   const [isMobilePlayerClosing, setIsMobilePlayerClosing] = useState(false);
   const [isAudioInfoOpen, setIsAudioInfoOpen] = useState(false);
@@ -691,7 +691,7 @@ export default function Home() {
     setTimeout(() => {
       setIsPodcastExpanded(false);
       setIsPodcastClosing(false);
-    }, 280);
+    }, 350);
   };
 
   // Format Date in traditional FT format
@@ -1068,6 +1068,26 @@ export default function Home() {
     const mins = Math.floor(time / 60);
     const secs = Math.floor(time % 60);
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  const playerSheetSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const startPlayerSheetSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    const touch = event.touches[0];
+    playerSheetSwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const endPlayerSheetSwipe = (event: React.TouchEvent<HTMLElement>) => {
+    const start = playerSheetSwipeStartRef.current;
+    const touch = event.changedTouches[0];
+    playerSheetSwipeStartRef.current = null;
+    if (!start || !touch) return;
+
+    const deltaY = touch.clientY - start.y;
+    // Swipe down from upper half of the screen
+    if (deltaY > 60 && start.y < window.innerHeight / 2) {
+      closeMobilePlayer();
+    }
   };
 
   const startMiniPlayerSwipe = (event: React.TouchEvent<HTMLElement>) => {
@@ -2716,10 +2736,14 @@ export default function Home() {
             </div>
 
           </aside>
+        </div>
 
-          {/* Mobile Podcast App Section */}
-          <section className={`mobile-podcast-app-section mobile-only ${activeMobileTab === "podcast" ? "mobile-tab-animate" : "hidden-mobile"}`}>
-            <div className="mobile-podcast-app-bg">
+        {/* Mobile Podcast App Section */}
+        <section 
+          className={`mobile-podcast-app-section mobile-only ${activeMobileTab === "podcast" ? "mobile-tab-animate" : "hidden-mobile"}`}
+          style={{ '--active-channel-color': channelsList.find(c => c.id === selectedChannel)?.color || 'var(--accent-blue)' } as React.CSSProperties}
+        >
+          <div className="mobile-podcast-app-bg">
               <img src={currentTrack?.coverUrl} alt="" className="mobile-podcast-app-bg-image" />
               <div className="mobile-podcast-app-bg-overlay"></div>
             </div>
@@ -2878,8 +2902,6 @@ export default function Home() {
                 )}
               </div>
             </section>
-
-        </div>
       </main>
 
       {/* Footer */}
@@ -3206,7 +3228,12 @@ export default function Home() {
 
       {isMobilePlayerOpen && currentTrack && (
         <div className={`mobile-player-sheet-overlay mobile-only ${isMobilePlayerClosing ? "closing" : ""}`} onClick={closeMobilePlayer}>
-          <div className="mobile-player-sheet" onClick={(e) => e.stopPropagation()}>
+          <div 
+            className="mobile-player-sheet" 
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={startPlayerSheetSwipe}
+            onTouchEnd={endPlayerSheetSwipe}
+          >
             <button className="mobile-player-sheet-close" onClick={closeMobilePlayer} title={lang === "vi" ? "Đóng" : "Close"}>×</button>
             <div className="mobile-player-grabber"></div>
             <div 
