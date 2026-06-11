@@ -1590,34 +1590,6 @@ export default function Home() {
                 EN
               </button>
             </div>
-
-            <button
-              onClick={togglePlayPause}
-              className={`see-more-btn ${isPlaying ? "active-audio" : ""}`}
-              style={{
-                margin: 0,
-                padding: "6px 12px",
-                fontSize: "0.78rem",
-                textTransform: "none",
-                borderRadius: "20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px"
-              }}
-              title={isPlaying ? (lang === "vi" ? "Dừng nghe" : "Stop") : (lang === "vi" ? "Nghe Bản tin" : "Listen")}
-            >
-              <span>
-                {isPlaying ? (
-                  lang === "vi" ? "■ Dừng nghe" : "■ Stop"
-                ) : (
-                  <>
-                    <img src="/icon/headphone-icon.png" style={{ width: '14px', height: '14px', marginRight: '4px', verticalAlign: 'middle', objectFit: 'contain', display: 'inline-block' }} alt="" />
-                    {lang === "vi" ? "Nghe Bản tin" : "Listen"}
-                  </>
-                )}
-              </span>
-            </button>
-
             {/* Desktop Only Reload button on the right (uses piggy-bank-icon and aligned beautifully) */}
             <div className="avatar hidden-mobile" onClick={fetchStocks} title={trans[lang].refresh}>
               <img src="/icon/piggy-bank-icon.png" alt="Reload" />
