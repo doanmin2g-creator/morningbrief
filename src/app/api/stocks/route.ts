@@ -1,22 +1,13 @@
 import { NextResponse } from "next/server";
 import companies from "../stock-search/companies.json";
+import { VietstockConnector } from "./vietstock-connector";
 
-// Cache structure in memory — 5 minutes TTL
+// Cache structure in memory — 1 minute TTL for fresh portfolio quotes
 let cachedData: any = null;
 let lastCacheTime = 0;
-const CACHE_TTL_MS = 60 * 1000; // 1 minute for fresher portfolio quotes
+const CACHE_TTL_MS = 60 * 1000;
 const RESPONSE_CACHE_HEADERS = {
   "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60"
-};
-
-// CafeF browser simulation headers
-const CAFEF_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Referer": "https://cafef.vn/",
-  "Accept": "application/json, text/javascript, */*; q=0.01",
-  "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-  "X-Requested-With": "XMLHttpRequest",
-  "Connection": "keep-alive"
 };
 
 // Major Vietnamese tickers with explicit exchanges (used for the watchlist fallback/ticker marquee)
@@ -54,315 +45,6 @@ const TICKERS = [
   { symbol: "VEA.VN", displayName: "VEA (Máy động lực VEAM)", sector: "Công nghiệp", exchange: "UPCoM" }
 ];
 
-interface IndexOverview {
-  totalValue: number;        // Tổng GTGD (tỷ VNĐ)
-  foreignBuyValue: number;   // GT mua khối ngoại (tỷ VNĐ)
-  foreignSellValue: number;  // GT bán khối ngoại (tỷ VNĐ)
-  foreignNetValue: number;   // GT ròng khối ngoại (tỷ VNĐ)
-  advance: number;           // Số mã tăng
-  decline: number;           // Số mã giảm
-  noChange: number;          // Số mã không đổi
-}
-
-function formatVolume(value?: number) {
-  if (!value || !Number.isFinite(value)) return "N/A";
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })}B`;
-  }
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })}M`;
-  }
-  if (value >= 1_000) {
-    return `${(value / 1_000).toLocaleString("en-US", { maximumFractionDigits: 1 })}K`;
-  }
-  return value.toLocaleString("en-US");
-}
-
-interface CafeFRealtimeQuote {
-  price?: string;
-  change?: string;
-  isPositive?: boolean;
-  prevClose?: string;
-  dayHigh?: string;
-  dayLow?: string;
-  volume?: number;
-  volumeStr?: string;
-  buyVolume?: string;
-  sellVolume?: string;
-}
-
-async function fetchCafeFRealtimeQuote(symbol: string): Promise<CafeFRealtimeQuote | null> {
-  const cleanSym = symbol.split(" ")[0].replace(".VN", "").replace("^", "").trim().toUpperCase();
-  if (cleanSym === "VNINDEX" || cleanSym === "HNXINDEX" || cleanSym === "UPCOM") return null;
-
-  let result: CafeFRealtimeQuote = {};
-
-  try {
-    const [headerRes, priceRes, orderBookRes] = await Promise.all([
-      fetch(`https://cafef.vn/du-lieu/Ajax/PageNew/PriceRealTimeHeader.ashx?Symbol=${cleanSym}`, { headers: CAFEF_HEADERS }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`https://cafef.vn/du-lieu/Ajax/PageNew/RealtimePrice.ashx?Symbol=${cleanSym}`, { headers: CAFEF_HEADERS }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`https://cafef.vn/du-lieu/Ajax/PageNew/GetDataTKDL.ashx?Symbol=${cleanSym}&PageIndex=1&PageSize=1`, { headers: CAFEF_HEADERS }).then(r => r.ok ? r.json() : null).catch(() => null)
-    ]);
-
-    let rawPrice = 0;
-    let rawPrevClose = 0;
-
-    if (headerRes && headerRes.Success && headerRes.Data) {
-      const d = headerRes.Data;
-      rawPrice = d.Gia || 0;
-      rawPrevClose = d.GiaThamChieu || 0;
-      result.volume = d.KhoiLuong || 0;
-      result.volumeStr = formatVolume(d.KhoiLuong);
-    }
-
-    if (priceRes && priceRes.Success && priceRes.Data) {
-      const d = priceRes.Data;
-      if (d.GiaThamChieu && !rawPrevClose) {
-        rawPrevClose = d.GiaThamChieu;
-      }
-      if (d.GiaCaoNhat) result.dayHigh = d.GiaCaoNhat.toLocaleString("en-US", { maximumFractionDigits: 2 });
-      if (d.GiaThapNhat) result.dayLow = d.GiaThapNhat.toLocaleString("en-US", { maximumFractionDigits: 2 });
-    }
-
-    if (rawPrice > 0 && rawPrevClose > 0) {
-      result.price = rawPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      result.prevClose = rawPrevClose.toLocaleString("en-US", { maximumFractionDigits: 2 });
-      
-      const diff = rawPrice - rawPrevClose;
-      const pctChange = (diff / rawPrevClose) * 100;
-      result.change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
-      result.isPositive = pctChange >= 0;
-    }
-
-    if (orderBookRes && orderBookRes.Success && Array.isArray(orderBookRes.Data) && orderBookRes.Data.length > 0) {
-      const latest = orderBookRes.Data[0];
-      const bidLeft = latest.BidLeft;
-      const askLeft = latest.AskLeft;
-      result.buyVolume = bidLeft !== null && bidLeft !== undefined ? formatVolume(bidLeft) : "N/A";
-      result.sellVolume = askLeft !== null && askLeft !== undefined ? formatVolume(askLeft) : "N/A";
-    } else {
-      result.buyVolume = "N/A";
-      result.sellVolume = "N/A";
-    }
-  } catch (err) {
-    console.error(`Error fetching CafeF realtime quote for ${cleanSym}:`, err);
-  }
-
-  // Fallback to Entrade if CafeF didn't return valid pricing/prevClose data
-  if (!result.price || !result.prevClose || result.prevClose === "N/A") {
-    try {
-      const to = Math.floor(Date.now() / 1000);
-      const from = to - 10 * 24 * 60 * 60; // 10 days
-      const url = `https://services.entrade.com.vn/chart-api/v2/ohlcs/stock?from=${from}&to=${to}&symbol=${cleanSym}&resolution=1D`;
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.c && data.c.length >= 1) {
-          const latestPrice = data.c[data.c.length - 1];
-          const prevPrice = data.c.length >= 2 ? data.c[data.c.length - 2] : latestPrice;
-          const diff = latestPrice - prevPrice;
-          const pctChange = prevPrice !== 0 ? (diff / prevPrice) * 100 : 0;
-
-          if (!result.price) {
-            result.price = latestPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          }
-          if (!result.prevClose || result.prevClose === "N/A") {
-            result.prevClose = prevPrice.toLocaleString("en-US", { maximumFractionDigits: 2 });
-          }
-          if (!result.change) {
-            result.change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
-            result.isPositive = pctChange >= 0;
-          }
-          if (!result.dayHigh || result.dayHigh === "N/A") {
-            const highPrice = data.h && data.h.length >= 1 ? Math.max(...data.h.slice(-2)) : latestPrice;
-            result.dayHigh = highPrice.toLocaleString("en-US", { maximumFractionDigits: 2 });
-          }
-          if (!result.dayLow || result.dayLow === "N/A") {
-            const lowPrice = data.l && data.l.length >= 1 ? Math.min(...data.l.slice(-2)) : latestPrice;
-            result.dayLow = lowPrice.toLocaleString("en-US", { maximumFractionDigits: 2 });
-          }
-          if (!result.volume) {
-            const lastVol = data.v && data.v.length >= 1 ? data.v[data.v.length - 1] : 0;
-            result.volume = lastVol;
-            result.volumeStr = formatVolume(lastVol);
-          }
-        }
-      }
-    } catch (err) {
-      console.error(`Entrade fallback failed for ${cleanSym}:`, err);
-    }
-  }
-
-  // Ensure default stats are never empty if still N/A
-  if (!result.price) result.price = "N/A";
-  if (!result.change) result.change = "0.00%";
-  if (result.isPositive === undefined) result.isPositive = true;
-  if (!result.prevClose) result.prevClose = "N/A";
-  if (!result.dayHigh) result.dayHigh = "N/A";
-  if (!result.dayLow) result.dayLow = "N/A";
-  if (!result.volumeStr) result.volumeStr = "N/A";
-  if (!result.buyVolume) result.buyVolume = "N/A";
-  if (!result.sellVolume) result.sellVolume = "N/A";
-
-  return result;
-}
-
-async function fetchSymbolsChunk(symbols: string[]) {
-  const symbolsStr = symbols.map(s => encodeURIComponent(s)).join(",");
-  const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${symbolsStr}&range=1d&interval=1d`;
-  
-  try {
-    const response = await fetch(url, {
-      next: { revalidate: 15 },
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Yahoo Finance Spark API error: HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data?.spark?.result || [];
-  } catch (error) {
-    console.error("Error fetching Yahoo Finance chunks:", error);
-    return [];
-  }
-}
-
-async function fetchEntradeIndex(symbol: string, displayName: string) {
-  const to = Math.floor(Date.now() / 1000);
-  const from = to - 20 * 24 * 60 * 60; // 20 days to ensure we have enough trading days (~14 points)
-  const url = `https://services.entrade.com.vn/chart-api/v2/ohlcs/index?from=${from}&to=${to}&symbol=${symbol}&resolution=1D`;
-  
-  try {
-    const res = await fetch(url, {
-      next: { revalidate: 15 },
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
-      }
-    });
-    if (!res.ok) throw new Error(`Entrade API error: HTTP ${res.status}`);
-    const data = await res.json();
-    if (data && data.c && data.c.length >= 2) {
-      const latestPrice = data.c[data.c.length - 1];
-      const prevPrice = data.c[data.c.length - 2];
-      const diff = latestPrice - prevPrice;
-      const pctChange = (diff / prevPrice) * 100;
-      
-      const priceStr = latestPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const changeStr = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
-      const isPositive = pctChange >= 0;
-      
-      return {
-        symbol: displayName,
-        ticker: symbol,
-        price: priceStr,
-        change: changeStr,
-        isPositive,
-        sector: "Chỉ số",
-        exchange: "INDEX",
-        history: data.c
-      };
-    }
-  } catch (error) {
-    console.error(`Error fetching Entrade index ${symbol}:`, error);
-  }
-  return null;
-}
-
-// Fetch comprehensive index overview from CafeF (liquidity, breadth, foreign trading)
-async function fetchCafeFIndexOverview(exchange: "HOSE" | "HNX" | "UPCOM"): Promise<IndexOverview | null> {
-  // Map exchange to CafeF centerID parameter
-  const centerIDMap: Record<string, string> = {
-    "HOSE": "1",
-    "HNX": "2", 
-    "UPCOM": "9"
-  };
-  const centerID = centerIDMap[exchange];
-  const url = `https://cafef.vn/du-lieu/Ajax/Mobile/Smart/AjaxMarketSummary.ashx?centerID=${centerID}`;
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: CAFEF_HEADERS
-    });
-    clearTimeout(timeout);
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    const data = await response.json();
-    
-    // CafeF returns nested Data object
-    const d = data?.Data || data;
-    if (!d) return null;
-
-    // Parse values — CafeF returns values in billions VND (tỷ)
-    const totalValue = parseFloat(d.TotalDeal || d.TotalValue || d.GiaTriGiaoDich || 0);
-    const foreignBuyValue = parseFloat(d.ForeignBuyValue || d.NNMua || 0);
-    const foreignSellValue = parseFloat(d.ForeignSellValue || d.NNBan || 0);
-    const foreignNetValue = foreignBuyValue - foreignSellValue;
-    const advance = parseInt(d.Advance || d.Tang || d.SoMaTang || 0);
-    const decline = parseInt(d.Decline || d.Giam || d.SoMaGiam || 0);
-    const noChange = parseInt(d.NoChange || d.KhongDoi || d.SoMaKhongDoi || 0);
-
-    return { totalValue, foreignBuyValue, foreignSellValue, foreignNetValue, advance, decline, noChange };
-  } catch (err: any) {
-    if (err.name === "AbortError") {
-      console.warn(`CafeF index overview timeout for ${exchange}`);
-    } else {
-      console.error(`Error fetching CafeF index overview (${exchange}):`, err);
-    }
-    return null;
-  }
-}
-
-// Scrape Top Stock highlights from CafeF
-async function fetchCafeFHighlight(exchange: string, type: "UP" | "DOWN" | "VOLUME"): Promise<any[]> {
-  const url = `https://cafef.vn/du-lieu/Ajax/Mobile/Smart/AjaxTop10CP.ashx?centerID=${exchange}&type=${type}`;
-  try {
-    const response = await fetch(url, {
-      next: { revalidate: 30 },
-      headers: CAFEF_HEADERS
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    const list = data?.Data || [];
-    
-    return list.map((item: any) => {
-      const pctChange = item.ChangePricePercent || 0;
-      const changeStr = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
-      return {
-        symbol: item.Symbol,
-        ticker: item.Symbol,
-        price: item.CurrentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        change: changeStr,
-        isPositive: pctChange >= 0,
-        pctChange: pctChange,
-        volume: item.Volume || 0,
-        volumeStr: (item.Volume || 0).toLocaleString("en-US"),
-        sector: item.CompanyName || "Cổ phiếu Việt Nam",
-        exchange: exchange === "UPCOM" ? "UPCoM" : exchange
-      };
-    });
-  } catch (err) {
-    console.error(`Error scraping CafeF Top Stocks (${exchange} - ${type}):`, err);
-    return [];
-  }
-}
-
 export async function GET(request: Request) {
   const now = Date.now();
   const { searchParams } = new URL(request.url);
@@ -370,115 +52,86 @@ export async function GET(request: Request) {
 
   let baseData = cachedData;
   let isHit = "HIT";
+  let isFallbackResponse = false;
 
   if (!baseData || (now - lastCacheTime >= CACHE_TTL_MS)) {
     isHit = "MISS";
     try {
-      // 1. Fetch all default data concurrently
-      const chunk1Symbols = TICKERS.slice(0, 15).map(t => t.symbol);
-      const chunk2Symbols = TICKERS.slice(15).map(t => t.symbol);
-
+      // 1. Fetch indices and overviews concurrently
       const [
-        result1, 
-        result2, 
-        vnIndexEntrade, 
-        hnxIndex, 
-        upcomIndex,
-        // CafeF index overviews (liquidity, breadth, foreign)
+        vnIndex, hnxIndex, upcomIndex,
         hoseOverview, hnxOverview, upcomOverview,
-        // CafeF highlights (3 exchanges x 3 categories)
+        // Rankings
         hoseUp, hoseDown, hoseVol,
         hnxUp, hnxDown, hnxVol,
         upcomUp, upcomDown, upcomVol
       ] = await Promise.all([
-        fetchSymbolsChunk(chunk1Symbols),
-        fetchSymbolsChunk(chunk2Symbols),
-        fetchEntradeIndex("VNINDEX", "VN-Index"),
-        fetchEntradeIndex("HNX", "HNX-Index"),
-        fetchEntradeIndex("UPCOM", "UPCoM-Index"),
-        // Index overviews from CafeF
-        fetchCafeFIndexOverview("HOSE"),
-        fetchCafeFIndexOverview("HNX"),
-        fetchCafeFIndexOverview("UPCOM"),
-        // Top stock highlights
-        fetchCafeFHighlight("HOSE", "UP"),
-        fetchCafeFHighlight("HOSE", "DOWN"),
-        fetchCafeFHighlight("HOSE", "VOLUME"),
-        fetchCafeFHighlight("HNX", "UP"),
-        fetchCafeFHighlight("HNX", "DOWN"),
-        fetchCafeFHighlight("HNX", "VOLUME"),
-        fetchCafeFHighlight("UPCOM", "UP"),
-        fetchCafeFHighlight("UPCOM", "DOWN"),
-        fetchCafeFHighlight("UPCOM", "VOLUME")
+        VietstockConnector.fetchIndex("VNINDEX", "VN-Index"),
+        VietstockConnector.fetchIndex("HNX", "HNX-Index"),
+        VietstockConnector.fetchIndex("UPCOM", "UPCoM-Index"),
+        VietstockConnector.fetchIndexOverview("HOSE"),
+        VietstockConnector.fetchIndexOverview("HNX"),
+        VietstockConnector.fetchIndexOverview("UPCOM"),
+        // Rankings
+        VietstockConnector.fetchHighlights("HOSE", "UP"),
+        VietstockConnector.fetchHighlights("HOSE", "DOWN"),
+        VietstockConnector.fetchHighlights("HOSE", "VOLUME"),
+        VietstockConnector.fetchHighlights("HNX", "UP"),
+        VietstockConnector.fetchHighlights("HNX", "DOWN"),
+        VietstockConnector.fetchHighlights("HNX", "VOLUME"),
+        VietstockConnector.fetchHighlights("UPCOM", "UP"),
+        VietstockConnector.fetchHighlights("UPCOM", "DOWN"),
+        VietstockConnector.fetchHighlights("UPCOM", "VOLUME")
       ]);
 
-      const resultList = [...(result1 || []), ...(result2 || [])];
-
-      // 2. Map standard Watchlist/Banner tickers
-      const defaultWatchlistTickers = TICKERS.map(t => {
-        const tickerResult = resultList.find((r: any) => r.symbol === t.symbol);
-        const meta = tickerResult?.response?.[0]?.meta;
-
-        let price = "N/A";
-        let change = "0.00%";
-        let isPositive = true;
-        let volume = 0;
-
-        if (meta) {
-          const currentPrice = meta.regularMarketPrice;
-          const prevClose = meta.previousClose || meta.chartPreviousClose;
-          volume = meta.regularMarketVolume || 0;
-
-          if (currentPrice !== undefined && prevClose !== undefined) {
-            const diff = currentPrice - prevClose;
-            const pctChange = (diff / prevClose) * 100;
-            const isIndex = t.symbol.startsWith("^");
-
-            price = isIndex
-              ? currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-              : (currentPrice / 1000).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-            change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
-            isPositive = pctChange >= 0;
+      // 2. Fetch default watchlist quotes concurrently
+      const defaultWatchlistQuotes = await Promise.all(
+        TICKERS.map(async (t) => {
+          if (t.exchange === "INDEX") {
+            const indexObj = t.symbol.includes("VNINDEX") ? vnIndex : t.symbol.includes("HNX") ? hnxIndex : upcomIndex;
+            return {
+              symbol: t.displayName,
+              ticker: t.symbol,
+              price: indexObj?.price || "N/A",
+              change: indexObj?.change || "0.00%",
+              isPositive: indexObj?.isPositive ?? true,
+              sector: t.sector,
+              exchange: t.exchange,
+              volume: 0,
+              volumeStr: "N/A"
+            };
           }
-        }
 
-        return {
-          symbol: t.displayName,
-          ticker: t.symbol,
-          price,
-          change,
-          isPositive,
-          sector: t.sector,
-          exchange: t.exchange,
-          volume,
-          volumeStr: formatVolume(volume)
-        };
-      });
+          const quote = await VietstockConnector.fetchStockQuote(t.symbol);
+          // Apply reclassification overrides
+          let exchange = t.exchange;
+          let displayName = t.displayName;
+          if (t.symbol.toUpperCase().includes("SDA")) {
+            exchange = "UPCoM";
+            displayName = "SDA (CTCP Simco Sông Đà)";
+          }
 
-      // 3. Merge Entrade index history + CafeF index overview data
+          return {
+            symbol: displayName,
+            ticker: t.symbol,
+            price: quote.price,
+            change: quote.change,
+            isPositive: quote.isPositive,
+            sector: t.sector,
+            exchange,
+            volume: quote.volume,
+            volumeStr: quote.volumeStr
+          };
+        })
+      );
+
+      // 3. Compile indexes list
       const indices: any[] = [];
-      
-      if (vnIndexEntrade) {
-        indices.push({
-          ...vnIndexEntrade,
-          overview: hoseOverview  // Attach CafeF liquidity/breadth/foreign data
-        });
-      }
-      if (hnxIndex) {
-        indices.push({
-          ...hnxIndex,
-          overview: hnxOverview
-        });
-      }
-      if (upcomIndex) {
-        indices.push({
-          ...upcomIndex,
-          overview: upcomOverview
-        });
-      }
+      if (vnIndex) indices.push({ ...vnIndex, overview: hoseOverview });
+      if (hnxIndex) indices.push({ ...hnxIndex, overview: hnxOverview });
+      if (upcomIndex) indices.push({ ...upcomIndex, overview: upcomOverview });
 
-      // 4. Process CafeF highlights
+      // 4. Compile highlights
       const gainers = [...hoseUp, ...hnxUp, ...upcomUp]
         .sort((a, b) => b.pctChange - a.pctChange)
         .slice(0, 10);
@@ -493,99 +146,71 @@ export async function GET(request: Request) {
 
       baseData = {
         indices,
-        defaultWatchlistTickers,
-        highlights: {
-          gainers,
-          losers,
-          volume
-        }
+        defaultWatchlistTickers: defaultWatchlistQuotes,
+        highlights: { gainers, losers, volume }
       };
 
       cachedData = baseData;
       lastCacheTime = now;
     } catch (error: any) {
-      console.error("Error compiling stock data:", error);
-      
-      // Use cached data as fallback if available
+      console.error("Error fetching market data from VietstockConnector:", error);
       if (cachedData) {
         baseData = cachedData;
         isHit = "FALLBACK";
+        isFallbackResponse = true;
       } else {
         return NextResponse.json({ error: "Failed to fetch stock data", details: error.message }, { status: 500 });
       }
     }
   }
 
-  // 5. Fetch custom watchlist tickers dynamically (bypass global cache for customization)
+  // 5. Load dynamic watchlist symbols
   let customTickers: any[] = [];
   const watchlistSymbols = watchlistQuery
     .split(",")
     .map(s => s.trim().toUpperCase())
     .filter(s => {
       if (!s) return false;
-      // Filter out symbols already covered in TICKERS
-      const inDefault = TICKERS.some(t => {
+      return !TICKERS.some(t => {
         const cleanDefaultSym = t.symbol.replace(".VN", "").replace("^", "").toUpperCase();
         const cleanDisplayName = t.displayName.split(" ")[0].toUpperCase();
         return cleanDefaultSym === s || cleanDisplayName === s;
       });
-      return !inDefault;
     });
 
   if (watchlistSymbols.length > 0) {
     try {
-      const customYahooSymbols = watchlistSymbols.map(s => s.startsWith("^") ? s : `${s}.VN`);
-      const customResults = await fetchSymbolsChunk(customYahooSymbols);
+      customTickers = await Promise.all(
+        watchlistSymbols.map(async (sym) => {
+          const { symbol: cleanSym, exchange } = VietstockConnector.getCleanSymbol(sym);
+          const info = companies.find((c: any) => c.symbol === cleanSym) || { name_vn: "Cổ phiếu Việt Nam", exchange };
+          const displayName = `${cleanSym} - ${info.name_vn}`;
+          const quote = await VietstockConnector.fetchStockQuote(cleanSym);
 
-      customTickers = watchlistSymbols.map(sym => {
-        const yahooSym = sym.startsWith("^") ? sym : `${sym}.VN`;
-        const info = (companies as any[]).find((c: any) => c.symbol === sym) || { name_vn: "Cổ phiếu Việt Nam", exchange: "HOSE" };
-        const displayName = `${sym} - ${info.name_vn}`;
-        const exchange = info.exchange || "HOSE";
-
-        const tickerResult = customResults.find((r: any) => r.symbol === yahooSym);
-        const meta = tickerResult?.response?.[0]?.meta;
-
-        let price = "N/A";
-        let change = "0.00%";
-        let isPositive = true;
-        let volume = 0;
-
-        if (meta) {
-          const currentPrice = meta.regularMarketPrice;
-          const prevClose = meta.previousClose || meta.chartPreviousClose;
-          volume = meta.regularMarketVolume || 0;
-
-          if (currentPrice !== undefined && prevClose !== undefined) {
-            const diff = currentPrice - prevClose;
-            const pctChange = (diff / prevClose) * 100;
-
-            price = sym.startsWith("^")
-              ? currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-              : (currentPrice / 1000).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-            change = (pctChange >= 0 ? "+" : "") + pctChange.toFixed(2) + "%";
-            isPositive = pctChange >= 0;
-          }
-        }
-
-        return {
-          symbol: displayName,
-          ticker: sym,
-          price,
-          change,
-          isPositive,
-          sector: info.name_vn,
-          exchange,
-          volume,
-          volumeStr: formatVolume(volume)
-        };
-      });
+          return {
+            symbol: displayName,
+            ticker: cleanSym,
+            price: quote.price,
+            change: quote.change,
+            isPositive: quote.isPositive,
+            sector: info.name_vn,
+            exchange: cleanSym === "SDA" ? "UPCoM" : exchange,
+            volume: quote.volume,
+            volumeStr: quote.volumeStr
+          };
+        })
+      );
     } catch (err) {
-      console.error("Error fetching custom watchlist quotes:", err);
+      console.error("Error fetching dynamic watchlist symbols:", err);
     }
   }
 
+  const combinedWatchlistTickers = [
+    ...baseData.defaultWatchlistTickers,
+    ...customTickers
+  ];
+
+  // 6. Enrich watchlist with order book details if active
   const activeSymbols = new Set(
     watchlistQuery
       .split(",")
@@ -593,42 +218,41 @@ export async function GET(request: Request) {
       .filter(Boolean)
   );
 
-  const combinedWatchlistTickers = [
-    ...baseData.defaultWatchlistTickers,
-    ...customTickers
-  ];
-
   const enrichedWatchlistTickers = await Promise.all(
     combinedWatchlistTickers.map(async (ticker) => {
       const cleanTicker = ticker.ticker.replace(".VN", "").replace("^", "").trim().toUpperCase();
       
-      // Look up full name from companies.json
-      const company = (companies as any[]).find(c => c.symbol.toUpperCase() === cleanTicker);
-      const companyName = company ? `${cleanTicker} - ${company.name_vn}` : ticker.symbol;
-      const exchange = company ? company.exchange : ticker.exchange;
+      // Override for SDA
+      let exchange = ticker.exchange;
+      let symbol = ticker.symbol;
+      if (cleanTicker === "SDA") {
+        exchange = "UPCoM";
+        symbol = "SDA - CTCP Simco Sông Đà";
+      }
 
       if (activeSymbols.has(cleanTicker)) {
-        const quote = await fetchCafeFRealtimeQuote(ticker.ticker);
+        const quote = await VietstockConnector.fetchStockQuote(cleanTicker);
         return {
           ...ticker,
-          symbol: companyName,
-          exchange: exchange,
-          price: quote?.price || ticker.price,
-          change: quote?.change || ticker.change,
-          isPositive: quote?.isPositive ?? ticker.isPositive,
-          prevClose: quote?.prevClose || "N/A",
-          dayHigh: quote?.dayHigh || "N/A",
-          dayLow: quote?.dayLow || "N/A",
-          volume: quote?.volume || ticker.volume,
-          volumeStr: quote?.volumeStr || ticker.volumeStr,
-          buyVolume: quote?.buyVolume || "N/A",
-          sellVolume: quote?.sellVolume || "N/A"
+          symbol,
+          exchange,
+          price: quote.price || ticker.price,
+          change: quote.change || ticker.change,
+          isPositive: quote.isPositive ?? ticker.isPositive,
+          prevClose: quote.prevClose || "N/A",
+          dayHigh: quote.dayHigh || "N/A",
+          dayLow: quote.dayLow || "N/A",
+          volume: quote.volume || ticker.volume,
+          volumeStr: quote.volumeStr || ticker.volumeStr,
+          buyVolume: quote.buyVolume || "N/A",
+          sellVolume: quote.sellVolume || "N/A"
         };
       }
+
       return {
         ...ticker,
-        symbol: companyName,
-        exchange: exchange,
+        symbol,
+        exchange,
         prevClose: "N/A",
         dayHigh: "N/A",
         dayLow: "N/A",
@@ -641,7 +265,8 @@ export async function GET(request: Request) {
   return NextResponse.json({
     indices: baseData.indices,
     watchlistTickers: enrichedWatchlistTickers,
-    highlights: baseData.highlights
+    highlights: baseData.highlights,
+    isFallback: isFallbackResponse
   }, {
     headers: {
       ...RESPONSE_CACHE_HEADERS,

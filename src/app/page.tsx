@@ -204,7 +204,7 @@ const trans = {
     loadingNews: "Đang tải tin tức...",
     economicImpact: "Mức độ tác động",
     economicSource: "Nguồn tin",
-    footerText: "© 2026 THE MORNING BRIEF. Thiết kế theo phong cách báo giấy hiện đại của FT.",
+    footerText: `© ${new Date().getFullYear()} THE MORNING BRIEF. Thiết kế theo phong cách báo giấy hiện đại của FT.`,
     vovDesc: "Bản tin Thời sự 12h ngày 09/06/2026 của Đài Tiếng nói Việt Nam VOV. Cập nhật những tin tức nóng hổi trong nước và quốc tế.",
     tuoitreDesc: "Những thông tin hướng dẫn, giải đáp của các cơ quan quản lý và các bệnh viện về chính sách hỗ trợ thẻ bảo hiểm y tế cho người dân.",
     vietceteraDesc: "Trong số Vietnam Innovators Tiếng Việt tuần này, chúng ta sẽ trò chuyện cùng Phương Nam, Co-founder của Saigon Tếu về chủ đề kinh doanh biểu diễn nghệ thuật giải trí tại Việt Nam.",
@@ -262,7 +262,7 @@ const trans = {
     loadingNews: "Loading news...",
     economicImpact: "Impact level",
     economicSource: "Source",
-    footerText: "© 2026 THE MORNING BRIEF. Designed in the modern broadsheet style of the Financial Times.",
+    footerText: `© ${new Date().getFullYear()} THE MORNING BRIEF. Designed in the modern broadsheet style of the Financial Times.`,
     vovDesc: "12h News Bulletin on June 9, 2026, from Voice of Vietnam VOV. Latest domestic and international updates.",
     tuoitreDesc: "Guidelines and explanations from regulatory agencies and hospitals on health insurance support policies for citizens.",
     vietceteraDesc: "In this week's Vietnamese edition of Vietnam Innovators, we chat with Phuong Nam, Co-founder of Saigon Teu, about the entertainment and performance business in Vietnam.",
@@ -334,57 +334,224 @@ const fallbackPlaylist: PodcastTrack[] = [
   }
 ];
 
-// Curated Economic Calendar events with detailed read summaries
-const calendarEvents = [
-  {
-    date: "15/06",
-    event: "Báo cáo Tình hình Sản xuất Việt Nam (PMI) Tháng 5",
+const channelSpotifyShowMap: Record<string, string> = {
+  "All": "https://open.spotify.com/embed/show/3S72mDqJjN3GjF8Xf4d8A8",
+  "VOV": "https://open.spotify.com/embed/show/6Xb7X5W7oQZ6o4Y6z3w8o2",
+  "Tuổi Trẻ": "https://open.spotify.com/embed/show/3S72mDqJjN3GjF8Xf4d8A8",
+  "Vietcetera": "https://open.spotify.com/embed/show/6pYVjYlT4K2s91Z1t2d2A2",
+  "VietSuccess": "https://open.spotify.com/embed/show/2BvQ7wU45P3a0Ww03gK82N",
+  "Tài Chính & Kinh Doanh": "https://open.spotify.com/embed/show/3x78X9TOWiJ4m4y1Jz2QzZ",
+  "Tâm Sự Tài Chính": "https://open.spotify.com/embed/show/3pYVjYlT4K2s91Z1t2d2A2",
+  "Hieu.TV": "https://open.spotify.com/embed/show/3x78X9TOWiJ4m4y1Jz2QzZ",
+  "BBC": "https://open.spotify.com/embed/show/0a5wdfz3T88Yq7r4P1RkYj"
+};
+
+// Dynamic Economic Calendar events generator based on user's system date
+function getUpcomingEvents(lang: "vi" | "en") {
+  const now = new Date();
+  const events = [];
+
+  // 1. PMI (Chỉ số Nhà quản trị Mua hàng)
+  // Released on the 1st business day of the next month.
+  const getFirstBusinessDayOfNextMonth = (date: Date) => {
+    const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+    while (nextMonth.getDay() === 0 || nextMonth.getDay() === 6) { // 0: Sun, 6: Sat
+      nextMonth.setDate(nextMonth.getDate() + 1);
+    }
+    return nextMonth;
+  };
+  
+  const currentMonthPmi = new Date(now.getFullYear(), now.getMonth(), 1);
+  while (currentMonthPmi.getDay() === 0 || currentMonthPmi.getDay() === 6) {
+    currentMonthPmi.setDate(currentMonthPmi.getDate() + 1);
+  }
+  
+  let displayMonthNameVi = "";
+  let displayMonthNameEn = "";
+  let pmiReleaseDate = now;
+
+  if (now < currentMonthPmi) {
+    pmiReleaseDate = currentMonthPmi;
+    const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthNum = prevMonthDate.getMonth() + 1;
+    displayMonthNameVi = `Tháng ${monthNum}`;
+    displayMonthNameEn = prevMonthDate.toLocaleString("en-US", { month: "long" });
+  } else {
+    pmiReleaseDate = getFirstBusinessDayOfNextMonth(now);
+    const monthNum = now.getMonth() + 1;
+    displayMonthNameVi = `Tháng ${monthNum}`;
+    displayMonthNameEn = now.toLocaleString("en-US", { month: "long" });
+  }
+
+  const pmiFormattedDate = pmiReleaseDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  const pmiFullDate = pmiReleaseDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  events.push({
+    date: pmiFormattedDate,
+    event: lang === "vi" 
+      ? `Báo cáo Tình hình Sản xuất Việt Nam (PMI) ${displayMonthNameVi}`
+      : `Vietnam Manufacturing Purchasing Managers' Index (PMI) - ${displayMonthNameEn}`,
     impact: "LỚN",
     class: "positive",
-    source: "S&P Global / CafeF",
-    time: "15/06/2026",
-    description: "Chỉ số Nhà quản trị Mua hàng (PMI) ngành sản xuất Việt Nam kỳ vọng phục hồi mạnh mẽ nhờ sự gia tăng của các đơn đặt hàng xuất khẩu mới và nhu cầu tiêu dùng nội địa tăng cao.",
-    summary: `Chỉ số Nhà quản trị Mua hàng (PMI) ngành sản xuất Việt Nam dự kiến sẽ ghi nhận mức tăng trưởng đáng kể trong kỳ báo cáo này. Sự phục hồi được thúc đẩy bởi sự gia tăng mạnh mẽ của số lượng đơn đặt hàng mới từ cả thị trường trong nước lẫn xuất khẩu quốc tế.
-Các nhà sản xuất đã chủ động mở rộng quy mô công suất, tăng cường tuyển dụng lao động và tích lũy hàng tồn kho nguyên vật liệu để đáp ứng nhu cầu tăng cao đột biến của mùa tiêu dùng giữa năm.
-Theo các chuyên gia từ S&P Global, sự tăng trưởng này phản ánh niềm tin kinh doanh đang quay trở lại ở khối doanh nghiệp tư nhân. Tuy nhiên, áp lực chi phí đầu vào tăng do chi phí vận tải biển và nguyên vật liệu thô tăng vẫn là một thách thức không nhỏ mà các nhà quản trị cần đặc biệt lưu tâm để tối ưu hóa tỷ suất lợi nhuận vĩ mô.`
-  },
-  {
-    date: "24/06",
-    event: "Tổng cục Thống kê công bố số liệu GDP Quý 2",
+    source: "S&P Global",
+    time: pmiFullDate,
+    isMacroEvent: true,
+    macroType: "PMI",
+    description: lang === "vi"
+      ? `Chỉ số Nhà quản trị Mua hàng (PMI) ngành sản xuất Việt Nam ${displayMonthNameVi.toLowerCase()} đo lường sức khỏe hoạt động sản xuất vĩ mô.`
+      : `Vietnam Manufacturing PMI for ${displayMonthNameEn} measures the health of the macroeconomic manufacturing sector.`,
+    summary: lang === "vi"
+      ? `Chỉ số Nhà quản trị Mua hàng (PMI) ngành sản xuất Việt Nam phản ánh sức khỏe hoạt động của các doanh nghiệp tư nhân. Sự phục hồi được thúc đẩy bởi sự gia tăng của các đơn đặt hàng mới từ cả thị trường trong nước lẫn xuất khẩu quốc tế.\n\nCác nhà sản xuất đã chủ động điều chỉnh công suất, tuyển dụng nhân sự và quản lý hàng tồn kho nguyên vật liệu thô. Theo S&P Global, sự cải thiện ổn định của PMI là tín hiệu lạc quan củng cố đà tăng trưởng chung.`
+      : `The Vietnam Manufacturing PMI reflects the health of private sector operations. The recovery is driven by an increase in new orders from both domestic and export markets.\n\nManufacturers have proactively adjusted capacity, hired staff, and managed raw material inventories. According to S&P Global, steady PMI improvement is a positive signal reinforcing overall growth.`,
+    prevValue: "51.3",
+    forecastValue: "51.8",
+    unit: "Điểm | Points",
+    expertOpinion: lang === "vi"
+      ? "Khuyến nghị nhà đầu tư chú ý nhóm cổ phiếu Xuất khẩu (Dệt may, Thủy sản) và Cảng biển/Logistics. PMI cải thiện sẽ là động lực tăng giá mạnh cho nhóm sản xuất."
+      : "Recommend investors focus on Export (Textiles, Seafood) and Seaports/Logistics sectors. An improving PMI serves as a strong catalyst for manufacturers."
+  });
+
+  // 2. GDP (Tổng sản phẩm quốc nội theo Quý)
+  // Released in March (Q1), June (Q2), September (Q3), December (Q4) on the 29th/30th
+  const getGdpDate = (date: Date) => {
+    const month = date.getMonth();
+    let quarterMonth = 2; // March
+    let year = date.getFullYear();
+    if (month > 2 && month <= 5) quarterMonth = 5; // June
+    else if (month > 5 && month <= 8) quarterMonth = 8; // September
+    else if (month > 8 && month <= 11) quarterMonth = 11; // December
+    else if (month > 11) {
+      quarterMonth = 2;
+      year += 1;
+    }
+
+    const gdpDate = new Date(year, quarterMonth, 29);
+    if (date > gdpDate) {
+      let nextQuarterMonth = (quarterMonth + 3) % 12;
+      let nextYear = year + (quarterMonth + 3 >= 12 ? 1 : 0);
+      return new Date(nextYear, nextQuarterMonth, 29);
+    }
+    return gdpDate;
+  };
+
+  const gdpReleaseDate = getGdpDate(now);
+  const gdpQuarter = Math.floor(gdpReleaseDate.getMonth() / 3) + 1;
+  const gdpFormattedDate = gdpReleaseDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  const gdpFullDate = gdpReleaseDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  events.push({
+    date: gdpFormattedDate,
+    event: lang === "vi"
+      ? `Tổng cục Thống kê công bố số liệu GDP Quý ${gdpQuarter}`
+      : `General Statistics Office (GSO) publishes Q${gdpQuarter} GDP Growth`,
     impact: "RẤT LỚN",
     class: "negative",
     source: "Tổng cục Thống kê (GSO)",
-    time: "24/06/2026",
-    description: "Công bố số liệu chính thức về tăng trưởng GDP Quý 2/2026, đánh giá sức khỏe nền kinh tế và định hướng tăng trưởng vĩ mô.",
-    summary: `Tổng cục Thống kê Việt Nam sẽ chính thức công bố báo cáo kinh tế vĩ mô Quý 2/2026, trong đó tâm điểm là số liệu tăng trưởng GDP thực tế. Giới phân tích dự báo GDP Quý 2 tăng trưởng tích cực nhờ động lực mạnh mẽ từ khu vực công nghiệp chế biến chế tạo và sự phục hồi ấn tượng của ngành dịch vụ du lịch.
-Báo cáo cũng sẽ chi tiết hóa các dữ liệu về giải ngân vốn đầu tư công, tình hình thu hút FDI và tăng trưởng doanh thu bán lẻ hàng hóa dịch vụ tiêu dùng cả nước.
-Con số GDP này đóng vai trò tối quan trọng đối với việc điều hành chính sách tiền tệ của Ngân hàng Nhà nước trong nửa cuối năm, đặc biệt là định hướng lãi suất và kiểm soát trần tín dụng để vừa thúc đẩy phục hồi kinh tế vừa kiềm chế áp lực lạm phát cơ bản.`
-  },
-  {
-    date: "29/06",
-    event: "Báo cáo Chỉ số Giá tiêu dùng (CPI) Tháng 6",
-    impact: "RẤT LỚN",
+    time: gdpFullDate,
+    isMacroEvent: true,
+    macroType: "GDP",
+    quarter: gdpQuarter,
+    description: lang === "vi"
+      ? `Báo cáo tăng trưởng GDP Quý ${gdpQuarter} đánh giá tốc độ phát triển tổng sản phẩm quốc nội và sức khỏe nền kinh tế.`
+      : `Report on Q${gdpQuarter} GDP Growth evaluates gross domestic product expansion speed and economic health.`,
+    summary: lang === "vi"
+      ? `Số liệu GDP Quý ${gdpQuarter} đóng vai trò cốt lõi phản ánh bức tranh kinh tế tổng thể của Việt Nam, bao gồm sản xuất công nghiệp, tiêu dùng nội địa và giải ngân đầu tư công. Con số này là cơ sở để Ngân hàng Nhà nước hoạch định chính sách tiền tệ trong giai đoạn kế tiếp.\n\nTăng trưởng GDP tích cực sẽ thúc đẩy dòng tiền quay lại thị trường chứng khoán, đặc biệt ở các nhóm ngành có tính chu kỳ cao.`
+      : `The Q${gdpQuarter} GDP figure acts as a core indicator of Vietnam's overall economic picture, including industrial production, domestic consumption, and public investment disbursement. This figure is the basis for the State Bank's monetary policy decisions in the next period.\n\nPositive GDP growth will drive capital back into the stock market, especially in highly cyclical sectors.`,
+    prevValue: "5.66%",
+    forecastValue: "6.20%",
+    unit: "% YoY",
+    expertOpinion: lang === "vi"
+      ? "GDP tăng trưởng tốt củng cố xu thế tăng trung hạn của VN-Index. Các nhóm ngành như Ngân hàng, Bất động sản và Chứng khoán sẽ hưởng lợi trực tiếp từ đòn bẩy vĩ mô này."
+      : "Solid GDP growth reinforces VN-Index's medium-term uptrend. Sectors like Banking, Real Estate, and Securities will benefit directly from this macro leverage."
+  });
+
+  // 3. CPI (Chỉ số Giá tiêu dùng hàng tháng)
+  // Released on the 29th of every month.
+  const getCpiDate = (date: Date) => {
+    const cpiDate = new Date(date.getFullYear(), date.getMonth(), 29);
+    if (date > cpiDate) {
+      return new Date(date.getFullYear(), date.getMonth() + 1, 29);
+    }
+    return cpiDate;
+  };
+
+  const cpiReleaseDate = getCpiDate(now);
+  const cpiMonth = cpiReleaseDate.getMonth() + 1;
+  const cpiFormattedDate = cpiReleaseDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  const cpiFullDate = cpiReleaseDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  events.push({
+    date: cpiFormattedDate,
+    event: lang === "vi"
+      ? `Báo cáo Chỉ số Giá tiêu dùng (CPI) Tháng ${cpiMonth}`
+      : `Consumer Price Index (CPI) Report for Month ${cpiMonth}`,
+    impact: "LỚN",
     class: "negative",
-    source: "Bộ Tài chính / GSO",
-    time: "29/06/2026",
-    description: "Báo cáo chính thức về chỉ số lạm phát CPI tháng 6 và lỹ kế 6 tháng đầu năm 2026, làm cơ sở điều tiết giá cả mặt hàng thiết yếu.",
-    summary: `Chỉ số Giá tiêu dùng (CPI) tháng 6/2026 dự báo sẽ chịu áp lực tăng nhẹ từ việc điều chỉnh giá các dịch vụ công ích và biến động của giá năng lượng toàn cầu. Tuy nhiên, nhờ sự chủ động bình ổn giá của Chính phủ và nguồn cung nông sản trong nước dào dạt, lạm phát chung vẫn sẽ được kiểm soát an toàn trong mục tiêu quốc hội giao phó.
-CPI lũy kế 6 tháng đầu năm dự kiến sẽ tăng khoảng 3.8% so với cùng kỳ, tạo dư địa an toàn cho các chính sách kích cầu kinh tế tiếp theo.
-Sự chú ý của các quỹ đầu tư tài chính hướng về số liệu lạm phát lõi nhằm đánh giá mức độ ổn định của đồng nội tệ VND và dự đoán hành động tiếp theo của các cơ quan hoạch định chính sách tài khóa vĩ mô.`
-  },
-  {
-    date: "05/07",
-    event: "Hạn chốt Báo cáo Tài chính Bán niên Soát xét 2026",
-    impact: "TRUNG BÌNH",
+    source: "Tổng cục Thống kê (GSO)",
+    time: cpiFullDate,
+    isMacroEvent: true,
+    macroType: "CPI",
+    description: lang === "vi"
+      ? `Báo cáo chính thức lạm phát chỉ số CPI tháng ${cpiMonth} và lũy kế phục vụ cân đối chính sách tiền tệ.`
+      : `Official report on Month ${cpiMonth} CPI inflation and cumulative stats for balancing monetary policy.`,
+    summary: lang === "vi"
+      ? `Chỉ số giá tiêu dùng (CPI) tháng ${cpiMonth} phản ánh mức độ biến động giá cả hàng hóa dịch vụ tiêu dùng. Lạm phát được kiểm soát an toàn dưới ngưỡng 4.5% của Quốc hội sẽ tạo điều kiện duy trì lãi suất thấp hỗ trợ doanh nghiệp phục hồi sản xuất kinh doanh.\n\nSự chú ý hướng vào chỉ số lạm phát cơ bản để nhận diện xu thế chính sách trung hạn.`
+      : `The Consumer Price Index (CPI) for Month ${cpiMonth} reflects price volatility of consumer goods and services. Inflation controlled safely below the Assembly's 4.5% target allows low interest rates to support corporate recovery.\n\nFocus shifts to core inflation to identify medium-term policy directions.`,
+    prevValue: "4.02%",
+    forecastValue: "3.85%",
+    unit: "% YoY",
+    expertOpinion: lang === "vi"
+      ? "Lạm phát trong tầm kiểm soát củng cố tâm lý nắm giữ tài sản tài chính. Cân nhắc tích lũy các cổ phiếu thuộc nhóm ngành Điện, Nước, Tiêu dùng thiết yếu có tính phòng thủ."
+      : "Controlled inflation stabilizes sentiment for financial assets. Consider accumulating defensive stocks in Power, Water, and Essential Consumer goods."
+  });
+
+  // 4. BCTC Bán niên Soát xét (Hạn chót công bố)
+  // August 14th/15th of every year. We will use August 14th.
+  const getBctcDate = (date: Date) => {
+    const bctcDate = new Date(date.getFullYear(), 7, 14);
+    if (date > bctcDate) {
+      return new Date(date.getFullYear() + 1, 7, 14);
+    }
+    return bctcDate;
+  };
+
+  const bctcReleaseDate = getBctcDate(now);
+  const bctcFormattedDate = bctcReleaseDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  const bctcFullDate = bctcReleaseDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  events.push({
+    date: bctcFormattedDate,
+    event: lang === "vi"
+      ? `Hạn chốt Báo cáo Tài chính Bán niên Soát xét ${bctcReleaseDate.getFullYear()}`
+      : `Deadline for ${bctcReleaseDate.getFullYear()} Semi-Annual Audited Financial Statements`,
+    impact: "LỚN",
     class: "neutral",
-    source: "Ủy ban Chứng khoán Nhà nước",
-    time: "05/07/2026",
-    description: "Thời hạn cuối cùng để các doanh nghiệp niêm yết công bố báo cáo tài chính bán niên đã được các công ty kiểm toán soát xét độc lập.",
-    summary: `Mùa báo cáo tài chính bán niên soát xét 2026 là thời điểm quan trọng để nhà đầu tư kiểm chứng tính xác thực của các con số lợi nhuận tự lập do doanh nghiệp công bố trước đó. Lịch sử thị trường cho thấy thường xuất hiện những biến động lệch pha đáng kể giữa báo cáo tự lập và báo cáo soát xét của kiểm toán viên ở nhóm doanh nghiệp quy mô vừa và nhỏ.
-Các công ty kiểm toán lớn (Big 4) sẽ đưa ra các kết luận soát xét liên quan đến khả năng hoạt động liên tục, trích lập dự phòng nợ xấu và ghi nhận doanh thu các dự án lớn.
-Việc công bố thông tin minh bạch, đúng thời hạn sẽ giúp duy trì niềm tin bền vững của cổ đông và là cơ sở để các định chế tài chính định giá lại doanh nghiệp trước thềm giai đoạn đầu tư cuối năm.`
-  }
-];
+    source: "Ủy ban Chứng khoán Nhà nước (UBCKNN)",
+    time: bctcFullDate,
+    isMacroEvent: true,
+    macroType: "BCTC",
+    description: lang === "vi"
+      ? `Hạn chót bắt buộc công bố báo cáo tài chính bán niên đã được soát xét độc lập đối với các doanh nghiệp niêm yết.`
+      : `Mandatory deadline for listed companies to publish their reviewed semi-annual financial statements.`,
+    summary: lang === "vi"
+      ? `Thời điểm công bố báo cáo soát xét bán niên là thước đo quan trọng kiểm chứng độ trung thực số liệu lợi nhuận tự lập trước đó của doanh nghiệp. Nhà đầu tư cần đề phòng chênh lệch lợi nhuận âm lớn sau soát xét hoặc các ý kiến lưu ý nghiêm trọng từ kiểm toán viên độc lập.\n\nSự minh bạch và đúng hạn giúp duy trì niềm tin bền vững.`
+      : `The release of reviewed semi-annual statements is a key milestone validating previously self-published earnings. Investors must watch for major negative revisions or emphasis of matter paragraphs from independent auditors.\n\nTransparency and timeliness help sustain market trust.`,
+    prevValue: "85% Hoàn thành | Completed",
+    forecastValue: "92% Hoàn thành | Completed",
+    unit: "% Số lượng DN | % of Companies",
+    expertOpinion: lang === "vi"
+      ? "Đây là mùa thanh lọc chất lượng tài sản doanh nghiệp. Hãy cơ cấu danh mục, loại bỏ các mã có vấn đề về tính trung thực số liệu hoặc liên tục hoãn nộp báo cáo."
+      : "This is a purging season for corporate asset quality. Clean up portfolios, eliminating tickers with reporting delay history or numbers discrepancy issues."
+  });
+
+  events.sort((a, b) => {
+    const dateA = a.time.split("/").reverse().join("-");
+    const dateB = b.time.split("/").reverse().join("-");
+    return Date.parse(dateA) - Date.parse(dateB);
+  });
+
+  return events;
+}
 
 // Helper to get Vietnamese date labels for trading days
 function getTradingDays(count: number) {
@@ -603,7 +770,10 @@ export default function Home() {
   // Index overview stats (liquidity, breadth, foreign trading) from CafeF
   const [indexStats, setIndexStats] = useState<Record<string, IndexOverview>>({});
   const [activeArticle, setActiveArticle] = useState<NewsItem | null>(null);
+  const [activeMacroEvent, setActiveMacroEvent] = useState<any | null>(null);
+  const [podcastPlayerMode, setPodcastPlayerMode] = useState<"rss" | "spotify">("rss");
   const [isReaderClosing, setIsReaderClosing] = useState(false);
+  const [isMacroEventClosing, setIsMacroEventClosing] = useState(false);
   const [scrapedParagraphs, setScrapedParagraphs] = useState<string[]>([]);
   const [fullContent, setFullContent] = useState<Array<{ type: "paragraph" | "header" | "list-item" | "image"; text?: string; url?: string; level?: number }>>([]);
   const [readerTab, setReaderTab] = useState<"summary" | "full">("summary");
@@ -653,6 +823,8 @@ export default function Home() {
       { id: "BBC", name: "BBC", logo: "/icon/globes-icon.png", color: "#b00000", desc: lang === "vi" ? "BBC World Service - Tin tức toàn cầu & Tiếng Anh." : "BBC global perspective and English learning." }
     ];
   }, [lang]);
+
+  const calendarEvents = useMemo(() => getUpcomingEvents(lang), [lang]);
 
   const channelArtworkBySource = useMemo(() => {
     const artworkBySource: Record<string, string> = {};
@@ -738,6 +910,7 @@ export default function Home() {
     return () => {
       if (mobilePlayerCloseTimerRef.current) clearTimeout(mobilePlayerCloseTimerRef.current);
       if (readerCloseTimerRef.current) clearTimeout(readerCloseTimerRef.current);
+      if (macroEventCloseTimerRef.current) clearTimeout(macroEventCloseTimerRef.current);
       if (artSwipeTimerRef.current) clearTimeout(artSwipeTimerRef.current);
       if (watchlistDetailCloseTimerRef.current) clearTimeout(watchlistDetailCloseTimerRef.current);
     };
@@ -769,6 +942,7 @@ export default function Home() {
   const miniPlayerSwipeHandledRef = useRef(false);
   const mobilePlayerCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
   const readerCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const macroEventCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
   const artSwipeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const watchlistDetailCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -785,6 +959,16 @@ export default function Home() {
     readerCloseTimerRef.current = setTimeout(() => {
       setActiveArticle(null);
       setIsReaderClosing(false);
+    }, 360);
+  }
+
+  function closeMacroEvent() {
+    if (!activeMacroEvent || isMacroEventClosing) return;
+    setIsMacroEventClosing(true);
+    if (macroEventCloseTimerRef.current) clearTimeout(macroEventCloseTimerRef.current);
+    macroEventCloseTimerRef.current = setTimeout(() => {
+      setActiveMacroEvent(null);
+      setIsMacroEventClosing(false);
     }, 360);
   }
 
@@ -1029,12 +1213,22 @@ export default function Home() {
 
       const res = await fetch(`/api/stocks${watchlistParams}`);
       if (!res.ok) throw new Error("Failed to fetch stock data");
-      const data = await res.json() as StocksApiResponse;
+      const data = await res.json() as StocksApiResponse & { isFallback?: boolean };
       applyStockData(data);
       writeClientCache(cacheKey, data);
+      
+      if (data.isFallback) {
+        setErrorMsg(lang === "vi"
+          ? "Không thể kết nối đến máy chủ dữ liệu. Đang hiển thị dữ liệu lưu đệm gần nhất."
+          : "Unable to connect to market data server. Displaying last cached data.");
+      } else {
+        setErrorMsg("");
+      }
     } catch (error) {
       console.error(error);
-      setErrorMsg("Unable to retrieve stock data");
+      setErrorMsg(lang === "vi"
+        ? "Lỗi kết nối máy chủ dữ liệu thị trường. Vui lòng thử lại sau."
+        : "Failed to connect to market data server. Please try again later.");
     } finally {
       if (shouldShowInitialLoader || cached) {
         setLoadingStocks(false);
@@ -1502,21 +1696,8 @@ export default function Home() {
 
 
   // Click handler for financial calendar event reading
-  const handleCalendarClick = (event: typeof calendarEvents[number]) => {
-    const mockArticle: NewsItem = {
-      source: event.source,
-      title: event.event,
-      description: event.description,
-      link: "#",
-      time: event.time,
-      image: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=600&auto=format&fit=crop",
-      body: [
-        event.summary,
-        `Sự kiện kinh tế vĩ mô này được đánh giá có mức độ tác động ${event.impact} tới thị trường tài chính Việt Nam. Nhà đầu tư được khuyến nghị theo sát các báo cáo phân tích chi tiết hơn từ các tổ chức tài chính uy tín nhằm chủ động quản trị rủi ro danh mục kinh doanh của mình.`,
-        `Nguồn tin chi tiết và chính thống được cung cấp trực tiếp bởi các cơ quan quản lý nhà nước có thẩm quyền hoặc từ các tổ chức nghiên cứu kinh tế hàng đầu.`
-      ]
-    };
-    openArticle(mockArticle);
+  const handleCalendarClick = (event: any) => {
+    setActiveMacroEvent(event);
   };
 
   // Synchronize track change and playing state
@@ -2004,6 +2185,40 @@ export default function Home() {
         </div>
       </header>
 
+      {errorMsg && (
+        <div className="error-alert-banner animate-fade-in" style={{
+          background: "rgba(224, 86, 86, 0.08)",
+          borderBottom: "1px solid rgba(224, 86, 86, 0.15)",
+          color: "var(--accent-red, #A30000)",
+          padding: "10px 16px",
+          fontSize: "0.82rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          fontFamily: "var(--font-sans)",
+          margin: "0 0 10px 0"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontWeight: "bold" }}>⚠️ {lang === "vi" ? "Thông báo:" : "Notice:"}</span>
+            <span>{errorMsg}</span>
+          </div>
+          <button 
+            onClick={() => setErrorMsg("")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--accent-red, #A30000)",
+              cursor: "pointer",
+              fontSize: "1.15rem",
+              lineHeight: 1,
+              padding: "0 4px"
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Mobile Top Search Bar */}
       {activeMobileTab !== "podcast" && (
       <div className="mobile-search-bar-top-container mobile-only">
@@ -2124,6 +2339,40 @@ export default function Home() {
                 </h3>
                 <div className="podcast-header-status" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                   {loadingPodcast && <span className="podcast-live-dot"></span>}
+
+                  <div className="podcast-mode-switch" style={{ display: "flex", gap: "2px", background: "rgba(0,0,0,0.06)", padding: "2px", borderRadius: "12px", zIndex: 5 }} onClick={(e) => e.stopPropagation()}>
+                    <button 
+                      onClick={() => setPodcastPlayerMode("rss")}
+                      style={{
+                        background: podcastPlayerMode === "rss" ? "var(--bg-card)" : "transparent",
+                        border: "none",
+                        borderRadius: "10px",
+                        fontSize: "0.62rem",
+                        fontWeight: "700",
+                        padding: "2px 6px",
+                        color: podcastPlayerMode === "rss" ? "var(--text-primary)" : "var(--text-muted)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      RSS
+                    </button>
+                    <button 
+                      onClick={() => setPodcastPlayerMode("spotify")}
+                      style={{
+                        background: podcastPlayerMode === "spotify" ? "var(--bg-card)" : "transparent",
+                        border: "none",
+                        borderRadius: "10px",
+                        fontSize: "0.62rem",
+                        fontWeight: "700",
+                        padding: "2px 6px",
+                        color: podcastPlayerMode === "spotify" ? "var(--text-primary)" : "var(--text-muted)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      SPOTIFY
+                    </button>
+                  </div>
+
                   <button 
                     onClick={(e) => { e.stopPropagation(); setIsPodcastExpanded(true); }} 
                     className="podcast-expand-btn"
@@ -2155,118 +2404,133 @@ export default function Home() {
               </div>
               
               <div className="podcast-player-body">
-                <div className="podcast-cover-section" onClick={() => setIsPodcastExpanded(true)} style={{ cursor: "pointer" }}>
-                  <div className={`podcast-cover-wrap ${isPlaying ? "spinning" : ""}`}>
-                    <img 
-                      src={currentTrack?.coverUrl} 
-                      alt={getTrackTitle(currentTrack)} 
-                      className="podcast-cover-image"
+                {podcastPlayerMode === "spotify" ? (
+                  <div className="podcast-spotify-embed-container" style={{ padding: "0.5rem" }}>
+                    <iframe
+                      style={{ borderRadius: "12px", border: "none" }}
+                      src={channelSpotifyShowMap[selectedChannel] || channelSpotifyShowMap["All"]}
+                      width="100%"
+                      height="232"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
                     />
-                    <div className="podcast-cover-center"></div>
                   </div>
-                  <div className="podcast-track-details">
-                    <div className="podcast-track-title-container">
-                      <div className={`podcast-track-title ${isPlaying ? "marquee-text" : ""}`}>
-                        {getTrackTitle(currentTrack)}
+                ) : (
+                  <>
+                    <div className="podcast-cover-section" onClick={() => setIsPodcastExpanded(true)} style={{ cursor: "pointer" }}>
+                      <div className={`podcast-cover-wrap ${isPlaying ? "spinning" : ""}`}>
+                        <img 
+                          src={currentTrack?.coverUrl} 
+                          alt={getTrackTitle(currentTrack)} 
+                          className="podcast-cover-image"
+                        />
+                        <div className="podcast-cover-center"></div>
                       </div>
-                    </div>
-                    <div className="podcast-track-artist" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span>{currentTrack?.artist}</span>
-                      {isPlaying && (
-                        <span className="equalizer-wave">
-                          <span className="equalizer-bar"></span>
-                          <span className="equalizer-bar"></span>
-                          <span className="equalizer-bar"></span>
-                          <span className="equalizer-bar"></span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <p className="podcast-track-desc">
-                  {getTrackDesc(currentTrack)}
-                </p>
-
-                {/* Seekbar Slider */}
-                <div className="podcast-timeline-section">
-                  <span className="time-label">{formatTime(currentTime)}</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration || 100}
-                    value={currentTime}
-                    onChange={handleSeekChange}
-                    className="podcast-timeline-slider"
-                  />
-                  <span className="time-label">{formatTime(duration)}</span>
-                </div>
-
-                {/* Player Controls */}
-                <div className="podcast-controls-section">
-                  <button onClick={handlePrevTrack} className="podcast-control-btn" title={trans[lang].prevTrack}>
-                    <SkipPreviousIcon size={20} />
-                  </button>
-                  <button onClick={() => seekAudioBy(-10)} className="podcast-control-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}>
-                    <Rewind10Icon size={22} />
-                  </button>
-                  <button onClick={togglePlayPause} className="podcast-control-btn play-btn" title={isPlaying ? trans[lang].pause : trans[lang].play}>
-                    {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
-                  </button>
-                  <button onClick={() => seekAudioBy(30)} className="podcast-control-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}>
-                    <Forward30Icon size={22} />
-                  </button>
-                  <button onClick={handleNextTrack} className="podcast-control-btn" title={trans[lang].nextTrack}>
-                    <SkipNextIcon size={20} />
-                  </button>
-                  <button 
-                    onClick={() => setShowPlaylist(!showPlaylist)} 
-                    className={`podcast-control-btn list-btn ${showPlaylist ? "active" : ""}`}
-                    title={trans[lang].listBtn}
-                  >
-                    <PlaylistIcon size={20} />
-                  </button>
-                </div>
-
-                {/* Playlist Section (Accordion Slide Down) */}
-                <div className={`podcast-playlist-section ${showPlaylist ? "open" : ""}`}>
-                  <div className="playlist-drawer-header">
-                    <h4 className="playlist-drawer-title">{trans[lang].playlist}</h4>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowPlaylist(false);
-                      }}
-                      className="playlist-drawer-close"
-                      title="Đóng | Close"
-                    >
-                      <CloseIcon size={16} />
-                    </button>
-                  </div>
-                  <div className="playlist-drawer-items">
-                    {filteredPlaylist.map((track, index) => (
-                      <div 
-                        key={track.id} 
-                        onClick={() => selectTrack(index)} 
-                        className={`playlist-item ${currentTrack?.id === track.id ? "active" : ""}`}
-                      >
-                        <div className="playlist-item-index">
-                          {currentTrack?.id === track.id && isPlaying ? (
+                      <div className="podcast-track-details">
+                        <div className="podcast-track-title-container">
+                          <div className={`podcast-track-title ${isPlaying ? "marquee-text" : ""}`}>
+                            {getTrackTitle(currentTrack)}
+                          </div>
+                        </div>
+                        <div className="podcast-track-artist" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span>{currentTrack?.artist}</span>
+                          {isPlaying && (
                             <span className="equalizer-wave">
                               <span className="equalizer-bar"></span>
                               <span className="equalizer-bar"></span>
                               <span className="equalizer-bar"></span>
+                              <span className="equalizer-bar"></span>
                             </span>
-                          ) : index + 1}
-                        </div>
-                        <div className="playlist-item-details">
-                          <div className="playlist-item-title">{getTrackTitle(track)}</div>
-                          <div className="playlist-item-meta">{track.sourceName} • {track.artist}</div>
+                          )}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+
+                    <p className="podcast-track-desc">
+                      {getTrackDesc(currentTrack)}
+                    </p>
+
+                    {/* Seekbar Slider */}
+                    <div className="podcast-timeline-section">
+                      <span className="time-label">{formatTime(currentTime)}</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max={duration || 100}
+                        value={currentTime}
+                        onChange={handleSeekChange}
+                        className="podcast-timeline-slider"
+                      />
+                      <span className="time-label">{formatTime(duration)}</span>
+                    </div>
+
+                    {/* Player Controls */}
+                    <div className="podcast-controls-section">
+                      <button onClick={handlePrevTrack} className="podcast-control-btn" title={trans[lang].prevTrack}>
+                        <SkipPreviousIcon size={20} />
+                      </button>
+                      <button onClick={() => seekAudioBy(-10)} className="podcast-control-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}>
+                        <Rewind10Icon size={22} />
+                      </button>
+                      <button onClick={togglePlayPause} className="podcast-control-btn play-btn" title={isPlaying ? trans[lang].pause : trans[lang].play}>
+                        {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
+                      </button>
+                      <button onClick={() => seekAudioBy(30)} className="podcast-control-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}>
+                        <Forward30Icon size={22} />
+                      </button>
+                      <button onClick={handleNextTrack} className="podcast-control-btn" title={trans[lang].nextTrack}>
+                        <SkipNextIcon size={20} />
+                      </button>
+                      <button 
+                        onClick={() => setShowPlaylist(!showPlaylist)} 
+                        className={`podcast-control-btn list-btn ${showPlaylist ? "active" : ""}`}
+                        title={trans[lang].listBtn}
+                      >
+                        <PlaylistIcon size={20} />
+                      </button>
+                    </div>
+
+                    {/* Playlist Section (Accordion Slide Down) */}
+                    <div className={`podcast-playlist-section ${showPlaylist ? "open" : ""}`}>
+                      <div className="playlist-drawer-header">
+                        <h4 className="playlist-drawer-title">{trans[lang].playlist}</h4>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowPlaylist(false);
+                          }}
+                          className="playlist-drawer-close"
+                          title="Đóng | Close"
+                        >
+                          <CloseIcon size={16} />
+                        </button>
+                      </div>
+                      <div className="playlist-drawer-items">
+                        {filteredPlaylist.map((track, index) => (
+                          <div 
+                            key={track.id} 
+                            onClick={() => selectTrack(index)} 
+                            className={`playlist-item ${currentTrack?.id === track.id ? "active" : ""}`}
+                          >
+                            <div className="playlist-item-index">
+                              {currentTrack?.id === track.id && isPlaying ? (
+                                <span className="equalizer-wave">
+                                  <span className="equalizer-bar"></span>
+                                  <span className="equalizer-bar"></span>
+                                  <span className="equalizer-bar"></span>
+                                </span>
+                              ) : index + 1}
+                            </div>
+                            <div className="playlist-item-details">
+                              <div className="playlist-item-title">{getTrackTitle(track)}</div>
+                              <div className="playlist-item-meta">{track.sourceName} • {track.artist}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -2278,9 +2542,30 @@ export default function Home() {
                   {trans[lang].expertBrief}
                 </h3>
               </div>
-              <p style={{ lineHeight: "1.5", fontSize: "0.85rem", fontStyle: "italic", fontFamily: "var(--font-serif)", color: "var(--text-secondary)", margin: 0 }}>
-                &quot;{analysis.summary}&quot;
-              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "4px" }}>
+                {newsList.length === 0 ? (
+                  <p style={{ lineHeight: "1.5", fontSize: "0.85rem", fontStyle: "italic", fontFamily: "var(--font-serif)", color: "var(--text-secondary)", margin: 0 }}>
+                    &quot;{analysis.summary}&quot;
+                  </p>
+                ) : (
+                  newsList.slice(0, 4).map((item, idx) => (
+                    <div 
+                      key={idx} 
+                      onClick={() => openArticle(item)}
+                      className="brief-item-row"
+                      style={{ cursor: "pointer", paddingBottom: "6px", borderBottom: idx < 3 ? "1px dashed var(--border-classic)" : "none" }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "2px" }}>
+                        <span style={{ fontSize: "0.62rem", fontWeight: "700", color: "var(--accent-red)", textTransform: "uppercase" }}>{item.source}</span>
+                        <span style={{ fontSize: "0.62rem", color: "var(--text-muted)" }}>{item.time}</span>
+                      </div>
+                      <h4 className="brief-item-title" style={{ margin: 0, fontSize: "0.78rem", fontWeight: "600", fontFamily: "var(--font-serif)", color: "var(--text-primary)", lineHeight: "1.3" }}>
+                        {item.title}
+                      </h4>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             {/* Market Trend Chart Panel */}
@@ -3460,6 +3745,97 @@ export default function Home() {
         </div>
       )}
 
+      {/* Macroeconomic Event Modal */}
+      {activeMacroEvent && (
+        <div className={`reader-modal-overlay ${isMacroEventClosing ? "closing" : ""}`} onClick={closeMacroEvent}>
+          <div className="reader-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="reader-modal-header" style={{ borderBottom: "1px solid var(--border-classic)", padding: "1.25rem 1.75rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span className={`ticker-change ${activeMacroEvent.class}`} style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "3px", fontWeight: "700" }}>
+                  {lang === "vi" ? "Tác động" : "Impact"}: {activeMacroEvent.impact}
+                </span>
+                <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "var(--font-sans)" }}>
+                  • {lang === "vi" ? "Nguồn" : "Source"}: {activeMacroEvent.source}
+                </span>
+              </div>
+              <button className="reader-modal-close" onClick={closeMacroEvent} title={lang === "vi" ? "Đóng" : "Close"}>
+                ×
+              </button>
+            </div>
+            <div className="reader-modal-body" style={{ padding: "1.75rem" }}>
+              {/* Broadsheet Banner */}
+              <div style={{ textAlign: "center", borderBottom: "2px double var(--border-classic)", paddingBottom: "12px", marginBottom: "20px" }}>
+                <span style={{ fontFamily: "var(--font-serif)", fontSize: "0.85rem", letterSpacing: "2px", fontWeight: "bold", color: "var(--accent-red, #A30000)", textTransform: "uppercase" }}>
+                  {lang === "vi" ? "PHÂN TÍCH VĨ MÔ CHUYÊN SÂU" : "IN-DEPTH MACRO ANALYSIS"}
+                </span>
+              </div>
+
+              {/* Broadsheet Headline */}
+              <h2 className="reader-modal-title" style={{ fontFamily: "var(--font-serif)", fontSize: "1.6rem", lineHeight: "1.25", fontWeight: "bold", margin: "0 0 12px 0", color: "var(--text-primary)", textAlign: "center" }}>
+                {activeMacroEvent.macroType === "PMI" && (lang === "vi" ? `PMI Việt Nam: Những biến số vĩ mô đáng chú ý trước giờ công bố` : `Vietnam Manufacturing PMI: Key Macro Variables to Watch Before Release`)}
+                {activeMacroEvent.macroType === "GDP" && (lang === "vi" ? `GDP Quý ${activeMacroEvent.quarter || ""}: Đo lường tăng trưởng kinh tế & Xu thế dòng tiền` : `Q${activeMacroEvent.quarter || ""} GDP Growth: Measuring Expansion & Capital Market Trend`)}
+                {activeMacroEvent.macroType === "CPI" && (lang === "vi" ? `Lạm phát và Chỉ số giá tiêu dùng CPI: Lộ trình chính sách vĩ mô kế tiếp` : `Inflation and Consumer Price Index (CPI): Next Macro Policy Path`)}
+                {activeMacroEvent.macroType === "BCTC" && (lang === "vi" ? `Hạn chốt BCTC soát xét bán niên: Mùa kiểm chứng lợi nhuận doanh nghiệp` : `Reviewed Semi-Annual Statements Deadline: Validating Listed Earnings`)}
+                {!["PMI", "GDP", "CPI", "BCTC"].includes(activeMacroEvent.macroType) && activeMacroEvent.event}
+              </h2>
+
+              <div className="reader-modal-meta" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", color: "var(--text-muted)", borderBottom: "1px solid var(--border-classic)", paddingBottom: "10px", marginBottom: "15px", fontFamily: "var(--font-sans)" }}>
+                <span>{lang === "vi" ? "Chuyên mục: Kinh tế vĩ mô" : "Category: Macroeconomics"}</span>
+                <span>{lang === "vi" ? "Thời gian" : "Date"}: {activeMacroEvent.time}</span>
+              </div>
+
+              {/* Context & Analysis */}
+              <div className="reader-modal-text" style={{ fontFamily: "var(--font-serif)", fontSize: "0.95rem", lineHeight: "1.6", color: "var(--text-primary)" }}>
+                {(activeMacroEvent.summary || activeMacroEvent.description || "").split("\n\n").map((para: string, i: number) => (
+                  <p key={i} style={{ textIndent: i > 0 ? "1.5rem" : "0", marginBottom: "12px" }}>
+                    {para}
+                  </p>
+                ))}
+              </div>
+
+              {/* Historical vs Forecast Comparison Table */}
+              <div style={{ marginTop: "25px", marginBottom: "25px" }}>
+                <h4 style={{ fontFamily: "var(--font-serif)", fontSize: "1rem", fontWeight: "bold", borderBottom: "1px solid var(--text-primary)", paddingBottom: "4px", marginBottom: "10px" }}>
+                  📊 {lang === "vi" ? "Số liệu Kỳ trước vs Dự báo đồng thuận" : "Historical vs Consensus Forecast"}
+                </h4>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", fontFamily: "var(--font-sans)" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid var(--text-primary)", background: "rgba(0,0,0,0.02)" }}>
+                        <th style={{ textAlign: "left", padding: "8px" }}>{lang === "vi" ? "Chỉ báo" : "Indicator"}</th>
+                        <th style={{ textAlign: "center", padding: "8px" }}>{lang === "vi" ? "Đơn vị" : "Unit"}</th>
+                        <th style={{ textAlign: "right", padding: "8px" }}>{lang === "vi" ? "Kỳ trước" : "Previous"}</th>
+                        <th style={{ textAlign: "right", padding: "8px" }}>{lang === "vi" ? "Dự báo (Consensus)" : "Consensus Forecast"}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: "1px solid var(--border-classic)" }}>
+                        <td style={{ padding: "8px", fontWeight: "bold" }}>{activeMacroEvent.macroType || activeMacroEvent.event}</td>
+                        <td style={{ padding: "8px", textAlign: "center", color: "var(--text-secondary)" }}>{activeMacroEvent.unit || "N/A"}</td>
+                        <td style={{ padding: "8px", textAlign: "right", color: "var(--text-primary)", fontWeight: "500" }}>{activeMacroEvent.prevValue || "N/A"}</td>
+                        <td style={{ padding: "8px", textAlign: "right", color: "var(--accent-blue)", fontWeight: "700" }}>{activeMacroEvent.forecastValue || "N/A"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Expert Opinion Box */}
+              {activeMacroEvent.expertOpinion && (
+                <div style={{ background: "rgba(163, 0, 0, 0.03)", borderLeft: "4px solid var(--accent-red, #A30000)", padding: "12px 16px", marginTop: "25px", borderRadius: "0 4px 4px 0" }}>
+                  <h4 style={{ fontFamily: "var(--font-serif)", fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-red, #A30000)", margin: "0 0 6px 0", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>🗣️</span> {lang === "vi" ? "Ý kiến & Khuyến nghị Chuyên gia" : "Expert Opinion & Strategy"}
+                  </h4>
+                  <p style={{ margin: 0, fontStyle: "italic", fontSize: "0.88rem", lineHeight: "1.5", color: "var(--text-secondary)" }}>
+                    "{activeMacroEvent.expertOpinion}"
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating Bottom Tab Bar for Mobile Devices (Apple Style) */}
       {/* ═══════════════════════════════════════════════════════
           DESKTOP PODCAST APP MODAL OVERLAY
@@ -3479,112 +3855,192 @@ export default function Home() {
             </div>
             {/* Modal Body */}
             <div className="podcast-modal-body">
-              {/* Left Column: Now Playing (Apple Music style) */}
-              <div className="podcast-modal-now-playing-panel">
-                <div className={`podcast-modal-now-playing-cover-wrap ${isPlaying ? "playing" : ""}`}>
-                  <img src={currentTrack?.coverUrl} alt="" className="podcast-modal-now-playing-cover" />
-                  <span className="podcast-modal-now-playing-glow"></span>
-                </div>
-                <div className="podcast-modal-now-playing-details">
-                  <span className="podcast-modal-now-playing-kicker">{currentTrack?.sourceName} • {currentTrack?.artist}</span>
-                  <h3 className="podcast-modal-now-playing-title">{getTrackTitle(currentTrack)}</h3>
-                  <p className="podcast-modal-now-playing-desc">{getTrackDesc(currentTrack)}</p>
-                </div>
-              </div>
+              {podcastPlayerMode === "spotify" ? (
+                <>
+                  {/* Left Column: Spotify Player Embed */}
+                  <div className="podcast-modal-now-playing-panel" style={{ display: "flex", flexDirection: "column", gap: "12px", justifyContent: "flex-start" }}>
+                    <iframe
+                      style={{ borderRadius: "12px", border: "none" }}
+                      src={channelSpotifyShowMap[selectedChannel] || channelSpotifyShowMap["All"]}
+                      width="100%"
+                      height="352"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                    />
+                    <div className="podcast-modal-now-playing-details" style={{ marginTop: "10px" }}>
+                      <span className="podcast-modal-now-playing-kicker" style={{ color: "var(--accent-red)", fontWeight: "bold", textTransform: "uppercase" }}>
+                        Spotify Channel Active
+                      </span>
+                      <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontStyle: "italic", margin: "4px 0 0 0" }}>
+                        {lang === "vi"
+                          ? "Kênh podcast được phát trực tiếp qua tiện ích của Spotify. Bạn có thể chọn danh mục kênh ở bảng bên phải."
+                          : "The podcast channel is streamed directly via the Spotify widget. Select channels on the right."}
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Right Column: Library & Queue */}
-              <div className="podcast-modal-main-panel">
-                {/* Channels pill bar at top */}
-                <div className="podcast-modal-channels-bar">
-                  {channelsList.map((ch) => (
-                    <button
-                      key={ch.id}
-                      onClick={() => { setSelectedChannel(ch.id); setSelectedSubChannel("All"); setCurrentTrackIndex(0); }}
-                      className={`podcast-modal-channel-pill ${selectedChannel === ch.id ? "active" : ""}`}
-                      style={{ '--channel-color': ch.color } as React.CSSProperties}
-                    >
-                      <img src={ch.logo} alt={ch.name} />
-                      <span>{ch.name}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="podcast-modal-main-top-row">
-                  <input 
-                    type="text" 
-                    placeholder={lang === "vi" ? "Tìm tập podcast..." : "Search episodes..."} 
-                    value={podcastSearchQuery} 
-                    onChange={(e) => setPodcastSearchQuery(e.target.value)} 
-                    className="podcast-modal-search-input" 
-                  />
-                  {subChannelsList.length > 1 && (
-                    <div className="podcast-modal-subchannel-pills">
-                      {subChannelsList.map((sc) => (
-                        <button key={sc} onClick={() => { setSelectedSubChannel(sc); setCurrentTrackIndex(0); }} className={`podcast-modal-subchannel-pill ${selectedSubChannel === sc ? "active" : ""}`}>
-                          {sc === "All" ? (lang === "vi" ? "Tất cả chuyên mục" : "All") : sc}
+                  {/* Right Column: Spotify channel description */}
+                  <div className="podcast-modal-main-panel">
+                    {/* Channels pill bar at top */}
+                    <div className="podcast-modal-channels-bar">
+                      {channelsList.map((ch) => (
+                        <button
+                          key={ch.id}
+                          onClick={() => { setSelectedChannel(ch.id); setSelectedSubChannel("All"); setCurrentTrackIndex(0); }}
+                          className={`podcast-modal-channel-pill ${selectedChannel === ch.id ? "active" : ""}`}
+                          style={{ '--channel-color': ch.color } as React.CSSProperties}
+                        >
+                          <img src={ch.logo} alt={ch.name} />
+                          <span>{ch.name}</span>
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
 
-                {/* Tracks list */}
-                <div key={selectedChannel} className="podcast-modal-tracks-list">
-                  {filteredPlaylist.length === 0 ? (
-                    <div style={{ padding: "30px", textAlign: "center", color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.85rem" }}>
-                      {lang === "vi" ? "Không tìm thấy tập podcast." : "No episodes found."}
-                    </div>
-                  ) : filteredPlaylist.map((track, index) => {
-                    const isCurrent = currentTrack?.id === track.id;
-                    return (
-                      <div key={track.id} className={`podcast-modal-track-row ${isCurrent ? "active" : ""}`} onClick={() => selectTrack(index)}>
-                        <div className="podcast-modal-track-num">
-                          {isCurrent && isPlaying ? (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>) : index + 1}
-                        </div>
-                        <img src={track.coverUrl} alt="" className="podcast-modal-track-cover" />
-                        <div className="podcast-modal-track-info">
-                          <div className="podcast-modal-track-title">{getTrackTitle(track)}</div>
-                          <div className="podcast-modal-track-meta">{track.sourceName} • {track.artist}</div>
-                        </div>
-                        <button className="podcast-modal-track-play-btn" onClick={(e) => { e.stopPropagation(); selectTrack(index); }}>
-                          {isCurrent && isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
-                        </button>
+                    <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "15px", height: "100%", overflowY: "auto", fontFamily: "var(--font-serif)" }}>
+                      <div style={{ borderBottom: "1px solid var(--border-classic)", paddingBottom: "10px" }}>
+                        <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: "bold" }}>
+                          {channelsList.find(c => c.id === selectedChannel)?.name || "Spotify Podcast"}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                          {channelsList.find(c => c.id === selectedChannel)?.desc || ""}
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <span style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", color: "var(--accent-red)", letterSpacing: "1px", fontFamily: "var(--font-sans)" }}>
+                          {lang === "vi" ? "Tính năng Spotify" : "Spotify Features"}
+                        </span>
+                        <ul style={{ margin: "0 0 0 20px", padding: 0, fontSize: "0.85rem", color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: "6px" }}>
+                          <li>{lang === "vi" ? "Cập nhật tự động các tập phát sóng mới nhất" : "Automatically updates with the latest episodes"}</li>
+                          <li>{lang === "vi" ? "Chất lượng âm thanh chuẩn phòng thu" : "Studio-quality streaming directly from source"}</li>
+                          <li>{lang === "vi" ? "Hỗ trợ tua, phát nền và điều khiển linh hoạt" : "Supports seek, background play, and controls"}</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Left Column: Now Playing (Apple Music style) */}
+                  <div className="podcast-modal-now-playing-panel">
+                    <div className={`podcast-modal-now-playing-cover-wrap ${isPlaying ? "playing" : ""}`}>
+                      <img src={currentTrack?.coverUrl} alt="" className="podcast-modal-now-playing-cover" />
+                      <span className="podcast-modal-now-playing-glow"></span>
+                    </div>
+                    <div className="podcast-modal-now-playing-details">
+                      <span className="podcast-modal-now-playing-kicker">{currentTrack?.sourceName} • {currentTrack?.artist}</span>
+                      <h3 className="podcast-modal-now-playing-title">{getTrackTitle(currentTrack)}</h3>
+                      <p className="podcast-modal-now-playing-desc">{getTrackDesc(currentTrack)}</p>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Library & Queue */}
+                  <div className="podcast-modal-main-panel">
+                    {/* Channels pill bar at top */}
+                    <div className="podcast-modal-channels-bar">
+                      {channelsList.map((ch) => (
+                        <button
+                          key={ch.id}
+                          onClick={() => { setSelectedChannel(ch.id); setSelectedSubChannel("All"); setCurrentTrackIndex(0); }}
+                          className={`podcast-modal-channel-pill ${selectedChannel === ch.id ? "active" : ""}`}
+                          style={{ '--channel-color': ch.color } as React.CSSProperties}
+                        >
+                          <img src={ch.logo} alt={ch.name} />
+                          <span>{ch.name}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="podcast-modal-main-top-row">
+                      <input 
+                        type="text" 
+                        placeholder={lang === "vi" ? "Tìm tập podcast..." : "Search episodes..."} 
+                        value={podcastSearchQuery} 
+                        onChange={(e) => setPodcastSearchQuery(e.target.value)} 
+                        className="podcast-modal-search-input" 
+                      />
+                      {subChannelsList.length > 1 && (
+                        <div className="podcast-modal-subchannel-pills">
+                          {subChannelsList.map((sc) => (
+                            <button key={sc} onClick={() => { setSelectedSubChannel(sc); setCurrentTrackIndex(0); }} className={`podcast-modal-subchannel-pill ${selectedSubChannel === sc ? "active" : ""}`}>
+                              {sc === "All" ? (lang === "vi" ? "Tất cả chuyên mục" : "All") : sc}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tracks list */}
+                    <div key={selectedChannel} className="podcast-modal-tracks-list">
+                      {filteredPlaylist.length === 0 ? (
+                        <div style={{ padding: "30px", textAlign: "center", color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.85rem" }}>
+                          {lang === "vi" ? "Không tìm thấy tập podcast." : "No episodes found."}
+                        </div>
+                      ) : filteredPlaylist.map((track, index) => {
+                        const isCurrent = currentTrack?.id === track.id;
+                        return (
+                          <div key={track.id} className={`podcast-modal-track-row ${isCurrent ? "active" : ""}`} onClick={() => selectTrack(index)}>
+                            <div className="podcast-modal-track-num">
+                              {isCurrent && isPlaying ? (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>) : index + 1}
+                            </div>
+                            <img src={track.coverUrl} alt="" className="podcast-modal-track-cover" />
+                            <div className="podcast-modal-track-info">
+                              <div className="podcast-modal-track-title">{getTrackTitle(track)}</div>
+                              <div className="podcast-modal-track-meta">{track.sourceName} • {track.artist}</div>
+                            </div>
+                            <button className="podcast-modal-track-play-btn" onClick={(e) => { e.stopPropagation(); selectTrack(index); }}>
+                              {isCurrent && isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             {/* Control Bar */}
-            <div className="podcast-modal-control-bar">
-              <div className={`podcast-modal-now-playing-disc ${isPlaying ? "spinning" : ""}`}>
-                <img src={currentTrack?.coverUrl} alt="" />
-              </div>
-              <div className="podcast-modal-now-playing-info">
-                <div className="podcast-modal-now-title">{getTrackTitle(currentTrack)}</div>
-                <div className="podcast-modal-now-artist">
-                  <span>{currentTrack?.artist}</span>
-                  {isPlaying && (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>)}
+            {podcastPlayerMode === "spotify" ? (
+              <div className="podcast-modal-control-bar" style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "70px", background: "rgba(0, 0, 0, 0.02)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}>
+                  <span style={{ width: "8px", height: "8px", background: "#1DB954", borderRadius: "50%", display: "inline-block" }}></span>
+                  <span>
+                    {lang === "vi"
+                      ? "Trình phát Spotify đang được kích hoạt. Hãy điều khiển trực tiếp trên Widget phát nhạc."
+                      : "Spotify player is active. Control playback directly within the Spotify widget."}
+                  </span>
                 </div>
               </div>
-              <div className="podcast-modal-timeline-section">
-                <span className="time-label">{formatTime(currentTime)}</span>
-                <input type="range" min="0" max={duration || 100} value={currentTime} onChange={handleSeekChange} className="podcast-timeline-slider" style={{ flex: 1 }} />
-                <span className="time-label">{formatTime(duration)}</span>
+            ) : (
+              <div className="podcast-modal-control-bar">
+                <div className={`podcast-modal-now-playing-disc ${isPlaying ? "spinning" : ""}`}>
+                  <img src={currentTrack?.coverUrl} alt="" />
+                </div>
+                <div className="podcast-modal-now-playing-info">
+                  <div className="podcast-modal-now-title">{getTrackTitle(currentTrack)}</div>
+                  <div className="podcast-modal-now-artist">
+                    <span>{currentTrack?.artist}</span>
+                    {isPlaying && (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>)}
+                  </div>
+                </div>
+                <div className="podcast-modal-timeline-section">
+                  <span className="time-label">{formatTime(currentTime)}</span>
+                  <input type="range" min="0" max={duration || 100} value={currentTime} onChange={handleSeekChange} className="podcast-timeline-slider" style={{ flex: 1 }} />
+                  <span className="time-label">{formatTime(duration)}</span>
+                </div>
+                <div className="podcast-modal-controls">
+                  <button onClick={handlePrevTrack} className="podcast-modal-ctrl-btn" title={trans[lang].prevTrack}><SkipPreviousIcon size={18} /></button>
+                  <button onClick={() => seekAudioBy(-10)} className="podcast-modal-ctrl-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}><Rewind10Icon size={20} /></button>
+                  <button onClick={togglePlayPause} className="podcast-modal-ctrl-btn play-btn">{isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}</button>
+                  <button onClick={() => seekAudioBy(30)} className="podcast-modal-ctrl-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}><Forward30Icon size={20} /></button>
+                  <button onClick={handleNextTrack} className="podcast-modal-ctrl-btn" title={trans[lang].nextTrack}><SkipNextIcon size={18} /></button>
+                  <button onClick={() => setPlaybackRate(prev => { const speeds = [0.75, 1.0, 1.25, 1.5, 2.0]; return speeds[(speeds.indexOf(prev) + 1) % speeds.length]; })} className="podcast-modal-speed-btn">{playbackRate}×</button>
+                </div>
+                <div className="podcast-modal-volume-section">
+                  <VolumeIcon size={16} />
+                  <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} />
+                </div>
               </div>
-              <div className="podcast-modal-controls">
-                <button onClick={handlePrevTrack} className="podcast-modal-ctrl-btn" title={trans[lang].prevTrack}><SkipPreviousIcon size={18} /></button>
-                <button onClick={() => seekAudioBy(-10)} className="podcast-modal-ctrl-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}><Rewind10Icon size={20} /></button>
-                <button onClick={togglePlayPause} className="podcast-modal-ctrl-btn play-btn">{isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}</button>
-                <button onClick={() => seekAudioBy(30)} className="podcast-modal-ctrl-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}><Forward30Icon size={20} /></button>
-                <button onClick={handleNextTrack} className="podcast-modal-ctrl-btn" title={trans[lang].nextTrack}><SkipNextIcon size={18} /></button>
-                <button onClick={() => setPlaybackRate(prev => { const speeds = [0.75, 1.0, 1.25, 1.5, 2.0]; return speeds[(speeds.indexOf(prev) + 1) % speeds.length]; })} className="podcast-modal-speed-btn">{playbackRate}×</button>
-              </div>
-              <div className="podcast-modal-volume-section">
-                <VolumeIcon size={16} />
-                <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} />
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
