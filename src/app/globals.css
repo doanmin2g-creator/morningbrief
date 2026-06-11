@@ -1805,7 +1805,7 @@ body {
         border-bottom-right-radius: 0;
         border-top-left-radius: 24px;
         border-top-right-radius: 24px;
-        animation: slideUp 0.3s cubic-bezier(0.25, 1, 0.5, 1)-out;
+        animation: slideUp 0.3s cubic-bezier(0.25, 1, 0.5, 1) both;
     }
     .hidden-mobile {
         display: none !important;

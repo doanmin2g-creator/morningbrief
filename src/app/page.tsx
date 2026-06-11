@@ -2447,8 +2447,9 @@ export default function Home() {
         </div>
 
         {/* Mobile Podcast App Section */}
+        {activeMobileTab === "podcast" && (
         <section 
-          className={`mobile-podcast-app-section mobile-only ${activeMobileTab === "podcast" ? "mobile-tab-animate" : "hidden-mobile"}`}
+          className="mobile-podcast-app-section mobile-only mobile-tab-animate"
           style={{ '--active-channel-color': channelsList.find(c => c.id === selectedChannel)?.color || 'var(--accent-blue)' } as React.CSSProperties}
         >
           <div className="mobile-podcast-app-bg">
@@ -2613,6 +2614,7 @@ export default function Home() {
                 )}
               </div>
             </section>
+        )}
       </main>
 
       {/* Footer */}
