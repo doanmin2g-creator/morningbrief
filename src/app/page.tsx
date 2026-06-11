@@ -42,6 +42,9 @@ interface StockSearchResult {
   eps?: string;
   marketCapVnd?: string;
   description?: string;
+  cafefDataUrl?: string;
+  dataSource?: string;
+  updatedAt?: string;
   relatedNews?: { title: string; link: string; time: string }[];
 }
 
@@ -816,6 +819,44 @@ export default function Home() {
     }
   };
 
+  const refreshWatchlistStockDetail = async () => {
+    if (!activeWatchlistStock || loadingWatchlistDetail) return;
+    const symbol = getCleanTickerSymbol(activeWatchlistStock.symbol || activeWatchlistStock.ticker);
+    setLoadingWatchlistDetail(true);
+    try {
+      const res = await fetch(`/api/stock-search?q=${encodeURIComponent(symbol)}&fresh=1&t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json() as StockSearchResult[];
+        const exactMatch = Array.isArray(data)
+          ? data.find((entry) => entry.symbol.toUpperCase() === symbol) || data[0]
+          : null;
+        setActiveWatchlistDetail(exactMatch || null);
+      }
+    } catch (err) {
+      console.error("Error refreshing watchlist stock detail:", err);
+    } finally {
+      setLoadingWatchlistDetail(false);
+    }
+  };
+
+  const openSearchStockDetail = (item: StockSearchResult) => {
+    const tickerItem: TickerItem = {
+      symbol: item.symbol,
+      ticker: item.symbol,
+      price: item.price,
+      change: item.change,
+      isPositive: item.isPositive,
+      sector: item.displayName || item.sector,
+      exchange: item.exchange,
+      volumeStr: item.volume
+    };
+    if (watchlistDetailCloseTimerRef.current) clearTimeout(watchlistDetailCloseTimerRef.current);
+    setIsWatchlistDetailClosing(false);
+    setActiveWatchlistStock(tickerItem);
+    setActiveWatchlistDetail(item);
+    setLoadingWatchlistDetail(false);
+  };
+
   const closeWatchlistStockDetail = () => {
     if (!activeWatchlistStock || isWatchlistDetailClosing) return;
     setIsWatchlistDetailClosing(true);
@@ -1098,11 +1139,24 @@ export default function Home() {
     const isStarred = watchlist.includes(item.symbol);
 
     return (
-      <div key={idx} className="stock-search-result-card animate-fade-in-up" style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: "both" }}>
+      <div
+        key={idx}
+        className="stock-search-result-card animate-fade-in-up"
+        style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: "both" }}
+        onClick={() => openSearchStockDetail(item)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") openSearchStockDetail(item);
+        }}
+      >
         <div className="stock-search-result-header">
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span
-              onClick={() => toggleWatchlist(item.symbol)}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleWatchlist(item.symbol);
+              }}
               style={{ color: isStarred ? "var(--accent-red)" : "var(--text-muted)", cursor: "pointer", fontSize: "1rem" }}
             >
               {isStarred ? "⭐" : "☆"}
@@ -1187,7 +1241,13 @@ export default function Home() {
             <ul className="stock-news-list">
               {item.relatedNews.map((news, ni) => (
                 <li key={ni} className="stock-news-item">
-                  <a href={news.link} target="_blank" rel="noopener noreferrer" className="stock-news-title">
+                  <a
+                    href={news.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="stock-news-title"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     {news.title}
                   </a>
                   {news.time && <span className="stock-news-time">{news.time}</span>}
@@ -3037,59 +3097,78 @@ export default function Home() {
           const y = 126 - ((value - minChart) / range) * 92;
           return `${x},${y}`;
         }).join(" ");
-        const detailStats = [
+        const updatedAtText = detail?.updatedAt
+          ? new Date(detail.updatedAt).toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" })
+          : "--:--";
+        const sourceUrl = detail?.cafefDataUrl || "https://cafef.vn/du-lieu.chn";
+        const marketStats = [
           { label: lang === "vi" ? "TC" : "Prev", value: detail?.prevClose || "N/A" },
           { label: lang === "vi" ? "Cao nhất" : "High", value: detail?.dayHigh || "N/A" },
           { label: lang === "vi" ? "Thấp nhất" : "Low", value: detail?.dayLow || "N/A" },
           { label: lang === "vi" ? "Tổng KL" : "Volume", value: detail?.volume || formatWatchlistVolume(stock) },
-          { label: lang === "vi" ? "Mua" : "Buy", value: stock.buyVolume || (lang === "vi" ? "Đang cập nhật" : "Updating") },
-          { label: lang === "vi" ? "Bán" : "Sell", value: stock.sellVolume || (lang === "vi" ? "Đang cập nhật" : "Updating") },
+          { label: lang === "vi" ? "Vốn hóa" : "Mkt Cap", value: detail?.marketCapVnd || detail?.marketCap || "N/A" }
+        ];
+        const valuationStats = [
           { label: "EPS", value: detail?.eps || "N/A" },
           { label: "P/E", value: detail?.pe || "N/A" },
-          { label: "P/B", value: detail?.pb || "N/A" },
-          { label: lang === "vi" ? "Vốn hóa" : "Mkt Cap", value: detail?.marketCapVnd || detail?.marketCap || "N/A" }
+          { label: "P/B", value: detail?.pb || "N/A" }
         ];
 
         return (
-          <div className={`stock-detail-overlay mobile-only ${isWatchlistDetailClosing ? "closing" : ""}`} onClick={closeWatchlistStockDetail}>
+          <div className={`stock-detail-overlay ${isWatchlistDetailClosing ? "closing" : ""}`} onClick={closeWatchlistStockDetail}>
             <section className={`stock-detail-sheet ${isWatchlistDetailClosing ? "closing" : ""}`} onClick={(event) => event.stopPropagation()}>
               <header className="stock-detail-hero">
                 <button className="stock-detail-back-btn" onClick={closeWatchlistStockDetail} aria-label={lang === "vi" ? "Quay lại" : "Back"}>
-                  <span>‹</span>
+                  <span>×</span>
                 </button>
                 <div className="stock-detail-title-wrap">
+                  <span className="stock-detail-kicker">{detail?.exchange || stock.exchange || "HOSE"} · CafeF DATA</span>
                   <h2>{symbol}</h2>
                   <p>{displayName}</p>
                 </div>
-                <button
-                  className="stock-detail-star-btn"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    toggleWatchlist(symbol);
-                  }}
-                  aria-label={lang === "vi" ? "Watchlist" : "Watchlist"}
-                >
-                  ⭐
-                </button>
+                <div className="stock-detail-header-actions">
+                  <button
+                    className="stock-detail-icon-btn"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      refreshWatchlistStockDetail();
+                    }}
+                    disabled={loadingWatchlistDetail}
+                    aria-label={lang === "vi" ? "Làm mới dữ liệu" : "Refresh data"}
+                  >
+                    ↻
+                  </button>
+                  <button
+                    className="stock-detail-icon-btn"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleWatchlist(symbol);
+                    }}
+                    aria-label={lang === "vi" ? "Watchlist" : "Watchlist"}
+                  >
+                    ⭐
+                  </button>
+                </div>
               </header>
 
               <div className="stock-detail-body">
-                <div className="stock-detail-price-block">
-                  <strong>{price}</strong>
-                  <span className={`ticker-change ${colorClass}`}>{change}</span>
-                </div>
-
-                <div className="stock-detail-tabs" aria-hidden="true">
-                  <span className="active">{lang === "vi" ? "Tổng quan" : "Overview"}</span>
-                  <span>{lang === "vi" ? "Tin tức" : "News"}</span>
-                  <span>{lang === "vi" ? "Phân tích" : "Analysis"}</span>
+                <div className="stock-detail-lede">
+                  <div className="stock-detail-price-block">
+                    <span>{lang === "vi" ? "Giá khớp gần nhất" : "Latest price"}</span>
+                    <strong>{price}</strong>
+                    <em className={`ticker-change ${colorClass}`}>{change}</em>
+                  </div>
+                  <div className="stock-detail-source-card">
+                    <span>{lang === "vi" ? "Nguồn dữ liệu" : "Data source"}</span>
+                    <strong>{detail?.dataSource || "CafeF / market data"}</strong>
+                    <small>{lang === "vi" ? "Cập nhật" : "Updated"} {updatedAtText}</small>
+                    <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                      {lang === "vi" ? "Mở CafeF dữ liệu" : "Open CafeF data"}
+                    </a>
+                  </div>
                 </div>
 
                 <div className="stock-detail-chart-card">
-                  <div className="stock-detail-chart-head">
-                    <span>{symbol} · 1D</span>
-                    <strong className={colorClass}>{change}</strong>
-                  </div>
                   <svg viewBox="0 0 300 150" role="img" aria-label={`${symbol} intraday mini chart`}>
                     <line x1="12" y1="34" x2="288" y2="34" />
                     <line x1="12" y1="80" x2="288" y2="80" />
@@ -3106,21 +3185,41 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <div className="stock-detail-stats-grid">
-                      {detailStats.map((item) => (
-                        <div key={item.label} className="stock-detail-stat">
-                          <span>{item.label}</span>
-                          <strong>{item.value}</strong>
+                    <div className="stock-detail-section-grid">
+                      <section className="stock-detail-panel">
+                        <h3>{lang === "vi" ? "Giao dịch realtime" : "Realtime trading"}</h3>
+                        <div className="stock-detail-stats-grid">
+                          {marketStats.map((item) => (
+                            <div key={item.label} className="stock-detail-stat">
+                              <span>{item.label}</span>
+                              <strong>{item.value}</strong>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </section>
+
+                      <section className="stock-detail-panel">
+                        <h3>{lang === "vi" ? "Định giá CafeF" : "CafeF valuation"}</h3>
+                        <div className="stock-detail-stats-grid compact">
+                          {valuationStats.map((item) => (
+                            <div key={item.label} className="stock-detail-stat">
+                              <span>{item.label}</span>
+                              <strong>{item.value}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
                     </div>
 
                     {detail?.description && (
-                      <p className="stock-detail-description">{detail.description}</p>
+                      <section className="stock-detail-panel stock-detail-about">
+                        <h3>{lang === "vi" ? "Hồ sơ doanh nghiệp" : "Company profile"}</h3>
+                        <p>{detail.description}</p>
+                      </section>
                     )}
 
                     {detail?.relatedNews && detail.relatedNews.length > 0 && (
-                      <div className="stock-detail-news">
+                      <section className="stock-detail-panel stock-detail-news">
                         <h3>{lang === "vi" ? "Tin liên quan" : "Related news"}</h3>
                         {detail.relatedNews.slice(0, 3).map((news, index) => (
                           <a key={`${news.link}-${index}`} href={news.link} target="_blank" rel="noopener noreferrer">
@@ -3128,15 +3227,10 @@ export default function Home() {
                             <small>{news.time}</small>
                           </a>
                         ))}
-                      </div>
+                      </section>
                     )}
                   </>
                 )}
-              </div>
-
-              <div className="stock-detail-actions">
-                <button className="buy">{lang === "vi" ? "Mua" : "Buy"}</button>
-                <button className="sell">{lang === "vi" ? "Bán" : "Sell"}</button>
               </div>
             </section>
           </div>

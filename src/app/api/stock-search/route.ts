@@ -38,6 +38,9 @@ interface SearchResult {
   eps?: string;
   marketCapVnd?: string;
   description?: string;
+  cafefDataUrl?: string;
+  dataSource?: string;
+  updatedAt?: string;
   relatedNews?: RelatedNews[];
 }
 
@@ -50,7 +53,7 @@ interface CompanyInfo {
 
 // Smart in-memory cache per symbol — 5 minute TTL (SWR pattern)
 const searchCache = new Map<string, { data: SearchResult; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 60 * 1000; // Keep quotes fresh for the detail reader.
 
 // Separate cache for CafeF profile/news (may lag behind price data)
 const cafefProfileCache = new Map<string, { data: { pe?: string; pb?: string; eps?: string; marketCapVnd?: string; description?: string }; timestamp: number }>();
@@ -64,6 +67,26 @@ const INDEXES: CompanyInfo[] = [
 ];
 
 const ALL_COMPANIES = [...INDEXES, ...(companies as CompanyInfo[])];
+
+function createFallbackResult(symbol: string, displayName: string, exchange: string, sector: string): SearchResult {
+  return {
+    symbol,
+    displayName,
+    price: "N/A",
+    change: "0.00%",
+    isPositive: true,
+    sector,
+    exchange,
+    prevClose: "N/A",
+    dayHigh: "N/A",
+    dayLow: "N/A",
+    volume: "N/A",
+    marketCap: "N/A",
+    cafefDataUrl: "https://cafef.vn/du-lieu.chn",
+    dataSource: "CafeF / market data",
+    updatedAt: new Date().toISOString()
+  };
+}
 
 function searchDirectory(query: string): string[] {
   const q = query.toLowerCase().trim();
@@ -307,10 +330,10 @@ async function fetchEntradeStockQuote(symbol: string, displayName: string, excha
   return null;
 }
 
-async function fetchStockQuote(symbol: string): Promise<SearchResult | null> {
+async function fetchStockQuote(symbol: string, forceRefresh = false): Promise<SearchResult | null> {
   // Check price cache
   const cached = searchCache.get(symbol);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (!forceRefresh && cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
   }
 
@@ -422,7 +445,13 @@ async function fetchStockQuote(symbol: string): Promise<SearchResult | null> {
     baseResult = await fetchEntradeStockQuote(symbol, displayName, exchange);
   }
 
-  if (!baseResult) return null;
+  if (!baseResult) {
+    baseResult = createFallbackResult(dirEntry?.symbol || symbol, displayName, exchange, dirEntry ? dirEntry.name_vn : "N/A");
+  }
+
+  baseResult.cafefDataUrl = "https://cafef.vn/du-lieu.chn";
+  baseResult.dataSource = "CafeF / market data";
+  baseResult.updatedAt = new Date().toISOString();
 
   // Enrich with CafeF data for non-index stocks (run concurrently)
   if (!isIndex && symbol !== "HNXINDEX" && symbol !== "UPCOM") {
@@ -451,6 +480,7 @@ async function fetchStockQuote(symbol: string): Promise<SearchResult | null> {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim() || "";
+  const forceRefresh = searchParams.get("fresh") === "1" || searchParams.has("t");
 
   if (!query || query.length < 1) {
     return NextResponse.json(
@@ -464,7 +494,7 @@ export async function GET(request: Request) {
 
   if (matchedSymbols.length === 0) {
     // Try direct Yahoo Finance lookup with raw query as symbol
-    const directResult = await fetchStockQuote(query.toUpperCase());
+    const directResult = await fetchStockQuote(query.toUpperCase(), forceRefresh);
     if (directResult) {
       return NextResponse.json([directResult]);
     }
@@ -473,7 +503,7 @@ export async function GET(request: Request) {
 
   // Fetch quotes for all matched symbols concurrently
   const quotes = await Promise.all(
-    matchedSymbols.map((sym) => fetchStockQuote(sym))
+    matchedSymbols.map((sym) => fetchStockQuote(sym, forceRefresh))
   );
 
   const results = quotes.filter(

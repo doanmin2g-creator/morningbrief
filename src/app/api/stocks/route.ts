@@ -4,9 +4,9 @@ import companies from "../stock-search/companies.json";
 // Cache structure in memory — 5 minutes TTL
 let cachedData: any = null;
 let lastCacheTime = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 60 * 1000; // 1 minute for fresher portfolio quotes
 const RESPONSE_CACHE_HEADERS = {
-  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300"
+  "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60"
 };
 
 // CafeF browser simulation headers
