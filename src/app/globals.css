@@ -3450,6 +3450,7 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-bottom: 8px;
     padding: 12px 52px 13px 12px;
     border: 1.5px solid rgba(255, 255, 255, 0.72);
     border-radius: 18px;
@@ -3619,7 +3620,7 @@ body {
     align-items: center;
     justify-content: center;
     background: var(--bg-paper);
-    transition: border-color 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: border-color 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1, 0.5, 1), transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
     overflow: hidden;
 }
 
@@ -3629,10 +3630,11 @@ body {
 }
 
 .mobile-channel-bubble-avatar {
-    width: 36px;
-    height: 36px;
-    object-fit: contain;
-    filter: var(--icon-filter);
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: none;
 }
 
 .mobile-channel-bubble-name {
@@ -4959,7 +4961,7 @@ body {
   background: rgba(255,255,255,0.03); 
   border-radius: 28px; 
   padding: 18px 12px 16px;
-  margin: 0 0 22px;
+  margin: 6px 0 22px;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 12px 40px rgba(0,0,0,0.15); 
   backdrop-filter: blur(24px); 
   -webkit-backdrop-filter: blur(24px); 
@@ -4998,7 +5000,8 @@ body {
     -webkit-backdrop-filter: blur(8px);
 }
 .mobile-podcast-hub-wrapper .mobile-subchannel-pill.active {
-    background: var(--text-primary);
-    color: var(--bg-body);
-    border-color: transparent;
+    background: color-mix(in srgb, var(--active-channel-color, var(--accent-blue)) 12%, rgba(255,255,255,0.8));
+    color: var(--active-channel-color, var(--accent-blue));
+    border-color: color-mix(in srgb, var(--active-channel-color, var(--accent-blue)) 38%, rgba(120,120,120,0.18));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.72), 0 6px 18px rgba(0,0,0,0.05);
 }

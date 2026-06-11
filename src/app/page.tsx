@@ -635,6 +635,16 @@ export default function Home() {
     ];
   }, [lang]);
 
+  const channelArtworkBySource = useMemo(() => {
+    const artworkBySource: Record<string, string> = {};
+    podcastPlaylist.forEach((track) => {
+      if (track.sourceName && track.coverUrl && !artworkBySource[track.sourceName]) {
+        artworkBySource[track.sourceName] = track.coverUrl;
+      }
+    });
+    return artworkBySource;
+  }, [podcastPlaylist]);
+
   const filteredPlaylist = useMemo(() => {
     let list = podcastPlaylist;
     if (selectedChannel !== "All") {
@@ -2754,23 +2764,26 @@ export default function Home() {
               <div className="mobile-podcast-hub-wrapper">
                 {/* Instagram-style circular channels */}
                 <div className="mobile-podcast-channels-carousel">
-                  {channelsList.map((ch) => (
-                    <button
-                      key={ch.id}
-                      onClick={() => {
-                        setSelectedChannel(ch.id);
-                        setSelectedSubChannel("All");
-                        setCurrentTrackIndex(0);
-                      }}
-                      className={`mobile-channel-bubble-btn ${selectedChannel === ch.id ? "active" : ""}`}
-                      style={{ '--channel-color': ch.color } as React.CSSProperties}
-                    >
-                      <div className="mobile-channel-bubble-avatar-wrap">
-                        <img src={ch.logo} alt={ch.name} className="mobile-channel-bubble-avatar" />
-                      </div>
-                      <span className="mobile-channel-bubble-name">{ch.name}</span>
-                    </button>
-                  ))}
+                  {channelsList.map((ch) => {
+                    const channelLogo = ch.id === "All" ? ch.logo : channelArtworkBySource[ch.id] || ch.logo;
+                    return (
+                      <button
+                        key={ch.id}
+                        onClick={() => {
+                          setSelectedChannel(ch.id);
+                          setSelectedSubChannel("All");
+                          setCurrentTrackIndex(0);
+                        }}
+                        className={`mobile-channel-bubble-btn ${selectedChannel === ch.id ? "active" : ""}`}
+                        style={{ '--channel-color': ch.color } as React.CSSProperties}
+                      >
+                        <div className="mobile-channel-bubble-avatar-wrap">
+                          <img src={channelLogo} alt={ch.name} className="mobile-channel-bubble-avatar" />
+                        </div>
+                        <span className="mobile-channel-bubble-name">{ch.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Subchannels & search options container */}
@@ -2799,14 +2812,6 @@ export default function Home() {
                         {sc === "All" ? (lang === "vi" ? "Tất cả chuyên mục" : "All Shows") : sc}
                       </button>
                     ))}
-                  </div>
-                )}
-
-                {/* Active Channel Intro Banner */}
-                {selectedChannel !== "All" && (
-                  <div className="mobile-channel-intro-banner" style={{ borderLeft: `3px solid ${channelsList.find(c => c.id === selectedChannel)?.color || 'var(--accent-blue)'}` }}>
-                    <h4>{selectedChannel}</h4>
-                    <p>{channelsList.find(c => c.id === selectedChannel)?.desc}</p>
                   </div>
                 )}
               </div>
