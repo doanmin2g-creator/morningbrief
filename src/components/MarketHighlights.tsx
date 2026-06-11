@@ -174,7 +174,7 @@ export const MarketHighlights: React.FC<MarketHighlightsProps> = React.memo(({
           const colorClass = getStockColorClass(item);
           const typeMapped = type === "gainer" ? "gainers" : "losers";
           return (
-            <div key={code} className={`leaderboard-item ${typeMapped}`}>
+            <div key={`${typeMapped}-${code}-${rank}`} className={`leaderboard-item ${typeMapped}`}>
               <div className="leaderboard-rank">{rank}</div>
               <div className="leaderboard-info">
                 <span className="leaderboard-code">{code}</span>

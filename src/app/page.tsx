@@ -781,7 +781,7 @@ export default function Home() {
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Podcast State Hooks
-  const [podcastPlaylist, setPodcastPlaylist] = useState<PodcastTrack[]>([]);
+  const [podcastPlaylist, setPodcastPlaylist] = useState<PodcastTrack[]>(fallbackPlaylist);
   const [loadingPodcast, setLoadingPodcast] = useState(true);
   const [podcastSource, setPodcastSource] = useState<string>("Offline");
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
@@ -867,12 +867,12 @@ export default function Home() {
   }, [podcastPlaylist, selectedChannel]);
 
   const currentTrack = useMemo(() => {
-    const allTracks = podcastPlaylist;
+    const allTracks = podcastPlaylist.length > 0 ? podcastPlaylist : fallbackPlaylist;
     if (currentTrackId !== null) {
       const match = allTracks.find((track) => track.id === currentTrackId);
       if (match) return match;
     }
-    return allTracks[currentTrackIndex] || allTracks[0] || null;
+    return allTracks[currentTrackIndex] || allTracks[0] || fallbackPlaylist[0];
   }, [currentTrackId, currentTrackIndex, podcastPlaylist]);
 
   // Safely bound currentTrackIndex when the filtered playlist changes
@@ -2345,64 +2345,170 @@ export default function Home() {
           {/* Right Column: Market Intelligence & Institutional Consensus */}
           <aside className="sidebar-section">
             
-            {/* Audio tag for simple audio brief playback */}
-            {currentTrack && (
-              <audio
-                ref={audioRef}
-                src={currentTrack.audioUrl}
-                onTimeUpdate={handleTimeUpdate}
-                onLoadedMetadata={handleLoadedMetadata}
-                onEnded={handleTrackEnded}
-              />
-            )}
+            {/* Audio tag for podcast streaming */}
+            <audio
+              ref={audioRef}
+              src={currentTrack?.audioUrl}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={handleTrackEnded}
+            />
 
-            <div className="widget-panel simple-audio-card hidden-mobile">
-              <div className="widget-header simple-audio-header">
-                <h3>
+            {/* Podcast Player */}
+            <div className="widget-panel podcast-player-card hidden-mobile">
+              <div className="widget-header podcast-header" onClick={() => setIsPodcastExpanded(true)} style={{ cursor: "pointer" }}>
+                <h3 className="podcast-header-title">
                   <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
                   {trans[lang].audioNews}
                 </h3>
-                {loadingPodcast && <span className="simple-audio-status">{lang === "vi" ? "Dang tai" : "Loading"}</span>}
+                <div className="podcast-header-status" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  {loadingPodcast && <span className="podcast-live-dot"></span>}
+
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsPodcastExpanded(true); }} 
+                    className="podcast-expand-btn"
+                    title="Mở rộng | Expand"
+                    style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
+                  >
+                    <MaximizeIcon size={16} />
+                  </button>
+                </div>
               </div>
-              {currentTrack ? (
-                <div className="simple-audio-body">
-                  <div className="simple-audio-meta">
-                    <strong>{getTrackTitle(currentTrack)}</strong>
-                    <span>{currentTrack.sourceName} - {currentTrack.artist}</span>
-                    {currentTrack.pubDate && (
-                      <small>{new Date(currentTrack.pubDate).toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US")}</small>
-                    )}
-                  </div>
-                  <audio
-                    controls
-                    preload="none"
-                    src={currentTrack.audioUrl}
-                    className="simple-audio-native"
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onEnded={handleTrackEnded}
-                  />
-                  {podcastPlaylist.length > 1 && (
-                    <div className="simple-audio-list">
-                      {podcastPlaylist.slice(0, 4).map((track, index) => (
-                        <button
-                          key={track.id}
-                          type="button"
-                          className={currentTrack.id === track.id ? "active" : ""}
-                          onClick={() => selectTrack(index)}
-                        >
-                          <span>{getTrackTitle(track)}</span>
-                          <small>{track.sourceName}</small>
-                        </button>
-                      ))}
+
+              {/* Channels Selector Outside */}
+              <div className="podcast-channels-bar-mini">
+                {channelsList.map((ch) => (
+                  <button
+                    key={ch.id}
+                    onClick={() => {
+                      setSelectedChannel(ch.id);
+                      setSelectedSubChannel("All");
+                      setCurrentTrackIndex(0);
+                    }}
+                    className={`podcast-channel-mini-pill ${selectedChannel === ch.id ? "active" : ""}`}
+                    style={{ '--channel-color': ch.color } as React.CSSProperties}
+                  >
+                    <img src={ch.logo} alt={ch.name} className="channel-mini-logo" />
+                    <span>{ch.name}</span>
+                  </button>
+                ))}
+              </div>
+              
+              <div className="podcast-player-body">
+
+                    <div className="podcast-cover-section" onClick={() => setIsPodcastExpanded(true)} style={{ cursor: "pointer" }}>
+                      <div className={`podcast-cover-wrap ${isPlaying ? "spinning" : ""}`}>
+                        <img 
+                          src={currentTrack?.coverUrl} 
+                          alt={getTrackTitle(currentTrack)} 
+                          className="podcast-cover-image"
+                        />
+                        <div className="podcast-cover-center"></div>
+                      </div>
+                      <div className="podcast-track-details">
+                        <div className="podcast-track-title-container">
+                          <div className={`podcast-track-title ${isPlaying ? "marquee-text" : ""}`}>
+                            {getTrackTitle(currentTrack)}
+                          </div>
+                        </div>
+                        <div className="podcast-track-artist" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span>{currentTrack?.artist}</span>
+                          {isPlaying && (
+                            <span className="equalizer-wave">
+                              <span className="equalizer-bar"></span>
+                              <span className="equalizer-bar"></span>
+                              <span className="equalizer-bar"></span>
+                              <span className="equalizer-bar"></span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="simple-audio-empty">
-                  {lang === "vi" ? "Audio brief hiện chưa khả dụng." : "Audio brief is not available yet."}
-                </div>
-              )}
+
+                    <p className="podcast-track-desc">
+                      {getTrackDesc(currentTrack)}
+                    </p>
+
+                    {/* Seekbar Slider */}
+                    <div className="podcast-timeline-section">
+                      <span className="time-label">{formatTime(currentTime)}</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max={duration || 100}
+                        value={currentTime}
+                        onChange={handleSeekChange}
+                        className="podcast-timeline-slider"
+                      />
+                      <span className="time-label">{formatTime(duration)}</span>
+                    </div>
+
+                    {/* Player Controls */}
+                    <div className="podcast-controls-section">
+                      <button onClick={handlePrevTrack} className="podcast-control-btn" title={trans[lang].prevTrack}>
+                        <SkipPreviousIcon size={20} />
+                      </button>
+                      <button onClick={() => seekAudioBy(-10)} className="podcast-control-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}>
+                        <Rewind10Icon size={22} />
+                      </button>
+                      <button onClick={togglePlayPause} className="podcast-control-btn play-btn" title={isPlaying ? trans[lang].pause : trans[lang].play}>
+                        {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
+                      </button>
+                      <button onClick={() => seekAudioBy(30)} className="podcast-control-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}>
+                        <Forward30Icon size={22} />
+                      </button>
+                      <button onClick={handleNextTrack} className="podcast-control-btn" title={trans[lang].nextTrack}>
+                        <SkipNextIcon size={20} />
+                      </button>
+                      <button 
+                        onClick={() => setShowPlaylist(!showPlaylist)} 
+                        className={`podcast-control-btn list-btn ${showPlaylist ? "active" : ""}`}
+                        title={trans[lang].listBtn}
+                      >
+                        <PlaylistIcon size={20} />
+                      </button>
+                    </div>
+
+                    {/* Playlist Section (Accordion Slide Down) */}
+                    <div className={`podcast-playlist-section ${showPlaylist ? "open" : ""}`}>
+                      <div className="playlist-drawer-header">
+                        <h4 className="playlist-drawer-title">{trans[lang].playlist}</h4>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowPlaylist(false);
+                          }}
+                          className="playlist-drawer-close"
+                          title="Đóng | Close"
+                        >
+                          <CloseIcon size={16} />
+                        </button>
+                      </div>
+                      <div className="playlist-drawer-items">
+                        {filteredPlaylist.map((track, index) => (
+                          <div 
+                            key={`${track.id}-${track.audioUrl}-${index}`} 
+                            onClick={() => selectTrack(index)} 
+                            className={`playlist-item ${currentTrack?.id === track.id ? "active" : ""}`}
+                          >
+                            <div className="playlist-item-index">
+                              {currentTrack?.id === track.id && isPlaying ? (
+                                <span className="equalizer-wave">
+                                  <span className="equalizer-bar"></span>
+                                  <span className="equalizer-bar"></span>
+                                  <span className="equalizer-bar"></span>
+                                </span>
+                              ) : index + 1}
+                            </div>
+                            <div className="playlist-item-details">
+                              <div className="playlist-item-title">{getTrackTitle(track)}</div>
+                              <div className="playlist-item-meta">{track.sourceName} • {track.artist}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+              </div>
             </div>
 
             {/* Dynamic AI Analysis Panel (VN Broad Market Perspective) */}
@@ -3114,29 +3220,166 @@ export default function Home() {
           </aside>
         </div>
 
-        {/* Mobile Audio Section */}
+        {/* Mobile Podcast App Section */}
         {activeMobileTab === "podcast" && (
-          <section className="mobile-podcast-app-section mobile-only mobile-tab-animate">
-            <div className="mobile-podcast-app-header">
-              <h2>
-                <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
-                {lang === "vi" ? "Audio Brief" : "Audio Briefing"}
-              </h2>
-            </div>
-            {currentTrack ? (
-              <div className="simple-audio-card mobile-simple-audio-card">
-                <div className="simple-audio-meta">
-                  <strong>{getTrackTitle(currentTrack)}</strong>
-                    <span>{currentTrack.sourceName} - {currentTrack.artist}</span>
+        <section 
+          className="mobile-podcast-app-section mobile-only mobile-tab-animate"
+          style={{ '--active-channel-color': channelsList.find(c => c.id === selectedChannel)?.color || 'var(--accent-blue)' } as React.CSSProperties}
+        >
+
+              <div className="mobile-podcast-app-header">
+                <h2>
+                  <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
+                  {lang === "vi" ? "Podcast Tin Tức" : "Audio Briefing"}
+                </h2>
+                {loadingPodcast && <span className="podcast-live-dot"></span>}
+              </div>
+
+              {currentTrack && (
+                <div className={`mobile-podcast-now-card ${isPlaying ? "playing" : ""}`} onClick={() => setIsMobilePlayerOpen(true)}>
+                  <div className="mobile-podcast-now-art-wrap">
+                    <img src={currentTrack.coverUrl} alt="" className="mobile-podcast-now-art" />
+                    {isPlaying && (
+                      <span className="mobile-podcast-now-equalizer equalizer-wave">
+                        <span className="equalizer-bar"></span>
+                        <span className="equalizer-bar"></span>
+                        <span className="equalizer-bar"></span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="mobile-podcast-now-copy">
+                    <span className="mobile-podcast-now-kicker">{isPlaying ? (lang === "vi" ? "Đang phát" : "Now Playing") : (lang === "vi" ? "Sẵn sàng nghe" : "Ready to Play")}</span>
+                    <strong>{getTrackTitle(currentTrack)}</strong>
+                    <span>{currentTrack.artist}</span>
+                  </div>
+                  <button
+                    className="mobile-podcast-now-play"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      togglePlayPause();
+                    }}
+                  >
+                    {isPlaying ? <PauseIcon size={17} /> : <PlayIcon size={17} />}
+                  </button>
+                  <div className="mobile-podcast-now-progress">
+                    <span style={{ width: mobilePlayerProgress }} />
+                  </div>
                 </div>
-                <audio controls preload="none" src={currentTrack.audioUrl} className="simple-audio-native" />
+              )}
+
+              {/* Glassmorphic Hub Wrapper for podcast channel selector and options */}
+              <div className="mobile-podcast-hub-wrapper">
+                {/* Instagram-style circular channels */}
+                <div className="mobile-podcast-channels-carousel">
+                  {channelsList.map((ch) => {
+                    const channelLogo = ch.id === "All" ? ch.logo : channelArtworkBySource[ch.id] || ch.logo;
+                    return (
+                      <button
+                        key={ch.id}
+                        onClick={() => {
+                          setSelectedChannel(ch.id);
+                          setSelectedSubChannel("All");
+                          setCurrentTrackIndex(0);
+                        }}
+                        className={`mobile-channel-bubble-btn ${selectedChannel === ch.id ? "active" : ""}`}
+                        style={{ '--channel-color': ch.color } as React.CSSProperties}
+                      >
+                        <div className="mobile-channel-bubble-avatar-wrap">
+                          <img src={channelLogo} alt={ch.name} className="mobile-channel-bubble-avatar" />
+                        </div>
+                        <span className="mobile-channel-bubble-name">{ch.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Subchannels & search options container */}
+                <div className="mobile-podcast-filters-row">
+                  <input
+                    type="text"
+                    placeholder={lang === "vi" ? "Tìm tập podcast..." : "Search episodes..."}
+                    value={podcastSearchQuery}
+                    onChange={(e) => setPodcastSearchQuery(e.target.value)}
+                    className="mobile-podcast-search-input"
+                  />
+                </div>
+
+                {/* Subchannels horizontal capsule scrolling */}
+                {subChannelsList.length > 1 && (
+                  <div className="mobile-podcast-subchannels-pills">
+                    {subChannelsList.map((sc) => (
+                      <button
+                        key={sc}
+                        onClick={() => {
+                          setSelectedSubChannel(sc);
+                          setCurrentTrackIndex(0);
+                        }}
+                        className={`mobile-subchannel-pill ${selectedSubChannel === sc ? "active" : ""}`}
+                      >
+                        {sc === "All" ? (lang === "vi" ? "Tất cả chuyên mục" : "All Shows") : sc}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="simple-audio-empty">
-                  {lang === "vi" ? "Audio brief hiện chưa khả dụng." : "Audio brief is not available yet."}
+
+              {/* Episode Feed List */}
+              <div className="mobile-podcast-episodes-feed">
+                {filteredPlaylist.length === 0 ? (
+                  <div className="mobile-podcast-empty-state">
+                    {lang === "vi" ? "Không tìm thấy tập podcast phù hợp." : "No episodes found."}
+                  </div>
+                ) : (
+                  filteredPlaylist.map((track, index) => {
+                    const isCurrent = currentTrack?.id === track.id;
+                    return (
+                      <div 
+                        key={`${track.id}-${track.audioUrl}-${index}`}
+                        className={`mobile-episode-feed-card ${isCurrent ? "active" : ""}`}
+                        onClick={() => selectTrack(index)}
+                      >
+                        <div className="mobile-episode-card-cover-wrap">
+                          <img src={track.coverUrl} alt="" className="mobile-episode-card-cover" />
+                          {isCurrent && isPlaying && (
+                            <div className="mobile-episode-card-cover-overlay">
+                              <span className="equalizer-wave">
+                                <span className="equalizer-bar"></span>
+                                <span className="equalizer-bar"></span>
+                                <span className="equalizer-bar"></span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="mobile-episode-card-details">
+                          <span className="mobile-episode-card-source" style={{ color: channelsList.find(c => c.id === track.sourceName)?.color || 'var(--accent-blue)' }}>
+                            {track.sourceName} • {track.artist}
+                          </span>
+                          <h4 className="mobile-episode-card-title">{getTrackTitle(track)}</h4>
+                          {track.description && (
+                            <p className="mobile-episode-card-desc">{track.description}</p>
+                          )}
+                        </div>
+                        <div className="mobile-episode-card-action">
+                          <button 
+                            className="mobile-episode-play-circle-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isCurrent) {
+                                togglePlayPause();
+                              } else {
+                                selectTrack(index);
+                              }
+                            }}
+                          >
+                            {isCurrent && isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            )}
-          </section>
+            </section>
         )}
       </main>
 
@@ -3620,6 +3863,265 @@ export default function Home() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bottom Tab Bar for Mobile Devices (Apple Style) */}
+      {/* ═══════════════════════════════════════════════════════
+          DESKTOP PODCAST APP MODAL OVERLAY
+          ═══════════════════════════════════════════════════════ */}
+      {isPodcastExpanded && (
+        <div className={`podcast-modal-overlay ${isPodcastClosing ? "closing" : ""}`} onClick={closePodcastExpanded}>
+          <div className={`podcast-modal-content ${isPodcastClosing ? "closing" : ""}`} onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="podcast-modal-header">
+              <h2>
+                <img src="/icon/headphone-icon.png" className="header-3d-icon" alt="" />
+                {trans[lang].audioNews}
+              </h2>
+              <button className="podcast-modal-close-btn" onClick={closePodcastExpanded} title="Đóng | Close">
+                <CloseIcon size={16} />
+              </button>
+            </div>
+            {/* Modal Body */}
+            <div className="podcast-modal-body">
+
+                  {/* Left Column: Now Playing (Apple Music style) */}
+                  <div className="podcast-modal-now-playing-panel">
+                    <div className={`podcast-modal-now-playing-cover-wrap ${isPlaying ? "playing" : ""}`}>
+                      <img src={currentTrack?.coverUrl} alt="" className="podcast-modal-now-playing-cover" />
+                      <span className="podcast-modal-now-playing-glow"></span>
+                    </div>
+                    <div className="podcast-modal-now-playing-details">
+                      <span className="podcast-modal-now-playing-kicker">{currentTrack?.sourceName} • {currentTrack?.artist}</span>
+                      <h3 className="podcast-modal-now-playing-title">{getTrackTitle(currentTrack)}</h3>
+                      <p className="podcast-modal-now-playing-desc">{getTrackDesc(currentTrack)}</p>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Library & Queue */}
+                  <div className="podcast-modal-main-panel">
+                    {/* Channels pill bar at top */}
+                    <div className="podcast-modal-channels-bar">
+                      {channelsList.map((ch) => (
+                        <button
+                          key={ch.id}
+                          onClick={() => { setSelectedChannel(ch.id); setSelectedSubChannel("All"); setCurrentTrackIndex(0); }}
+                          className={`podcast-modal-channel-pill ${selectedChannel === ch.id ? "active" : ""}`}
+                          style={{ '--channel-color': ch.color } as React.CSSProperties}
+                        >
+                          <img src={ch.logo} alt={ch.name} />
+                          <span>{ch.name}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="podcast-modal-main-top-row">
+                      <input 
+                        type="text" 
+                        placeholder={lang === "vi" ? "Tìm tập podcast..." : "Search episodes..."} 
+                        value={podcastSearchQuery} 
+                        onChange={(e) => setPodcastSearchQuery(e.target.value)} 
+                        className="podcast-modal-search-input" 
+                      />
+                      {subChannelsList.length > 1 && (
+                        <div className="podcast-modal-subchannel-pills">
+                          {subChannelsList.map((sc) => (
+                            <button key={sc} onClick={() => { setSelectedSubChannel(sc); setCurrentTrackIndex(0); }} className={`podcast-modal-subchannel-pill ${selectedSubChannel === sc ? "active" : ""}`}>
+                              {sc === "All" ? (lang === "vi" ? "Tất cả chuyên mục" : "All") : sc}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tracks list */}
+                    <div key={selectedChannel} className="podcast-modal-tracks-list">
+                      {filteredPlaylist.length === 0 ? (
+                        <div style={{ padding: "30px", textAlign: "center", color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.85rem" }}>
+                          {lang === "vi" ? "Không tìm thấy tập podcast." : "No episodes found."}
+                        </div>
+                      ) : filteredPlaylist.map((track, index) => {
+                        const isCurrent = currentTrack?.id === track.id;
+                        return (
+                          <div key={`${track.id}-${track.audioUrl}-${index}`} className={`podcast-modal-track-row ${isCurrent ? "active" : ""}`} onClick={() => selectTrack(index)}>
+                            <div className="podcast-modal-track-num">
+                              {isCurrent && isPlaying ? (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>) : index + 1}
+                            </div>
+                            <img src={track.coverUrl} alt="" className="podcast-modal-track-cover" />
+                            <div className="podcast-modal-track-info">
+                              <div className="podcast-modal-track-title">{getTrackTitle(track)}</div>
+                              <div className="podcast-modal-track-meta">{track.sourceName} • {track.artist}</div>
+                            </div>
+                            <button className="podcast-modal-track-play-btn" onClick={(e) => { e.stopPropagation(); selectTrack(index); }}>
+                              {isCurrent && isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+            </div>
+            {/* Control Bar */}
+
+              <div className="podcast-modal-control-bar">
+                <div className={`podcast-modal-now-playing-disc ${isPlaying ? "spinning" : ""}`}>
+                  <img src={currentTrack?.coverUrl} alt="" />
+                </div>
+                <div className="podcast-modal-now-playing-info">
+                  <div className="podcast-modal-now-title">{getTrackTitle(currentTrack)}</div>
+                  <div className="podcast-modal-now-artist">
+                    <span>{currentTrack?.artist}</span>
+                    {isPlaying && (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>)}
+                  </div>
+                </div>
+                <div className="podcast-modal-timeline-section">
+                  <span className="time-label">{formatTime(currentTime)}</span>
+                  <input type="range" min="0" max={duration || 100} value={currentTime} onChange={handleSeekChange} className="podcast-timeline-slider" style={{ flex: 1 }} />
+                  <span className="time-label">{formatTime(duration)}</span>
+                </div>
+                <div className="podcast-modal-controls">
+                  <button onClick={handlePrevTrack} className="podcast-modal-ctrl-btn" title={trans[lang].prevTrack}><SkipPreviousIcon size={18} /></button>
+                  <button onClick={() => seekAudioBy(-10)} className="podcast-modal-ctrl-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}><Rewind10Icon size={20} /></button>
+                  <button onClick={togglePlayPause} className="podcast-modal-ctrl-btn play-btn">{isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}</button>
+                  <button onClick={() => seekAudioBy(30)} className="podcast-modal-ctrl-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}><Forward30Icon size={20} /></button>
+                  <button onClick={handleNextTrack} className="podcast-modal-ctrl-btn" title={trans[lang].nextTrack}><SkipNextIcon size={18} /></button>
+                  <button onClick={() => setPlaybackRate(prev => { const speeds = [0.75, 1.0, 1.25, 1.5, 2.0]; return speeds[(speeds.indexOf(prev) + 1) % speeds.length]; })} className="podcast-modal-speed-btn">{playbackRate}×</button>
+                </div>
+                <div className="podcast-modal-volume-section">
+                  <VolumeIcon size={16} />
+                  <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} />
+                </div>
+              </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE FLOATING MINI PLAYER — shown on all tabs except podcast tab */}
+      {currentTrack && activeMobileTab !== "podcast" && (
+        <>
+          <div
+            className={`mobile-mini-player ${isMobileMiniHidden ? "hidden" : ""}`}
+            onClick={openMobilePlayer}
+            onTouchStart={startMiniPlayerSwipe}
+            onTouchEnd={endMiniPlayerSwipe}
+          >
+            <img src={currentTrack.coverUrl} alt="" className={`mobile-mini-player-cover ${isPlaying ? "spinning" : ""}`} />
+            <div className="mobile-mini-player-info">
+              <div className="mobile-mini-player-title">{getTrackTitle(currentTrack)}</div>
+              <div className="mobile-mini-player-artist">
+                <span>{currentTrack.artist}</span>
+                {isPlaying && (<span className="equalizer-wave"><span className="equalizer-bar"></span><span className="equalizer-bar"></span><span className="equalizer-bar"></span></span>)}
+              </div>
+            </div>
+            <div className="mobile-mini-player-controls">
+              <button className="mobile-mini-ctrl-btn" onClick={(e) => { e.stopPropagation(); handlePrevTrack(); }}><SkipPreviousIcon size={16} /></button>
+              <button className="mobile-mini-ctrl-btn play-btn" onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}>
+                {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+              </button>
+              <button className="mobile-mini-ctrl-btn" onClick={(e) => { e.stopPropagation(); handleNextTrack(); }}><SkipNextIcon size={16} /></button>
+            </div>
+            <div className="mobile-mini-player-progress">
+              <div className="mobile-mini-player-progress-fill" style={{ width: mobilePlayerProgress }} />
+            </div>
+          </div>
+
+          <button
+            className={`mobile-mini-reveal-tab ${!isMobileMiniHidden ? "hidden" : ""}`}
+            onClick={() => setIsMobileMiniHidden(false)}
+            onTouchStart={startRevealTabSwipe}
+            onTouchEnd={endRevealTabSwipe}
+            title={lang === "vi" ? "Kéo sang trái để mở trình phát" : "Swipe left to reveal player"}
+          >
+            <span className="mobile-mini-reveal-arrow">‹</span>
+            <img src={currentTrack.coverUrl} alt="" />
+          </button>
+        </>
+      )}
+
+      {isMobilePlayerOpen && currentTrack && (
+        <div className={`mobile-player-sheet-overlay mobile-only ${isMobilePlayerClosing ? "closing" : ""}`} onClick={closeMobilePlayer}>
+          <div 
+            className="mobile-player-sheet" 
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={startPlayerSheetSwipe}
+            onTouchEnd={endPlayerSheetSwipe}
+          >
+            <button className="mobile-player-sheet-close" onClick={closeMobilePlayer} title={lang === "vi" ? "Đóng" : "Close"}>×</button>
+            <div className="mobile-player-grabber"></div>
+            <div 
+              className={`mobile-player-art-stage ${isPlaying ? "playing" : ""} ${artSwipeMotion ? `swipe-${artSwipeMotion}` : ""}`}
+              onTouchStart={startArtworkSwipe}
+              onTouchEnd={endArtworkSwipe}
+              title={lang === "vi" ? "Vuốt phải để chuyển tập tiếp, vuốt trái để lùi tập" : "Swipe right for next, left for previous"}
+            >
+              <img src={currentTrack.coverUrl} alt="" className="mobile-player-art" />
+              <span className="mobile-player-art-glow"></span>
+            </div>
+            <div className="mobile-player-track-row">
+              <div>
+                <span className="mobile-player-kicker">{currentTrack.sourceName} • {currentTrack.artist}</span>
+                <h3>{getTrackTitle(currentTrack)}</h3>
+              </div>
+              <button className={`mobile-player-info-btn ${isAudioInfoOpen ? "active" : ""}`} onClick={() => setIsAudioInfoOpen((open) => !open)}>
+                i
+              </button>
+            </div>
+            {isAudioInfoOpen && (
+              <div className="mobile-player-info-panel">
+                <strong>{lang === "vi" ? "Thông tin audio" : "Audio Info"}</strong>
+                <p>{getTrackDesc(currentTrack) || currentTrack.description || (lang === "vi" ? "Chưa có mô tả cho tập này." : "No description available for this episode.")}</p>
+                <div>
+                  <span>{currentTrack.sourceName}</span>
+                  <span>{currentTrack.duration || formatTime(duration)}</span>
+                  {currentTrack.pubDate && <span>{new Date(currentTrack.pubDate).toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US")}</span>}
+                </div>
+              </div>
+            )}
+            <div className="mobile-player-progress-wrap">
+              <input
+                type="range"
+                min="0"
+                max={duration || 100}
+                value={currentTime}
+                onChange={handleSeekChange}
+                className="mobile-player-progress-slider"
+              />
+              <div className="mobile-player-time-row">
+                <span>{formatTime(currentTime)}</span>
+                <span>-{formatTime(Math.max((duration || 0) - currentTime, 0))}</span>
+              </div>
+            </div>
+            <div className="mobile-player-main-controls">
+              <button onClick={handlePrevTrack} className="mobile-player-control-btn side-btn">
+                <SkipPreviousIcon size={34} />
+              </button>
+              <button onClick={() => seekAudioBy(-10)} className="mobile-player-control-btn seek-btn" title={lang === "vi" ? "Tua lại 10 giây" : "Back 10 seconds"}>
+                <Rewind10Icon size={30} />
+              </button>
+              <button onClick={togglePlayPause} className="mobile-player-control-btn center-btn">
+                {isPlaying ? <PauseIcon size={40} /> : <PlayIcon size={40} />}
+              </button>
+              <button onClick={() => seekAudioBy(30)} className="mobile-player-control-btn seek-btn" title={lang === "vi" ? "Tua tới 30 giây" : "Forward 30 seconds"}>
+                <Forward30Icon size={30} />
+              </button>
+              <button onClick={handleNextTrack} className="mobile-player-control-btn side-btn">
+                <SkipNextIcon size={34} />
+              </button>
+            </div>
+            <div className="mobile-player-volume-row">
+              <VolumeIcon size={16} />
+              <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} />
+              <VolumeIcon size={20} />
+            </div>
+            <div className="mobile-player-actions-row">
+              <button>ⓘ</button>
+              <button>AirPlay</button>
+              <button onClick={() => setActiveMobileTab("podcast")}>
+                <PlaylistIcon size={17} />
+              </button>
             </div>
           </div>
         </div>

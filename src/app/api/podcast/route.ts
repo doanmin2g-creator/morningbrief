@@ -418,10 +418,10 @@ export async function GET() {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Podcast aggregation failed:", message);
+    console.error("Podcast aggregation failed, using fallback:", message);
 
-    return NextResponse.json([], {
-      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "EMPTY" },
+    return NextResponse.json(FALLBACK_EPISODES, {
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "FALLBACK" },
     });
   }
 }
