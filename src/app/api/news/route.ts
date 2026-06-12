@@ -5,6 +5,7 @@ type NewsCategory = "general" | "business" | "tech";
 interface FeedSource {
   url: string;
   source: string;
+  format?: "rss" | "cafefHtml";
 }
 
 interface NewsItem {
@@ -18,12 +19,12 @@ interface NewsItem {
 
 const FEEDS: Record<NewsCategory, FeedSource[]> = {
   general: [
-    { url: "https://cafef.vn/vi-mo-dau-tu.rss", source: "CafeF" },
-    { url: "https://vnexpress.net/rss/kinh-doanh.rss", source: "VnExpress" },
+    { url: "https://cafef.vn/vi-mo-dau-tu.chn", source: "CafeF", format: "cafefHtml" },
+    { url: "https://cafef.vn/thi-truong-chung-khoan.chn", source: "CafeF", format: "cafefHtml" },
   ],
   business: [
-    { url: "https://cafef.vn/thi-truong-chung-khoan.rss", source: "CafeF" },
-    { url: "https://vnexpress.net/rss/kinh-doanh.rss", source: "VnExpress" },
+    { url: "https://cafef.vn/thi-truong-chung-khoan.chn", source: "CafeF", format: "cafefHtml" },
+    { url: "https://cafef.vn/doanh-nghiep.chn", source: "CafeF", format: "cafefHtml" },
   ],
   tech: [
     { url: "https://vnexpress.net/rss/so-hoa.rss", source: "VnExpress" },
@@ -59,13 +60,13 @@ function parseTimeAgo(pubDateStr: string): string {
   if (!Number.isFinite(pubDate.getTime())) return pubDateStr || "";
 
   const diffMins = Math.max(0, Math.floor((Date.now() - pubDate.getTime()) / 60000));
-  if (diffMins < 60) return `${diffMins} phút trước`;
+  if (diffMins < 60) return diffMins + " phút trước";
 
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours} giờ trước`;
+  if (diffHours < 24) return diffHours + " giờ trước";
 
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} ngày trước`;
+  return diffDays + " ngày trước";
 }
 
 function extractField(itemContent: string, tagName: string): string {
@@ -105,6 +106,44 @@ function parseRssXml(xmlText: string, source: string): NewsItem[] {
   return items;
 }
 
+function normalizeCafeFLink(link: string): string {
+  if (!link) return "";
+  if (link.startsWith("http")) return link;
+  return `https://cafef.vn${link.startsWith("/") ? "" : "/"}${link}`;
+}
+
+function parseCafeFHtml(htmlText: string, source: string): NewsItem[] {
+  const items: NewsItem[] = [];
+  const articleRegex = /<div[^>]+role=["']article["'][^>]*class=["'][^"']*tlitem[^"']*["'][^>]*>([\s\S]*?)(?=<div[^>]+role=["']article["']|<\/div>\s*<\/div>\s*<\/div>|$)/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = articleRegex.exec(htmlText)) !== null) {
+    const article = match[1];
+    const titleMatch = article.match(/<h3>\s*<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>\s*<\/h3>/i);
+    if (!titleMatch) continue;
+
+    const link = normalizeCafeFLink(decodeXml(titleMatch[1]));
+    const title = stripHtml(titleMatch[2]);
+    if (!title || !link) continue;
+
+    const imageMatch = article.match(/<img[^>]+src=["']([^"']+)["']/i);
+    const timeMatch = article.match(/<span[^>]+class=["'][^"']*time[^"']*["'][^>]*(?:title=["']([^"']+)["'])?[^>]*>([\s\S]*?)<\/span>/i);
+    const descriptionMatch = article.match(/<p[^>]+class=["'][^"']*sapo[^"']*["'][^>]*>([\s\S]*?)<\/p>/i);
+    const pubDate = timeMatch?.[1] || stripHtml(timeMatch?.[2] || "");
+
+    items.push({
+      source,
+      title,
+      description: descriptionMatch ? stripHtml(descriptionMatch[1]) : "",
+      link,
+      time: parseTimeAgo(pubDate),
+      image: imageMatch?.[1] ? decodeXml(imageMatch[1]) : "",
+    });
+  }
+
+  return items;
+}
+
 async function fetchFeed(source: FeedSource): Promise<NewsItem[]> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), NEWS_FETCH_TIMEOUT_MS);
@@ -123,7 +162,10 @@ async function fetchFeed(source: FeedSource): Promise<NewsItem[]> {
       throw new Error(`${source.source} RSS HTTP ${response.status}`);
     }
 
-    return parseRssXml(await response.text(), source.source);
+    const body = await response.text();
+    return source.format === "cafefHtml"
+      ? parseCafeFHtml(body, source.source)
+      : parseRssXml(body, source.source);
   } finally {
     clearTimeout(timeoutId);
   }
