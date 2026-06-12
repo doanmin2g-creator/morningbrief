@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React from "react";
 
 export interface NewsItem {
   source: string;
@@ -83,14 +83,25 @@ export const NewsFeed: React.FC<NewsFeedProps> = React.memo(({
                 </div>
                 {hasImage && (
                   <div className="news-image-wrap">
-                    <img src={item.image} alt={item.title} className="news-image" />
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="news-image"
+                      loading={idx === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                      fetchPriority={idx === 0 ? "high" : "low"}
+                      referrerPolicy="no-referrer"
+                      onError={(event) => {
+                        event.currentTarget.parentElement?.remove();
+                      }}
+                    />
                   </div>
                 )}
               </div>
             );
           })}
           {newsList.length > visibleNewsCount && (
-            <button 
+            <button
               className="load-more-news-btn"
               onClick={() => setVisibleNewsCount(prev => prev + 6)}
             >

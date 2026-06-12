@@ -422,6 +422,8 @@ body {
     transition: var(--transition-spring);
     position: relative;
     overflow: hidden;
+    content-visibility: auto;
+    contain-intrinsic-size: 240px;
 }
 
 .news-card.no-image {

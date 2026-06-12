@@ -32,11 +32,13 @@ const FEEDS: Record<NewsCategory, FeedSource[]> = {
 };
 
 const cache: Record<string, { data: NewsItem[]; timestamp: number }> = {};
-const CACHE_TTL_MS = 3 * 60 * 1000;
+const FINANCIAL_NEWS_CATEGORIES = new Set<NewsCategory>(["general", "business"]);
+const SERVER_NEWS_CACHE_VERSION = "cafef-v2";
+const CACHE_TTL_MS = 10 * 60 * 1000;
 const STALE_TTL_MS = 60 * 60 * 1000;
-const NEWS_FETCH_TIMEOUT_MS = 4500;
+const NEWS_FETCH_TIMEOUT_MS = 3500;
 const RESPONSE_CACHE_HEADERS = {
-  "Cache-Control": "public, s-maxage=180, stale-while-revalidate=600",
+  "Cache-Control": "public, s-maxage=600, stale-while-revalidate=1800",
 };
 
 function decodeXml(value: string): string {
@@ -67,6 +69,13 @@ function parseTimeAgo(pubDateStr: string): string {
 
   const diffDays = Math.floor(diffHours / 24);
   return diffDays + " ngày trước";
+}
+
+function isAllowedSourceForCategory(category: NewsCategory, item: NewsItem): boolean {
+  if (!FINANCIAL_NEWS_CATEGORIES.has(category)) return true;
+
+  return item.source.trim().toLowerCase() === "cafef"
+    && item.link.trim().toLowerCase().includes("cafef.vn");
 }
 
 function extractField(itemContent: string, tagName: string): string {
@@ -153,8 +162,14 @@ async function fetchFeed(source: FeedSource): Promise<NewsItem[]> {
       signal: controller.signal,
       next: { revalidate: 180 },
       headers: {
-        "User-Agent": "MorningBrief/1.0 (+https://morningbrief.local)",
-        "Accept": "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+        "User-Agent": source.format === "cafefHtml"
+          ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+          : "MorningBrief/1.0 (+https://morningbrief.local)",
+        "Accept": source.format === "cafefHtml"
+          ? "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+          : "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+        "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": "https://cafef.vn/",
       },
     });
 
@@ -189,34 +204,37 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const categoryParam = searchParams.get("category") || "general";
   const category = (categoryParam in FEEDS ? categoryParam : "general") as NewsCategory;
+  const cacheKey = `${SERVER_NEWS_CACHE_VERSION}:${category}`;
   const now = Date.now();
-  const cached = cache[category];
+  const cached = cache[cacheKey];
 
   if (cached && now - cached.timestamp < CACHE_TTL_MS) {
     return NextResponse.json(cached.data, {
-      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "HIT" },
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "HIT", "x-source-policy": FINANCIAL_NEWS_CATEGORIES.has(category) ? "cafef-only" : "category-default" },
     });
   }
 
   const settled = await Promise.allSettled(FEEDS[category].map(fetchFeed));
   const results = dedupeNews(
-    settled.flatMap((result) => result.status === "fulfilled" ? result.value : [])
+    settled
+      .flatMap((result) => result.status === "fulfilled" ? result.value : [])
+      .filter((item) => isAllowedSourceForCategory(category, item))
   ).slice(0, 40);
 
   if (results.length > 0) {
-    cache[category] = { data: results, timestamp: now };
+    cache[cacheKey] = { data: results, timestamp: now };
     return NextResponse.json(results, {
-      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "MISS" },
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "MISS", "x-source-policy": FINANCIAL_NEWS_CATEGORIES.has(category) ? "cafef-only" : "category-default" },
     });
   }
 
   if (cached && now - cached.timestamp < STALE_TTL_MS) {
     return NextResponse.json(cached.data, {
-      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "STALE" },
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "STALE", "x-source-policy": FINANCIAL_NEWS_CATEGORIES.has(category) ? "cafef-only" : "category-default" },
     });
   }
 
   return NextResponse.json([], {
-    headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "EMPTY" },
+    headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "EMPTY", "x-source-policy": FINANCIAL_NEWS_CATEGORIES.has(category) ? "cafef-only" : "category-default" },
   });
 }

@@ -114,7 +114,8 @@ interface PodcastTrack {
   pubDate?: string;
 }
 
-const CLIENT_CACHE_PREFIX = "morningbrief_cache_v1";
+const CLIENT_CACHE_PREFIX = "morningbrief_cache_v2";
+const FINANCIAL_NEWS_CATEGORIES = new Set(["general", "business"]);
 const CLIENT_CACHE_MAX_AGE = {
   stocks: 15 * 60 * 1000,
   news: 20 * 60 * 1000,
@@ -153,6 +154,16 @@ function hasDisplayImage(image?: string): boolean {
   const normalized = image?.trim().toLowerCase();
   if (!normalized || normalized === "#" || normalized === "about:blank") return false;
   return !normalized.includes("news_image_default") && !normalized.includes("photo-1590283603385");
+}
+
+function filterNewsByCategorySource(category: string, items: NewsItem[]): NewsItem[] {
+  if (!FINANCIAL_NEWS_CATEGORIES.has(category)) return items;
+
+  return items.filter((item) => {
+    const source = item.source.trim().toLowerCase();
+    const link = item.link.trim().toLowerCase();
+    return source === "cafef" && link.includes("cafef.vn");
+  });
 }
 
 function toSafeJsonLd(value: unknown): string {
@@ -1171,7 +1182,10 @@ export default function Home() {
   // Fetch News Feed based on selected category tab
   const fetchNews = async (category: string) => {
     const cacheKey = `news:${category}`;
-    const cached = readClientCache<NewsItem[]>(cacheKey, CLIENT_CACHE_MAX_AGE.news);
+    const cached = filterNewsByCategorySource(
+      category,
+      readClientCache<NewsItem[]>(cacheKey, CLIENT_CACHE_MAX_AGE.news) ?? []
+    );
     const hasCachedNews = Boolean(cached && cached.length > 0);
     if (cached && cached.length > 0) {
       setNewsList(cached);
@@ -1180,9 +1194,9 @@ export default function Home() {
       setLoadingNews(true);
     }
     try {
-      const res = await fetchWithTimeout(`/api/news?category=${category}`, { timeout: 5500 });
+      const res = await fetchWithTimeout(`/api/news?category=${category}`, { timeout: 4500 });
       if (!res.ok) throw new Error("Failed to fetch news data");
-      const data = await res.json() as NewsItem[];
+      const data = filterNewsByCategorySource(category, await res.json() as NewsItem[]);
       if (Array.isArray(data) && data.length > 0) {
         setNewsList(data);
         writeClientCache(cacheKey, data);
