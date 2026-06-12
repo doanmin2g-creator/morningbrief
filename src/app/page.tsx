@@ -99,6 +99,18 @@ interface WatchlistNewsItem {
   description?: string;
 }
 
+type ReaderContentBlock = { type: "paragraph" | "header" | "list-item" | "image"; text?: string; url?: string; level?: number };
+
+interface StockInlineArticleState {
+  key: string;
+  article: NewsItem;
+  tab: "summary" | "full";
+  loading: boolean;
+  summary: string[];
+  fullContent: ReaderContentBlock[];
+  error?: string;
+}
+
 // Podcast Playlist Item Type
 interface PodcastTrack {
   id: number;
@@ -766,6 +778,7 @@ export default function Home() {
   const [loadingDetailChart, setLoadingDetailChart] = useState(false);
   const [loadingWatchlistDetail, setLoadingWatchlistDetail] = useState(false);
   const [isWatchlistDetailClosing, setIsWatchlistDetailClosing] = useState(false);
+  const [stockInlineArticle, setStockInlineArticle] = useState<StockInlineArticleState | null>(null);
   const [macroData, setMacroData] = useState<MacroData | null>(null);
   const [loadingMacro, setLoadingMacro] = useState(true);
   // Index overview stats (liquidity, breadth, foreign trading) from CafeF
@@ -775,7 +788,7 @@ export default function Home() {
   const [isReaderClosing, setIsReaderClosing] = useState(false);
   const [isMacroEventClosing, setIsMacroEventClosing] = useState(false);
   const [scrapedParagraphs, setScrapedParagraphs] = useState<string[]>([]);
-  const [fullContent, setFullContent] = useState<Array<{ type: "paragraph" | "header" | "list-item" | "image"; text?: string; url?: string; level?: number }>>([]);
+  const [fullContent, setFullContent] = useState<ReaderContentBlock[]>([]);
   const [readerTab, setReaderTab] = useState<"summary" | "full">("summary");
   const [loadingContent, setLoadingContent] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -952,6 +965,71 @@ export default function Home() {
     setActiveArticle(article);
   }
 
+  const openCurrentChannelPlaylist = () => {
+    if (currentTrack?.sourceName) {
+      setSelectedChannel(currentTrack.sourceName);
+      setSelectedSubChannel("All");
+      setPodcastSearchQuery("");
+      setCurrentTrackIndex(0);
+    }
+    setShowPlaylist((open) => !open);
+  };
+
+  const openStockInlineArticle = async (article: NewsItem, key: string) => {
+    if (stockInlineArticle?.key === key) {
+      setStockInlineArticle(null);
+      return;
+    }
+
+    const initialSummary = article.description ? [article.description] : [];
+    setStockInlineArticle({
+      key,
+      article,
+      tab: "summary",
+      loading: Boolean(article.link && !article.link.startsWith("#")),
+      summary: initialSummary,
+      fullContent: article.body?.map((text) => ({ type: "paragraph", text })) || [],
+    });
+
+    if (!article.link || article.link.startsWith("#")) return;
+
+    try {
+      const res = await fetch(`/api/news/content?url=${encodeURIComponent(article.link)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const summary = Array.isArray(data.paragraphs) && data.paragraphs.length > 0
+        ? data.paragraphs
+        : initialSummary;
+      const apiFullContent = Array.isArray(data.fullContent)
+        ? data.fullContent.filter((block: ReaderContentBlock) => {
+          if (block.type === "image") return Boolean(block.url);
+          return Boolean(block.text && block.text.trim().length > 0);
+        })
+        : [];
+
+      setStockInlineArticle((current) => current?.key === key
+        ? { ...current, loading: false, summary, fullContent: apiFullContent }
+        : current
+      );
+    } catch (err) {
+      console.error("Error fetching stock related article:", err);
+      setStockInlineArticle((current) => current?.key === key
+        ? {
+          ...current,
+          loading: false,
+          summary: initialSummary,
+          fullContent: [],
+          error: lang === "vi" ? "Không thể tải thêm nội dung. Bạn có thể đọc tại nguồn." : "Unable to load more content. You can read at the source.",
+        }
+        : current
+      );
+    }
+  };
+
+  const setStockInlineArticleTab = (tab: "summary" | "full") => {
+    setStockInlineArticle((current) => current ? { ...current, tab } : current);
+  };
+
   function closeArticle() {
     if (!activeArticle || isReaderClosing) return;
     setIsReaderClosing(true);
@@ -1005,6 +1083,7 @@ export default function Home() {
     setIsWatchlistDetailClosing(false);
     setActiveWatchlistStock(item);
     setActiveWatchlistDetail(null);
+    setStockInlineArticle(null);
     setLoadingWatchlistDetail(true);
 
     const symbol = getCleanTickerSymbol(item.symbol || item.ticker);
@@ -1063,6 +1142,7 @@ export default function Home() {
     setIsWatchlistDetailClosing(false);
     setActiveWatchlistStock(tickerItem);
     setActiveWatchlistDetail(item);
+    setStockInlineArticle(null);
     setLoadingWatchlistDetail(false);
   };
 
@@ -1073,6 +1153,7 @@ export default function Home() {
     watchlistDetailCloseTimerRef.current = setTimeout(() => {
       setActiveWatchlistStock(null);
       setActiveWatchlistDetail(null);
+      setStockInlineArticle(null);
       setIsWatchlistDetailClosing(false);
     }, 420);
   };
@@ -2461,7 +2542,7 @@ export default function Home() {
                         <SkipNextIcon size={20} />
                       </button>
                       <button 
-                        onClick={() => setShowPlaylist(!showPlaylist)} 
+                        onClick={openCurrentChannelPlaylist}
                         className={`podcast-control-btn list-btn ${showPlaylist ? "active" : ""}`}
                         title={trans[lang].listBtn}
                       >
@@ -3388,14 +3469,14 @@ export default function Home() {
         <p>{trans[lang].footerText}</p>
       </footer>
 
-      {/* Mobile Stock Detail Sheet */}
+      {/* Stock Detail Sheet */}
       {activeWatchlistStock && (() => {
         const stock = activeWatchlistStock;
         const detail = activeWatchlistDetail;
         const symbol = getCleanTickerSymbol(stock.symbol || stock.ticker);
-        const displayName = detail?.displayName || stock.sector;
-        const price = detail?.price || stock.price;
-        const change = detail?.change || stock.change;
+        const displayName = detail?.displayName || stock.sector || symbol;
+        const price = detail?.price || stock.price || "N/A";
+        const change = detail?.change || stock.change || "N/A";
         const isPositive = detail?.isPositive ?? stock.isPositive;
         const colorClass = isPositive ? "positive" : "negative";
         const chartValues = detailChartData.length > 1
@@ -3408,17 +3489,31 @@ export default function Home() {
         const maxChart = hasChartData ? Math.max(...chartValues) : 0;
         const range = maxChart - minChart || 1;
         const chartPoints = chartValues.map((value: number, index: number) => {
-          const x = 12 + (index / Math.max(chartValues.length - 1, 1)) * 276;
-          const y = 126 - ((value - minChart) / range) * 92;
+          const x = 16 + (index / Math.max(chartValues.length - 1, 1)) * 408;
+          const y = 196 - ((value - minChart) / range) * 152;
           return `${x},${y}`;
         }).join(" ");
         const updatedAtText = detail?.updatedAt
-          ? new Date(detail.updatedAt).toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" })
-          : "--:--";
+          ? new Date(detail.updatedAt).toLocaleString(lang === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })
+          : (lang === "vi" ? "Chưa rõ" : "Unknown");
         const sourceUrl = detail?.cafefDataUrl || "https://cafef.vn/du-lieu.chn";
         const exchange = detail?.exchange || stock.exchange || "HOSE";
         const dataSource = detail?.dataSource || "CafeF / market data";
         const isFavorite = watchlist.includes(symbol);
+        const timeframeOptions = [
+          { label: "1D", days: 1 },
+          { label: "1W", days: 7 },
+          { label: "1M", days: 30 },
+          { label: "3M", days: 90 },
+          { label: "6M", days: 180 },
+          { label: "1Y", days: 365 },
+        ];
+        const chartQuality = loadingDetailChart
+          ? (lang === "vi" ? "Đang tải" : "Loading")
+          : hasChartData
+            ? (detailChartData.length > 1 ? "Delayed / cached" : "Cached")
+            : "Unavailable";
+        const unavailableText = lang === "vi" ? "Chưa có dữ liệu đáng tin cậy" : "No reliable data";
         const absoluteChange = (() => {
           const latestPrice = parseFloat(String(price).replace(/,/g, ""));
           const prevClose = parseFloat(String(detail?.prevClose || stock.prevClose || "").replace(/,/g, ""));
@@ -3430,65 +3525,50 @@ export default function Home() {
           { label: lang === "vi" ? "Giá mới nhất" : "Latest price", value: price, accent: colorClass },
           { label: lang === "vi" ? "Thay đổi %" : "Change %", value: change, accent: colorClass },
           { label: lang === "vi" ? "Thay đổi" : "Abs change", value: absoluteChange, accent: colorClass },
-          { label: lang === "vi" ? "Khối lượng" : "Volume", value: detail?.volume || formatWatchlistVolume(stock) },
+          { label: lang === "vi" ? "Tổng KL" : "Volume", value: detail?.volume || formatWatchlistVolume(stock) },
           { label: lang === "vi" ? "Vốn hóa" : "Market cap", value: detail?.marketCapVnd || detail?.marketCap || "N/A" },
           { label: "P/E", value: detail?.pe || "N/A" },
           { label: "P/B", value: detail?.pb || "N/A" },
-          { label: lang === "vi" ? "V?n h?a" : "Market cap", value: detail?.marketCapVnd || detail?.marketCap || "N/A" }
         ];
         const marketStats = [
-          { label: lang === "vi" ? "Tham chi?u" : "Prev close", value: detail?.prevClose || stock.prevClose || "N/A" },
-          { label: lang === "vi" ? "Cao nh?t" : "High", value: detail?.dayHigh || stock.dayHigh || "N/A" },
-          { label: lang === "vi" ? "Th?p nh?t" : "Low", value: detail?.dayLow || stock.dayLow || "N/A" },
-          { label: lang === "vi" ? "KL mua" : "Buy vol", value: stock.buyVolume || "N/A" },
-          { label: lang === "vi" ? "KL b?n" : "Sell vol", value: stock.sellVolume || "N/A" },
-          { label: lang === "vi" ? "T?ng KL" : "Volume", value: detail?.volume || formatWatchlistVolume(stock) }
+          { label: lang === "vi" ? "Tham chiếu" : "Prev close", value: detail?.prevClose || stock.prevClose || "N/A" },
+          { label: lang === "vi" ? "Mở cửa" : "Open", value: unavailableText, muted: true },
+          { label: lang === "vi" ? "Trung bình" : "Average", value: unavailableText, muted: true },
+          { label: lang === "vi" ? "Cao nhất" : "High", value: detail?.dayHigh || stock.dayHigh || "N/A" },
+          { label: lang === "vi" ? "Thấp nhất" : "Low", value: detail?.dayLow || stock.dayLow || "N/A" },
+          { label: lang === "vi" ? "Giá trị GD" : "Trading value", value: unavailableText, muted: true },
+          { label: lang === "vi" ? "Tổng KL" : "Volume", value: detail?.volume || formatWatchlistVolume(stock) },
         ];
         const valuationStats = [
           { label: "EPS", value: detail?.eps || "N/A" },
           { label: "P/E", value: detail?.pe || "N/A" },
-          { label: "P/B", value: detail?.pb || "N/A" }
+          { label: "P/B", value: detail?.pb || "N/A" },
+          { label: lang === "vi" ? "Vốn hóa" : "Market cap", value: detail?.marketCapVnd || detail?.marketCap || "N/A" },
+        ];
+        const orderBookStats = [
+          { label: lang === "vi" ? "Dư mua" : "Bid queue", value: unavailableText },
+          { label: lang === "vi" ? "Dư mua %" : "Bid queue %", value: unavailableText },
+          { label: lang === "vi" ? "Dư bán" : "Ask queue", value: unavailableText },
+          { label: lang === "vi" ? "Dư bán %" : "Ask queue %", value: unavailableText },
         ];
 
         return (
           <div className={`stock-detail-overlay ${isWatchlistDetailClosing ? "closing" : ""}`} onClick={closeWatchlistStockDetail}>
-            <section className={`stock-detail-sheet ${isWatchlistDetailClosing ? "closing" : ""}`} onClick={(event) => event.stopPropagation()}>
+            <section className={`stock-detail-sheet stock-detail-app ${isWatchlistDetailClosing ? "closing" : ""}`} onClick={(event) => event.stopPropagation()}>
               <header className="stock-detail-hero">
                 <div className="stock-detail-title-wrap">
+                  <span className="stock-detail-kicker">{dataSource} · {lang === "vi" ? "Cập nhật" : "Updated"} {updatedAtText}</span>
                   <div className="stock-detail-symbol-row">
                     <h2>{symbol}</h2>
                     <span className="stock-detail-exchange-badge">{exchange}</span>
                   </div>
                   <p>{displayName}</p>
-                  <span className="stock-detail-kicker">{dataSource} - {lang === "vi" ? "Cap nhat" : "Updated"} {updatedAtText}</span>
                 </div>
+
                 <div className="stock-detail-header-actions">
-                  <button
-                    className="stock-detail-icon-btn"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      refreshWatchlistStockDetail();
-                    }}
-                    disabled={loadingWatchlistDetail}
-                    aria-label={lang === "vi" ? "Lam moi du lieu" : "Refresh data"}
-                    title={lang === "vi" ? "Lam moi" : "Refresh"}
-                  >
-                    Refresh
-                  </button>
-                  <button
-                    className={`stock-detail-icon-btn ${isFavorite ? "active" : ""}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      toggleWatchlist(symbol);
-                    }}
-                    aria-label="Watchlist"
-                    title={isFavorite ? "Remove from watchlist" : "Add to watchlist"}
-                  >
-                    {isFavorite ? "Saved" : "Save"}
-                  </button>
-                  <button className="stock-detail-back-btn" onClick={closeWatchlistStockDetail} aria-label={lang === "vi" ? "Dong" : "Close"}>
-                    Close
-                  </button>
+                  <button type="button" className="stock-detail-icon-btn" onClick={(event) => { event.stopPropagation(); refreshWatchlistStockDetail(); }} disabled={loadingWatchlistDetail} aria-label={lang === "vi" ? "Làm mới dữ liệu" : "Refresh data"} title={lang === "vi" ? "Làm mới" : "Refresh"}>↻</button>
+                  <button type="button" className={`stock-detail-icon-btn ${isFavorite ? "active" : ""}`} onClick={(event) => { event.stopPropagation(); toggleWatchlist(symbol); }} aria-label={isFavorite ? "Remove from watchlist" : "Add to watchlist"} title={isFavorite ? "Remove from watchlist" : "Add to watchlist"}>★</button>
+                  <button type="button" className="stock-detail-back-btn" onClick={closeWatchlistStockDetail} aria-label={lang === "vi" ? "Đóng" : "Close"}>×</button>
                 </div>
               </header>
 
@@ -3503,38 +3583,48 @@ export default function Home() {
                 </div>
 
                 <div className="stock-detail-main-grid">
-                  <div className="stock-detail-chart-card">
+                  <section className="stock-detail-chart-card">
                     <div className="stock-detail-chart-head">
-                      <span>{lang === "vi" ? "Bieu do gia" : "Price chart"}</span>
-                      <small>{detailChartTimeframe}D</small>
+                      <div className="stock-detail-chart-title">
+                        <span>{lang === "vi" ? "Biểu đồ giá" : "Price chart"}</span>
+                        <small>{chartQuality}</small>
+                      </div>
+                      <div className="stock-detail-timeframe-tabs" aria-label="Chart timeframe">
+                        {timeframeOptions.map((option) => (
+                          <button key={option.label} type="button" className={detailChartTimeframe === option.days ? "active" : ""} onClick={() => { setDetailChartTimeframe(option.days); fetchDetailChart(symbol, option.days); }}>
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+
                     {loadingDetailChart ? (
-                      <div className="stock-detail-chart-empty">{lang === "vi" ? "Dang tai du lieu bieu do..." : "Loading chart data..."}</div>
+                      <div className="stock-detail-chart-empty">{lang === "vi" ? "Đang tải dữ liệu biểu đồ..." : "Loading chart data..."}</div>
                     ) : hasChartData ? (
-                      <svg viewBox="0 0 300 150" role="img" aria-label={`${symbol} price mini chart`}>
-                        <line x1="12" y1="34" x2="288" y2="34" />
-                        <line x1="12" y1="80" x2="288" y2="80" />
-                        <line x1="12" y1="126" x2="288" y2="126" />
+                      <svg viewBox="0 0 440 220" role="img" aria-label={`${symbol} price chart`}>
+                        <line x1="16" y1="44" x2="424" y2="44" />
+                        <line x1="16" y1="120" x2="424" y2="120" />
+                        <line x1="16" y1="196" x2="424" y2="196" />
                         <polyline points={chartPoints} />
                       </svg>
                     ) : (
-                      <div className="stock-detail-chart-empty">{lang === "vi" ? "Chua co du lieu bieu do cho ma nay." : "No chart data available for this symbol."}</div>
+                      <div className="stock-detail-chart-empty">{lang === "vi" ? "Chart unavailable: chưa có dữ liệu đáng tin cậy cho mã này." : "Chart unavailable: no reliable data for this symbol."}</div>
                     )}
-                  </div>
-                {loadingWatchlistDetail ? (
-                  <div className="stock-detail-loading">
-                    <div className="skeleton-line"></div>
-                    <div className="skeleton-line"></div>
-                    <div className="skeleton-line"></div>
-                  </div>
-                ) : (
-                  <>
+                  </section>
+
+                  {loadingWatchlistDetail ? (
+                    <div className="stock-detail-loading">
+                      <div className="skeleton-line"></div>
+                      <div className="skeleton-line"></div>
+                      <div className="skeleton-line"></div>
+                    </div>
+                  ) : (
                     <div className="stock-detail-section-grid">
                       <section className="stock-detail-panel">
-                        <h3>{lang === "vi" ? "Giao dịch realtime" : "Realtime trading"}</h3>
+                        <h3>{lang === "vi" ? "Giao dịch" : "Trading stats"}</h3>
                         <div className="stock-detail-stats-grid">
                           {marketStats.map((item) => (
-                            <div key={item.label} className="stock-detail-stat">
+                            <div key={item.label} className={`stock-detail-stat ${item.muted ? "muted" : ""}`}>
                               <span>{item.label}</span>
                               <strong>{item.value}</strong>
                             </div>
@@ -3543,7 +3633,7 @@ export default function Home() {
                       </section>
 
                       <section className="stock-detail-panel">
-                        <h3>{lang === "vi" ? "Định giá CafeF" : "CafeF valuation"}</h3>
+                        <h3>{lang === "vi" ? "Định giá / cơ bản" : "Valuation / fundamentals"}</h3>
                         <div className="stock-detail-stats-grid compact">
                           {valuationStats.map((item) => (
                             <div key={item.label} className="stock-detail-stat">
@@ -3553,82 +3643,96 @@ export default function Home() {
                           ))}
                         </div>
                       </section>
-                    </div>
 
-                    {detail?.description && (
-                      <section className="stock-detail-panel stock-detail-about">
-                        <h3>{lang === "vi" ? "Hồ sơ doanh nghiệp" : "Company profile"}</h3>
-                        <p>{detail.description}</p>
+                      <section className="stock-detail-panel stock-detail-orderbook">
+                        <h3>{lang === "vi" ? "Dư mua / dư bán" : "Order book"}</h3>
+                        <div className="stock-detail-stats-grid compact">
+                          {orderBookStats.map((item) => (
+                            <div key={item.label} className="stock-detail-stat muted">
+                              <span>{item.label}</span>
+                              <strong>{item.value}</strong>
+                            </div>
+                          ))}
+                        </div>
                       </section>
-                    )}
+                    </div>
+                  )}
 
-                    {detail?.relatedNews && detail.relatedNews.length > 0 && (
-                      <section className="stock-detail-panel stock-detail-news">
-                        <h3>{lang === "vi" ? "Tin liên quan" : "Related news"}</h3>
-                        {detail.relatedNews.slice(0, 3).map((news, index) => {
-                          const newsItem: NewsItem = {
-                            title: news.title,
-                            link: news.link,
-                            time: news.time,
-                            source: "CafeF",
-                            description: news.description || "",
-                            image: news.image || ""
-                          };
-                          const hasImage = hasDisplayImage(newsItem.image);
-                          return (
-                            <div
-                              key={`${news.link}-${index}`}
-                              onClick={() => openArticle(newsItem)}
-                              className={`news-card ${hasImage ? "" : "no-image"}`}
-                              style={{ cursor: "pointer" }}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter" || event.key === " ") {
-                                  openArticle(newsItem);
-                                }
-                              }}
-                            >
+                  {detail?.description && (
+                    <section className="stock-detail-panel stock-detail-about">
+                      <h3>{lang === "vi" ? "Hồ sơ doanh nghiệp" : "Company profile"}</h3>
+                      <p>{detail.description}</p>
+                    </section>
+                  )}
+
+                  {detail?.relatedNews && detail.relatedNews.length > 0 && (
+                    <section className="stock-detail-panel stock-detail-news">
+                      <h3>{lang === "vi" ? "Tin liên quan" : "Related news"}</h3>
+                      {detail.relatedNews.slice(0, 5).map((news, index) => {
+                        const newsItem: NewsItem = { title: news.title, link: news.link, time: news.time, source: "CafeF", description: news.description || "", image: news.image || "" };
+                        const hasImage = hasDisplayImage(newsItem.image);
+                        const newsKey = `${news.link}-${index}`;
+                        const isOpen = stockInlineArticle?.key === newsKey;
+                        const showFull = isOpen && stockInlineArticle?.tab === "full" && stockInlineArticle.fullContent.length > 0;
+
+                        return (
+                          <div key={newsKey} className="stock-detail-news-entry">
+                            <button type="button" onClick={() => openStockInlineArticle(newsItem, newsKey)} className={`news-card ${hasImage ? "" : "no-image"} ${isOpen ? "active" : ""}`}>
                               <div className="news-content">
                                 <span className="news-source">{newsItem.source}</span>
                                 <h3 className="news-title">{newsItem.title}</h3>
-                                {newsItem.description && (
-                                  <p className="news-meta news-summary">
-                                    {newsItem.description}
-                                  </p>
-                                )}
+                                {newsItem.description && <p className="news-meta news-summary">{newsItem.description}</p>}
                                 <span className="news-meta">{newsItem.time}</span>
                               </div>
-                              {hasImage && (
-                                <div className="news-image-wrap">
-                                  <img src={newsItem.image} alt={newsItem.title} className="news-image" />
+                              {hasImage && <div className="news-image-wrap"><img src={newsItem.image} alt={newsItem.title} className="news-image" /></div>}
+                            </button>
+
+                            {isOpen && stockInlineArticle && (
+                              <div className="stock-inline-reader">
+                                <div className="stock-inline-reader-tabs">
+                                  <button type="button" className={stockInlineArticle.tab === "summary" ? "active" : ""} onClick={() => setStockInlineArticleTab("summary")}>{lang === "vi" ? "Tóm tắt" : "Summary"}</button>
+                                  <button type="button" className={stockInlineArticle.tab === "full" ? "active" : ""} onClick={() => setStockInlineArticleTab("full")} disabled={stockInlineArticle.fullContent.length === 0}>{lang === "vi" ? "Đọc đầy đủ" : "Full"}</button>
+                                  <button type="button" onClick={() => setStockInlineArticle(null)}>{lang === "vi" ? "Thu gọn" : "Collapse"}</button>
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </section>
-                    )}
-                  </>
-                )}
-                <footer className="stock-detail-data-footer">
-                  <span>{lang === "vi" ? "Nguồn" : "Source"}: {dataSource}</span>
-                  <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
-                    {lang === "vi" ? "Mở dữ liệu gốc" : "Open source data"}
-                  </a>
-                  <small>
-                    {lang === "vi"
-                      ? "Dữ liệu có thể trễ hoặc thiếu. Nội dung chỉ nhằm cung cấp thông tin, không phải khuyến nghị đầu tư."
-                      : "Data may be delayed or incomplete. This is informational only and not investment advice."}
-                  </small>
-                </footer>
+
+                                {stockInlineArticle.loading ? (
+                                  <p>{lang === "vi" ? "Đang tải tóm tắt..." : "Loading summary..."}</p>
+                                ) : showFull ? (
+                                  <div className="stock-inline-reader-body">
+                                    {stockInlineArticle.fullContent.map((block, blockIndex) => {
+                                      if (block.type === "image" && block.url) return <img key={blockIndex} src={block.url} alt="" />;
+                                      if (block.type === "header" && block.text) return <h4 key={blockIndex}>{block.text}</h4>;
+                                      if (block.type === "list-item" && block.text) return <li key={blockIndex}>{block.text}</li>;
+                                      if (block.text) return <p key={blockIndex}>{block.text}</p>;
+                                      return null;
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="stock-inline-reader-body">
+                                    {(stockInlineArticle.summary.length > 0 ? stockInlineArticle.summary : [newsItem.description || (lang === "vi" ? "Chưa có tóm tắt cho tin này." : "No summary available for this article.")]).map((paragraph, paraIndex) => <p key={paraIndex}>{paragraph}</p>)}
+                                    {stockInlineArticle.error && <p className="stock-inline-reader-note">{stockInlineArticle.error}</p>}
+                                    <a href={newsItem.link} target="_blank" rel="noopener noreferrer">{lang === "vi" ? "Đọc tại nguồn" : "Read at source"}</a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </section>
+                  )}
+
+                  <footer className="stock-detail-data-footer">
+                    <span>{lang === "vi" ? "Nguồn" : "Source"}: {dataSource}</span>
+                    <a href={sourceUrl} target="_blank" rel="noopener noreferrer">{lang === "vi" ? "Mở dữ liệu gốc" : "Open source data"}</a>
+                    <small>{lang === "vi" ? "Dữ liệu có thể trễ, cached hoặc thiếu. Nội dung chỉ nhằm cung cấp thông tin, không phải khuyến nghị đầu tư." : "Data may be delayed, cached, or incomplete. This is informational only and not investment advice."}</small>
+                  </footer>
                 </div>
               </div>
             </section>
           </div>
         );
       })()}
-
       {/* Reader Mode Modal */}
       {activeArticle && (
         <div className={`reader-modal-overlay ${isReaderClosing ? "closing" : ""}`} onClick={closeArticle}>
