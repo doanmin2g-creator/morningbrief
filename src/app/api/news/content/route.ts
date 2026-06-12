@@ -120,6 +120,11 @@ function getImpactScore(text: string): number {
   const targetKeywords = /\b(?:nhằm|để|giúp|mục tiêu|kỳ vọng|dự kiến|tác động|ảnh hưởng|quyết định|hệ quả|thúc đẩy|tăng trưởng|phát triển|hoàn thành)\b/gi;
   const matchCount = (text.match(targetKeywords) || []).length;
   score += matchCount * 2.5;
+
+  // Từ khóa tài chính, thị trường, ngành nghề (Ưu tiên cao)
+  const financeKeywords = /\b(?:chứng khoán|cổ phiếu|vn-index|lợi nhuận|doanh thu|lãi suất|lạm phát|xuất khẩu|ngân hàng|bất động sản|thị trường|ngành|tài chính|đầu tư|cổ đông|cổ tức|kinh tế vĩ mô)\b/gi;
+  const financeMatchCount = (text.match(financeKeywords) || []).length;
+  score += financeMatchCount * 4.0;
   
   return adjustForBehaviorDefinition(text, score);
 }
@@ -220,17 +225,17 @@ Hãy tìm và liệt kê ra nháp tất cả các thông tin sau từ bài báo 
 ### BƯỚC 3: XUẤT KẾT QUẢ ĐẦU RA BẮT BUỘC (OUTPUT)
 Sau khi đã chạy xong Bước 1 và 2, hãy xuất kết quả theo cấu trúc sau đây (Bỏ qua phần nháp của Bước 1 và 2, chỉ hiển thị kết quả cuối cùng):
 
-Đoạn 1: [Tóm tắt bối cảnh: Ai? Làm gì? Ở đâu? Khi nào? Trong tối đa 2 câu ngắn gọn].
+Đoạn 1: [Tóm tắt bối cảnh: Ai? Làm gì? Ở đâu? Khi nào? Trọng tâm vào các yếu tố thị trường, ngành nghề, tài chính nếu có. Tối đa 2 câu ngắn gọn].
 
-Đoạn 2: [Các số liệu cốt lõi, dòng tiền, thông số kỹ thuật, mốc thời gian hoặc lộ trình cụ thể].
+Đoạn 2: [Các số liệu cốt lõi, dòng tiền, thông số kỹ thuật, lợi nhuận, doanh thu, mốc thời gian hoặc lộ trình cụ thể].
 
-Đoạn 3: [Mục đích của hành động này là gì? Hệ quả hoặc tác động dự kiến của nó].
+Đoạn 3: [Mục đích của hành động này là gì? Hệ quả hoặc tác động dự kiến của nó đến thị trường, doanh nghiệp hoặc nền kinh tế].
 
 ### QUY TẮC AN TOÀN (FAIL-SAFE LAWS):
 1. KHÔNG SÁNG TẠO: Chỉ dùng thông tin có trong bài. Nếu thiếu số liệu, ghi "Bài báo không nhắc tới", không tự suy đoán.
-2. KHÔNG DÙNG TỪ ĐÁNH GIÁ CẢM TÍNH: Thay vì viết "vốn rất lớn", hãy viết "vốn hơn 170.000 tỷ đồng". Thay vì viết "tăng rất nhiều câu hỏi", hãy viết "tăng lên 700 câu hỏi".
+2. KHÔNG DÙNG TỪ ĐÁNH GIÁ CẢM TÍNH: Thay vì viết "vốn rất lớn", hãy viết "vốn hơn 170.000 tỷ đồng".
 3. KHÔNG THÊM LỜI THOẠI: Không chào hỏi, không giải thích "Đây là bản tóm tắt...". Vào thẳng nội dung.
-4. QUY TẮC ĐỊNH DANH HÀNH VI: Nếu tiêu đề hoặc nội dung bài báo nhắc đến một hình phạt, một hậu quả hoặc một phần thưởng dành cho một 'hành vi/lỗi/đối tượng' cụ thể, bản tóm tắt BẮT BUỘC phải gọi tên chính xác hành vi/lỗi/đối tượng đó là gì (Ví dụ: Không viết chung chung là 'mắc lỗi', phải viết rõ là 'lỗi không đăng ký biến động đất đai').
+4. TẬP TRUNG TÀI CHÍNH: Nếu bài viết có nhiều luồng thông tin, hãy ưu tiên tóm tắt các thông tin có ảnh hưởng đến tài chính, chứng khoán, và doanh nghiệp. Đẩy các thông tin phụ xuống hoặc loại bỏ.
 
 ---
 NỘI DUNG BÀI BÁO CẦN TÓM TẮT:

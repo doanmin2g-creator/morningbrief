@@ -89,7 +89,7 @@ async function fetchStockQuote(symbol: string, forceRefresh = false): Promise<Se
   const isIndex = cleanSym === "VNINDEX" || cleanSym === "HNX" || cleanSym === "HNXINDEX" || cleanSym === "UPCOM";
   
   let baseResult: SearchResult;
-  let exchange = cleanSym === "SDA" ? "UPCoM" : derivedExchange;
+  const exchange = cleanSym === "SDA" ? "UPCoM" : derivedExchange;
 
   if (isIndex) {
     const displayName = cleanSym === "VNINDEX" ? "VN-Index" : cleanSym === "HNXINDEX" || cleanSym === "HNX" ? "HNX-Index" : "UPCoM-Index";

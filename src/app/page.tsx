@@ -440,8 +440,8 @@ function getUpcomingEvents(lang: "vi" | "en") {
 
     const gdpDate = new Date(year, quarterMonth, 29);
     if (date > gdpDate) {
-      let nextQuarterMonth = (quarterMonth + 3) % 12;
-      let nextYear = year + (quarterMonth + 3 >= 12 ? 1 : 0);
+      const nextQuarterMonth = (quarterMonth + 3) % 12;
+      const nextYear = year + (quarterMonth + 3 >= 12 ? 1 : 0);
       return new Date(nextYear, nextQuarterMonth, 29);
     }
     return gdpDate;
@@ -3448,7 +3448,7 @@ export default function Home() {
                     <span>🗣️</span> {lang === "vi" ? "Ý kiến & Khuyến nghị Chuyên gia" : "Expert Opinion & Strategy"}
                   </h4>
                   <p style={{ margin: 0, fontStyle: "italic", fontSize: "0.88rem", lineHeight: "1.5", color: "var(--text-secondary)" }}>
-                    "{activeMacroEvent.expertOpinion}"
+                    &quot;{activeMacroEvent.expertOpinion}&quot;
                   </p>
                 </div>
               )}
