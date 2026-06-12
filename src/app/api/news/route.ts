@@ -1,138 +1,180 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const FEEDS: Record<string, string> = {
-  general: "https://cafef.vn/vi-mo-dau-tu.rss",             // CafeF Macro & Investment
-  business: "https://cafef.vn/thi-truong-chung-khoan.rss",  // CafeF Stock Market
-  tech: "https://vnexpress.net/rss/so-hoa.rss"             // VnExpress Technology
-};
+type NewsCategory = "general" | "business" | "tech";
 
-// Memory Cache
-const cache: Record<string, { data: any; timestamp: number }> = {};
-const CACHE_TTL_MS = 3 * 60 * 1000; // Cache news for 3 minutes
-const RESPONSE_CACHE_HEADERS = {
-  "Cache-Control": "public, s-maxage=180, stale-while-revalidate=600"
-};
-
-function parseTimeAgo(pubDateStr: string): string {
-  try {
-    const pubDate = new Date(pubDateStr);
-    const diffMs = Date.now() - pubDate.getTime();
-    const diffMins = Math.floor(diffMs / (60 * 1000));
-    
-    if (diffMins < 60) {
-      return `${diffMins} phút trước`;
-    }
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) {
-      return `${diffHours} giờ trước`;
-    }
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} ngày trước`;
-  } catch (e) {
-    return pubDateStr;
-  }
+interface FeedSource {
+  url: string;
+  source: string;
 }
 
-// Lightweight XML parser using RegExp
-function parseRssXml(xmlText: string, isCafeF: boolean): any[] {
-  const items: any[] = [];
-  // Match all <item>...</item> tags
-  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-  let match;
+interface NewsItem {
+  source: string;
+  title: string;
+  description: string;
+  link: string;
+  time: string;
+  image?: string;
+}
+
+const FEEDS: Record<NewsCategory, FeedSource[]> = {
+  general: [
+    { url: "https://cafef.vn/vi-mo-dau-tu.rss", source: "CafeF" },
+    { url: "https://vnexpress.net/rss/kinh-doanh.rss", source: "VnExpress" },
+  ],
+  business: [
+    { url: "https://cafef.vn/thi-truong-chung-khoan.rss", source: "CafeF" },
+    { url: "https://vnexpress.net/rss/kinh-doanh.rss", source: "VnExpress" },
+  ],
+  tech: [
+    { url: "https://vnexpress.net/rss/so-hoa.rss", source: "VnExpress" },
+  ],
+};
+
+const cache: Record<string, { data: NewsItem[]; timestamp: number }> = {};
+const CACHE_TTL_MS = 3 * 60 * 1000;
+const STALE_TTL_MS = 60 * 60 * 1000;
+const NEWS_FETCH_TIMEOUT_MS = 4500;
+const RESPONSE_CACHE_HEADERS = {
+  "Cache-Control": "public, s-maxage=180, stale-while-revalidate=600",
+};
+
+function decodeXml(value: string): string {
+  return value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+}
+
+function stripHtml(value: string): string {
+  return decodeXml(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function parseTimeAgo(pubDateStr: string): string {
+  const pubDate = new Date(pubDateStr);
+  if (!Number.isFinite(pubDate.getTime())) return pubDateStr || "";
+
+  const diffMins = Math.max(0, Math.floor((Date.now() - pubDate.getTime()) / 60000));
+  if (diffMins < 60) return `${diffMins} phút trước`;
+
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} ngày trước`;
+}
+
+function extractField(itemContent: string, tagName: string): string {
+  const regex = new RegExp(`<${tagName}(?:\\s[^>]*)?>([\\s\\S]*?)</${tagName}>`, "i");
+  const match = itemContent.match(regex);
+  return match ? decodeXml(match[1]) : "";
+}
+
+function parseRssXml(xmlText: string, source: string): NewsItem[] {
+  const items: NewsItem[] = [];
+  const itemRegex = /<item\b[^>]*>([\s\S]*?)<\/item>/gi;
+  let match: RegExpExecArray | null;
 
   while ((match = itemRegex.exec(xmlText)) !== null) {
     const itemContent = match[1];
+    const title = stripHtml(extractField(itemContent, "title"));
+    const link = stripHtml(extractField(itemContent, "link"));
+    const descriptionRaw = extractField(itemContent, "description");
+    const description = stripHtml(descriptionRaw);
+    const pubDate = extractField(itemContent, "pubDate");
 
-    // Helper to extract node value (supports CDATA)
-    const extractField = (tagName: string): string => {
-      const regex = new RegExp(`<${tagName}>(?:<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>|([^<]*))</${tagName}>`);
-      const fieldMatch = itemContent.match(regex);
-      if (fieldMatch) {
-        return (fieldMatch[1] || fieldMatch[2] || "").trim();
-      }
-      return "";
-    };
+    if (!title || !link) continue;
 
-    const title = extractField("title");
-    const link = extractField("link");
-    const descriptionRaw = extractField("description");
-    const pubDate = extractField("pubDate");
-
-    // Extract image URL from description HTML (e.g. <img src="IMAGE_URL" ...>)
-    let image = "";
-    const imgRegex = /<img[^>]+src=["']([^"']+)["']/i;
-    const imgMatch = descriptionRaw.match(imgRegex);
-    if (imgMatch && imgMatch[1]) {
-      image = imgMatch[1];
-    }
-
-    // Clean description text
-    const cleanDesc = descriptionRaw
-      .replace(/<[^>]*>/g, "") // Strip HTML tags
-      .replace(/&nbsp;/g, " ")
-      .trim();
+    const imageMatch = descriptionRaw.match(/<img[^>]+src=["']([^"']+)["']/i);
+    const image = imageMatch?.[1] ? decodeXml(imageMatch[1]) : "";
 
     items.push({
-      source: isCafeF ? "CafeF" : "VnExpress",
+      source,
       title,
-      description: cleanDesc,
+      description,
       link,
       time: parseTimeAgo(pubDate),
-      image
+      image,
     });
   }
 
   return items;
 }
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const category = searchParams.get("category") || "general";
-
-  const feedUrl = FEEDS[category];
-  if (!feedUrl) {
-    return NextResponse.json({ error: "Invalid category" }, { status: 400 });
-  }
-
-  const now = Date.now();
-  const cached = cache[category];
-
-  if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
-    return NextResponse.json(cached.data, {
-      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "HIT" }
-    });
-  }
+async function fetchFeed(source: FeedSource): Promise<NewsItem[]> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), NEWS_FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(feedUrl, {
-      next: { revalidate: 180 }, // Cache on Next.js edge level (3m)
+    const response = await fetch(source.url, {
+      signal: controller.signal,
+      next: { revalidate: 180 },
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
-      }
+        "User-Agent": "MorningBrief/1.0 (+https://morningbrief.local)",
+        "Accept": "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+      },
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch feed: HTTP ${response.status}`);
+      throw new Error(`${source.source} RSS HTTP ${response.status}`);
     }
 
-    const xmlText = await response.text();
-    const isCafeF = feedUrl.includes("cafef.vn");
-    const parsedItems = parseRssXml(xmlText, isCafeF);
-
-    // Limit to top 40 items to allow loading more articles
-    const results = parsedItems.slice(0, 40);
-
-    // Update Cache
-    cache[category] = {
-      data: results,
-      timestamp: now
-    };
-
-    return NextResponse.json(results, {
-      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "MISS" }
-    });
-  } catch (error: any) {
-    console.error("Error parsing news feed:", error);
-    return NextResponse.json({ error: "Failed to load news", details: error.message }, { status: 500 });
+    return parseRssXml(await response.text(), source.source);
+  } finally {
+    clearTimeout(timeoutId);
   }
+}
+
+function dedupeNews(items: NewsItem[]): NewsItem[] {
+  const seen = new Set<string>();
+  const deduped: NewsItem[] = [];
+
+  for (const item of items) {
+    const key = item.link || item.title.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const categoryParam = searchParams.get("category") || "general";
+  const category = (categoryParam in FEEDS ? categoryParam : "general") as NewsCategory;
+  const now = Date.now();
+  const cached = cache[category];
+
+  if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json(cached.data, {
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "HIT" },
+    });
+  }
+
+  const settled = await Promise.allSettled(FEEDS[category].map(fetchFeed));
+  const results = dedupeNews(
+    settled.flatMap((result) => result.status === "fulfilled" ? result.value : [])
+  ).slice(0, 40);
+
+  if (results.length > 0) {
+    cache[category] = { data: results, timestamp: now };
+    return NextResponse.json(results, {
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "MISS" },
+    });
+  }
+
+  if (cached && now - cached.timestamp < STALE_TTL_MS) {
+    return NextResponse.json(cached.data, {
+      headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "STALE" },
+    });
+  }
+
+  return NextResponse.json([], {
+    headers: { ...RESPONSE_CACHE_HEADERS, "x-cache": "EMPTY" },
+  });
 }

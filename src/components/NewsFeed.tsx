@@ -45,18 +45,33 @@ export const NewsFeed: React.FC<NewsFeedProps> = React.memo(({
         </>
       ) : (
         <>
+          {newsList.length === 0 && (
+            <div className="news-empty-state">
+              {lang === "vi"
+                ? "Chưa tải được bài báo từ nguồn tin. Vui lòng thử lại sau."
+                : "News is temporarily unavailable. Please try again later."}
+            </div>
+          )}
           {newsList.slice(0, visibleNewsCount).map((item, idx) => {
             const hasImage = hasDisplayImage(item.image);
             return (
               <div
-                key={idx}
+                key={item.link || `${item.title}-${idx}`}
                 onClick={() => openArticle(item)}
                 className={`news-card ${hasImage ? "" : "no-image"}`}
                 style={{ cursor: "pointer" }}
               >
                 <div className="news-content">
                   <span className="news-source">
-                    <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>Nguồn gốc: {item.source}</a>
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(event) => event.stopPropagation()}
+                      style={{ color: "inherit", textDecoration: "underline" }}
+                    >
+                      {lang === "vi" ? "Nguồn gốc" : "Source"}: {item.source}
+                    </a>
                   </span>
                   <h3 className="news-title">{item.title}</h3>
                   {item.description && (
@@ -64,7 +79,7 @@ export const NewsFeed: React.FC<NewsFeedProps> = React.memo(({
                       {item.description}
                     </p>
                   )}
-                  <span className="news-meta">Đăng lúc: {item.time}</span>
+                  <span className="news-meta">{lang === "vi" ? "Đăng lúc" : "Published"}: {item.time}</span>
                 </div>
                 {hasImage && (
                   <div className="news-image-wrap">
